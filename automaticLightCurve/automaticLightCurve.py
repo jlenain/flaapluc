@@ -59,7 +59,7 @@ class autoLC:
         self.tstop  = header['TSTOP']
 
 
-    def readSourceList(self,mysrc):
+    def readSourceList(self,mysrc=None):
         """
         Read the list of sources.
 
@@ -84,16 +84,22 @@ class autoLC:
         z   = srcList[3].tonumpy()
         fglName=srcList[4]
     
-        # Find our input src in the list of sources
-        found=False
-        for i in range(len(src)):
-            if src[i]==mysrc:
-                found=True
-                return src[i],ra[i],dec[i],z[i],fglName[i]
+        # If we ask for a particular source, return the parameters for that source
+        if mysrc != None:
+            # Find our input src in the list of sources
+            found=False
+            for i in range(len(src)):
+                if src[i]==mysrc:
+                    found=True
+                    return src[i],ra[i],dec[i],z[i],fglName[i]
             
-        # If we end up without any found source, print an error and exits
-        print "ERROR Can't find your source "+str(mysrc)+" in the list of sources !"
-        sys.exit(1)
+            # If we end up without any found source, print an error and exits
+            print "ERROR Can't find your source "+str(mysrc)+" in the list of sources !"
+            sys.exit(1)
+  
+        # Otherwise, return the whole list of parameters for all the sources
+        else:
+            return src,ra,dec,z,fglName
 
 
     def selectSrc(self,src,ra,dec):
@@ -316,9 +322,6 @@ def processSrc(argv=None):
     argList = sys.argv
     
     if(argc==2):
-    #    file=argList[0]
-    #    print "Overriding default list of source: using "+file
-    #    auto=autoLC(file)
         src=argList[1]
         auto=autoLC()
     else:

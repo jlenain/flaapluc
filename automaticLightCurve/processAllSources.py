@@ -40,7 +40,7 @@ def main(argv=None):
     print
 
     for i in range(nbSrc):
-        cmd='echo "./automaticLightCurve "'+str(src[i]+' | batch') # | batch # to launch it
+        cmd='. ${FERMI_DIR}/fermi-init.sh && export PYTHONPATH=/usr/local/fermi/src/ScienceTools-v9r27p1-fssc-20120410/external/x86_64-unknown-linux-gnu-libc2.12.2/lib/python2.7/site-packages:$PYTHONPATH && export PATH=/usr/kerberos/sbin:/usr/kerberos/bin:/usr/local/root/5.28.00/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/home/jplenain/hess/bin:/usr/local/hess/bin:/opt/dell/srvadmin/bin:/home/jplenain/local/matlab/bin:/home/jplenain/bin && echo "./automaticLightCurve.py "'+str(src[i]+' | batch')
         os.system(cmd)
 
 
