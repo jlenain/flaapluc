@@ -1,11 +1,13 @@
 #!/usr/bin/env python
-#
-# @author $Author$ 
-# @version $Id$
-# @date $Date$
 
 """
 Automatic generation of photometric light curves of Fermi sources.
+
+No likelihood fit is performed, the results solely rely on the 2FGL spectral fits.
+
+@author Jean-Philippe Lenain <mailto:jplenain@lsw.uni-heidelberg.de>
+@date $Date$
+@version $Id$
 """
 
 import sys, os, asciidata
@@ -66,7 +68,7 @@ class autoLC:
         ra  = srcList[1].tonumpy()
         dec = srcList[2].tonumpy()
         z   = srcList[3].tonumpy()
-        fglName=str(srcList[4])
+        fglName=srcList[4]
     
         if DEBUG:
             for i in range(len(src)):
@@ -74,6 +76,7 @@ class autoLC:
                 print "DEBUG ra =",ra[i]
                 print "DEBUG dec=",dec[i]
                 print "DEBUG z  =",z[i]
+                print "DEBUG fglName=",fglName[i]
 
         return src,ra,dec,z,fglName
 
@@ -89,6 +92,7 @@ class autoLC:
         
         # If outfile exsits, we remove it before updating it
         if os.path.isfile(outfile):
+            return
             os.remove(outfile)
 
         filter['ra']=ra
@@ -114,6 +118,7 @@ class autoLC:
         
         # If outfile exsits, we remove it before updating it
         if os.path.isfile(outfile):
+            return
             os.remove(outfile)
 
         maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<52 && ANGSEP("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)+"+str(self.roi)+">5."
@@ -129,16 +134,21 @@ class autoLC:
         Create an XML model file based on the 2FGL catalogue
         """
         
-        from make2FGLxml import *
+        try:
+            import make2FGLxml
+        except ImportError:
+            print "ERROR Can't import make2FGLxml."
+            sys.exit(1)
         
         evfile=self.workDir+'/'+str(src)+'_gti.fits'
         modelfile=self.workDir+'/'+str(src)+'.xml'
 
         # If modelfile exsits, we remove it
         if os.path.isfile(modelfile):
+            return
             os.remove(modelfile)
         
-        mymodel=srcList('./gll_psc_v07.fit',evfile,modelfile)
+        mymodel=make2FGLxml.srcList('./gll_psc_v07.fit',evfile,modelfile)
         mymodel.makeModel('/usr/local/fermi/ScienceTools-v9r27p1-fssc-20120410-x86_64-unknown-linux-gnu-libc2.5/x86_64-unknown-linux-gnu-libc2.5/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0','/usr/local/fermi/ScienceTools-v9r27p1-fssc-20120410-x86_64-unknown-linux-gnu-libc2.5/x86_64-unknown-linux-gnu-libc2.5/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source','/home/jplenain/fermi/2FGL/Templates')
 
 
@@ -152,6 +162,7 @@ class autoLC:
 
         # If outfile exsits, we remove it before updating it
         if os.path.isfile(outfile):
+            return
             os.remove(outfile)
 
         evtbin['outfile']=outfile
@@ -172,11 +183,21 @@ class autoLC:
         scfile=self.spacecraft
         irfs='P7SOURCE_V6'
         srcmdl=self.workDir+'/'+str(src)+'.xml'
-        target=str(fglName)
-        rad=self.roi
+        target=fglName
+        rad=str(self.roi)
         
-        options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target='+target+' rad'+rad
-        os.system('gtexposure '+options)
+        options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target='+target+' rad='+rad
+        os.system('/usr/local/fermi/src/ScienceTools-v9r27p1-fssc-20120410/x86_64-unknown-linux-gnu-libc2.12.2/bin/gtexposure '+options)
+
+
+    def createPNG(self,src):
+        """
+        Create a PNG figure with the light curve of a given source.
+        """
+
+        threshold=1.e-6 # ph cm^-2 s^-1
+        print 'Not yet implemented'
+
 
 
 
