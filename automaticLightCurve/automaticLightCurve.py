@@ -19,7 +19,7 @@ except ImportError:
     sys.exit(1)
 
 # Flags
-DEBUG=False
+DEBUG=True
 
 
 
@@ -66,6 +66,7 @@ class autoLC:
         ra  = srcList[1].tonumpy()
         dec = srcList[2].tonumpy()
         z   = srcList[3].tonumpy()
+        fglName=str(srcList[4])
     
         if DEBUG:
             for i in range(len(src)):
@@ -74,7 +75,8 @@ class autoLC:
                 print "DEBUG dec=",dec[i]
                 print "DEBUG z  =",z[i]
 
-        return src,ra,dec,z
+        return src,ra,dec,z,fglName
+
 
 
     def selectSrc(self,src,ra,dec):
@@ -114,7 +116,7 @@ class autoLC:
         if os.path.isfile(outfile):
             os.remove(outfile)
 
-        maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<52 && ANGSEP("+ra+","+dec+",RA_SUN,DEC_SUN)+"+self.roi+">5."
+        maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<52 && ANGSEP("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)+"+str(self.roi)+">5."
         maketime['roicut']='yes'
         maketime['tstart']=self.tstart
         maketime['tstop']=self.tstop
@@ -122,12 +124,59 @@ class autoLC:
         maketime.run()
 
 
-    def photomLC(src):
+    def createXML(self,src):
+        """
+        Create an XML model file based on the 2FGL catalogue
+        """
+        
+        from make2FGLxml import *
+        
+        evfile=self.workDir+'/'+str(src)+'_gti.fits'
+        modelfile=self.workDir+'/'+str(src)+'.xml'
+
+        # If modelfile exsits, we remove it
+        if os.path.isfile(modelfile):
+            os.remove(modelfile)
+        
+        mymodel=srcList('./gll_psc_v07.fit',evfile,modelfile)
+        mymodel.makeModel('/usr/local/fermi/ScienceTools-v9r27p1-fssc-20120410-x86_64-unknown-linux-gnu-libc2.5/x86_64-unknown-linux-gnu-libc2.5/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0','/usr/local/fermi/ScienceTools-v9r27p1-fssc-20120410-x86_64-unknown-linux-gnu-libc2.5/x86_64-unknown-linux-gnu-libc2.5/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source','/home/jplenain/fermi/2FGL/Templates')
+
+
+    def photoLC(self,src):
         """
         Compute the photometric light curve for a given source
         """
-        print "Not yet implemented"
 
+        evtbin['evfile']=self.workDir+'/'+str(src)+'_gti.fits'
+        outfile=self.workDir+'/'+str(src)+'_lc.fits'
+
+        # If outfile exsits, we remove it before updating it
+        if os.path.isfile(outfile):
+            os.remove(outfile)
+
+        evtbin['outfile']=outfile
+        evtbin['scfile']=self.spacecraft
+        evtbin['algorithm']='LC'
+        evtbin['tbinalg']='LIN'
+        evtbin['tstart']=self.tstart
+        evtbin['tstop']=self.tstop
+        evtbin['dtime']=604800 # sec. = 1 week
+        evtbin.run()
+
+    def exposure(self,src,fglName):
+        """
+        Compute exposure on source src, to add a flux column for the photometric light curve
+        """
+
+        infile=self.workDir+'/'+str(src)+'_lc.fits'
+        scfile=self.spacecraft
+        irfs='P7SOURCE_V6'
+        srcmdl=self.workDir+'/'+str(src)+'.xml'
+        target=str(fglName)
+        rad=self.roi
+        
+        options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target='+target+' rad'+rad
+        os.system('gtexposure '+options)
 
 
 
@@ -146,10 +195,12 @@ def main(argv=None):
     else:
         auto=autoLC()
 
-    src,ra,dec,z=auto.readSourceList()
+    src,ra,dec,z,fglName=auto.readSourceList()
     auto.selectSrc(src[0],ra[0],dec[0])
     auto.makeTime(src[0],ra[0],dec[0])
-    
+    auto.createXML(src[0])
+    auto.photoLC(src[0])
+    auto.exposure(src[0],fglName[0])
 
 
 if __name__ == '__main__':
