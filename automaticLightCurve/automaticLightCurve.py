@@ -45,7 +45,7 @@ def main(argv=None):
     argc    = len(sys.argv)
     argList = sys.argv
     
-    if(argc<2):
+    if(argc==2):
         file=argList[0]
         print "Overriding default list of source: using "+file
         readSourceList(file)
