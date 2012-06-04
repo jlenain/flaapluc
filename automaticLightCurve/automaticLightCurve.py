@@ -23,11 +23,15 @@ except ImportError:
     sys.exit(1)
 
 # Flags
-DEBUG=True
-
+DEBUG=False # Debugging flag
+BATCH=True  # True in batch mode
 
 
 class autoLC:
+    """
+    Automatic aperture photometry light curve generation, for a list of sources
+    """
+
     def __init__(self,file="/home/jplenain/fermi/automaticLightCurve/listSources.txt"):
         self.file=file
 
@@ -56,6 +60,12 @@ class autoLC:
 
 
     def readSourceList(self):
+        """
+        Read the list of sources.
+
+        @todo Use a mySQL database instead of an ASCII file for the list of sources ?
+        """
+
         try:
             import asciidata
         except ImportError:
@@ -206,12 +216,6 @@ class autoLC:
         Create a data file with the light curve of a given source.
         """
 
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError:
-            print "ERROR Can't import matplotlib"
-            sys.exit(1)
-
         # Read LC file
         infile=self.workDir+'/'+str(src)+'_lc.fits'
 
@@ -237,12 +241,64 @@ class autoLC:
             file.write("%8d\t%5.5e\t%5.5e\n")%(time,flux,fluxErr)
         file.close()
 
+
+    def met2mjd(time):
+        """
+        Converts Mission Elapsed Time (MET, in seconds) in Modified Julian Day.
+        Cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Data/Time_in_ScienceTools.html
+        to see how the time is handled in the Fermi Science Tools.
         
-    def createPNG(self,src):
+        Input: time in MET (s)
+        Output: time in MJD (fraction of a day)
+        """
+        MJDREFI=51910.0
+        MJDREFF=7.428703703703703e-4
+        return(MJDREFI+MJDREFF+time/24./60./60.)
+
+        
+    def createPNG(self,src,fglName):
         """
         Create a PNG figure with the light curve of a given source.
+        
+        @todo Read the .dat LC file differently ? We currently read it 3 times, for each column, so it generates a lot of I/O. Not optimal :-(
         """
 
+        try:
+            from matplotlib.pyplot import *
+            from matplotlib.ticker import FuncFormatter
+        except ImportError:
+            print "ERROR Can't import matplotlib"
+            sys.exit(1)
+
+        # Read the .dat LC file
+        infile  = self.workDir+'/'+str(src)+'_lc.dat'
+        time    = num.array([float(line[:-1].split('\t')[0]) for line in open(infile,'r')])
+        flux    = num.array([float(line[:-1].split('\t')[1]) for line in open(infile,'r')])
+        fluxErr = num.array([float(line[:-1].split('\t')[2]) for line in open(infile,'r')])
+
+        outfig=self.workDir+'/'+str(src)+'_lc.png'
+        fig=figure()
+        ax = fig.add_subplot(111)
+        ax.set_title(str(src)+', '+str(fglName))
+
+        # Force the y-axis ticks to use 1e-8 as a base exponent
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.1f')%(x*1e8)))
+        ax.set_ylabel('Flux (x $10^{-8}$ ph cm$^{-2}$ s$^{-1}$)')
+
+        # Make the x-axis ticks formatted to 0 decimal places
+        day=24.*60.*60.
+        t = met2mjd(time)  # Conversion MET -> MJD
+        # We can do this because t is NOT a list, but a numpy.array
+
+        #ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.2f'%x))
+        ax.set_xlabel('MJD')
+        
+        errorbar(x=t, y=flux, yerr=fluxerror, fmt='ro')
+        # Don't show the figure in batch mode
+        if ! BATCH:
+            show()
+        ## Save the figure
+        fig.savefig(outfig)
 
 
 
@@ -262,11 +318,15 @@ def main(argv=None):
         auto=autoLC()
 
     src,ra,dec,z,fglName=auto.readSourceList()
-    auto.selectSrc(src[0],ra[0],dec[0])
-    auto.makeTime(src[0],ra[0],dec[0])
-    auto.createXML(src[0])
-    auto.photoLC(src[0])
-    auto.exposure(src[0],fglName[0])
+
+    for i in range(len(src)):
+        auto.selectSrc(src[i],ra[i],dec[i])
+        auto.makeTime(src[i],ra[i],dec[i])
+        auto.createXML(src[i])
+        auto.photoLC(src[i])
+        auto.exposure(src[i],fglName[i])
+        createDAT(src[i])
+        createPNG(src[i],fglName[i])
 
 
 if __name__ == '__main__':
