@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+###!/usr/bin/env python
 
 """
 Automatic generation of aperture photometric light curves of Fermi sources, for a given source.
