@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 """
-Automatic generation of photometric light curves of Fermi sources.
+Automatic generation of aperture photometric light curves of Fermi sources.
 
 No likelihood fit is performed, the results solely rely on the 2FGL spectral fits.
+
+More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 
 @author Jean-Philippe Lenain <mailto:jplenain@lsw.uni-heidelberg.de>
 @date $Date$
@@ -33,11 +35,13 @@ class autoLC:
         self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
         self.workDir    = "/home/fermi/tmp"
+        self.fermiDir   = os.getenv('FERMI_DIR')
 
         # Setting default parameters
-        self.roi  = 10.  # degrees
+        self.roi  = 1.   # degrees (http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html: "For aperture photometry we select a very small aperture (rad=1 degree), because we are not fitting the background.")
         self.emin = 1.e2 # E min
         self.emax = 1.e5 # E max
+        self.zmax = 100.
 
         # Open allsky file to get the start and stop dates
         import pyfits
@@ -92,7 +96,8 @@ class autoLC:
         
         # If outfile exsits, we remove it before updating it
         if os.path.isfile(outfile):
-            return
+            if DEBUG:
+                return
             os.remove(outfile)
 
         filter['ra']=ra
@@ -102,7 +107,7 @@ class autoLC:
         filter['emax']=self.emax
         filter['tmin']=self.tstart
         filter['tmax']=self.tstop
-        filter['zmax']=100.
+        filter['zmax']=self.zmax
         filter['evclass']=2
         filter.run()
 
@@ -118,11 +123,13 @@ class autoLC:
         
         # If outfile exsits, we remove it before updating it
         if os.path.isfile(outfile):
-            return
+            if DEBUG:
+                return
             os.remove(outfile)
 
-        maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<52 && ANGSEP("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)+"+str(self.roi)+">5."
-        maketime['roicut']='yes'
+        # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
+        maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.)"
+        maketime['roicut']='no'
         maketime['tstart']=self.tstart
         maketime['tstop']=self.tstop
         maketime['evfile']=self.workDir+'/'+str(src)+'.fits'
@@ -145,11 +152,12 @@ class autoLC:
 
         # If modelfile exsits, we remove it
         if os.path.isfile(modelfile):
-            return
+            if DEBUG:
+                return
             os.remove(modelfile)
         
         mymodel=make2FGLxml.srcList('./gll_psc_v07.fit',evfile,modelfile)
-        mymodel.makeModel('/usr/local/fermi/ScienceTools-v9r27p1-fssc-20120410-x86_64-unknown-linux-gnu-libc2.5/x86_64-unknown-linux-gnu-libc2.5/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0','/usr/local/fermi/ScienceTools-v9r27p1-fssc-20120410-x86_64-unknown-linux-gnu-libc2.5/x86_64-unknown-linux-gnu-libc2.5/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source','/home/jplenain/fermi/2FGL/Templates')
+        mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source','/home/jplenain/fermi/2FGL/Templates')
 
 
     def photoLC(self,src):
@@ -162,7 +170,8 @@ class autoLC:
 
         # If outfile exsits, we remove it before updating it
         if os.path.isfile(outfile):
-            return
+            if DEBUG:
+                return
             os.remove(outfile)
 
         evtbin['outfile']=outfile
@@ -176,7 +185,9 @@ class autoLC:
 
     def exposure(self,src,fglName):
         """
-        Compute exposure on source src, to add a flux column for the photometric light curve
+        Compute exposure on source src, to add a flux column for the photometric light curve.
+
+        Warning: the input file is modified in place !
         """
 
         infile=self.workDir+'/'+str(src)+'_lc.fits'
@@ -187,16 +198,50 @@ class autoLC:
         rad=str(self.roi)
         
         options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target='+target+' rad='+rad
-        os.system('/usr/local/fermi/src/ScienceTools-v9r27p1-fssc-20120410/x86_64-unknown-linux-gnu-libc2.12.2/bin/gtexposure '+options)
+        os.system(self.fermiDir+'/bin/gtexposure '+options)
 
 
+    def createDAT(self,src):
+        """
+        Create a data file with the light curve of a given source.
+        """
+
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError:
+            print "ERROR Can't import matplotlib"
+            sys.exit(1)
+
+        # Read LC file
+        infile=self.workDir+'/'+str(src)+'_lc.fits'
+
+        import pyfits
+        try:
+            hdu=pyfits.open(infile)
+        except:
+            print 'Exception: can not open file '+infile
+            raise
+        data=hdu[1].data
+        duration=data.field('TIMEDEL')[0]/3600./24. # sec -> days
+
+        outfile=self.workDir+'/'+str(src)+'_lc.dat'
+        file=open(outfile,'w')
+        file.write("#Time[MET]\tFlux[ph.cm^-2.s^-1]\tFluxError[ph.cm^-2.s^-1]\n")
+        for value in data:
+            time      = data.field('TIME')
+            counts    = data.field('COUNTS')
+            countsErr = data.field('ERROR') # error on counts
+            expo      = data.field('EXPOSURE') # cm^2 s^1
+            flux      = counts/exposure # approximate flux in ph cm^-2 s^-1
+            fluxErr   = countsErr/exposure # approximate flux error in ph cm^-2 s^-1
+            file.write("%8d\t%5.5e\t%5.5e\n")%(time,flux,fluxErr)
+        file.close()
+
+        
     def createPNG(self,src):
         """
         Create a PNG figure with the light curve of a given source.
         """
-
-        threshold=1.e-6 # ph cm^-2 s^-1
-        print 'Not yet implemented'
 
 
 
