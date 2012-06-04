@@ -13,6 +13,7 @@ nbSrc=$(cat $listSrc | grep -v "#" | wc -l)
 export PATH=/usr/local/heasoft-6.11/x86_64-unknown-linux-gnu-libc2.12.2/bin:/usr/kerberos/sbin:/usr/kerberos/bin:/usr/local/root/5.28.00/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/home/jplenain/hess/bin:/usr/local/hess/bin:/opt/dell/srvadmin/bin:/home/jplenain/local/matlab/bin:/home/jplenain/bin
 
 for src in `cat $listSrc | grep -v "#" | awk '{print $1}'`; do
-    nice ./automaticLightCurve.py $src &
-    disown
+    #nice ./automaticLightCurve.py $src &
+    batch -f ./automaticLightCurve.py $src
+    #disown
 done
