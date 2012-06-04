@@ -11,6 +11,13 @@ Automatic generation of photometric light curves of Fermi sources.
 import sys, os, asciidata
 from numpy import *
 
+# Import the Science Tools modules
+try:
+    from gt_apps import *
+except ImportError:
+    print "ERROR Can't import the Fermi Science tools"
+    sys.exit(1)
+
 # Flags
 DEBUG=False
 
@@ -20,18 +27,27 @@ class autoLC:
     def __init__(self,file="/home/jplenain/fermi/automaticLightCurve/listSources.txt"):
         self.file=file
 
-        # Import the Science Tools modules
-        try:
-            from gt_apps import *
-        except ImportError:
-            print "ERROR Can't import the Fermi Science tools"
-            sys.exit(1)
-
         # Setting file names and directories
         self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
-        self.allskyGti  = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered_gti.fits"
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
         self.workDir    = "/home/fermi/tmp"
+
+        # Setting default parameters
+        self.roi  = 10.  # degrees
+        self.emin = 1.e2 # E min
+        self.emax = 1.e5 # E max
+
+        # Open allsky file to get the start and stop dates
+        import pyfits
+        try:
+            hdu=pyfits.open(self.allsky)
+        except:
+            print 'Exception: can not open file '+self.allsky
+            raise
+        header      = hdu[0].header
+        self.tstart = header['TSTART']
+        self.tstop  = header['TSTOP']
+
 
     def readSourceList(self):
         try:
@@ -58,46 +74,55 @@ class autoLC:
                 print "DEBUG dec=",dec[i]
                 print "DEBUG z  =",z[i]
 
-        return zip(src,ra,dec,z)
+        return src,ra,dec,z
 
 
-    def selectSrc(src,ra,dec):
+    def selectSrc(self,src,ra,dec):
         """
         Filter a given source, running gtselect
         """
-        filter['infile']=self.allskyGti
-        filter['outfile']=self.workDir+'/'+str(src)+'_gti.fits'
+        filter['infile']=self.allsky
+        outfile=self.workDir+'/'+str(src)+'.fits'
+        filter['outfile']=outfile
+        
+        # If outfile exsits, we remove it before updating it
+        if os.path.isfile(outfile):
+            os.remove(outfile)
+
         filter['ra']=ra
         filter['dec']=dec
-        filter['rad']=10
-        filter['emin']=100.
-        filter['emax']=1.e5
-
-        # Open allsky file to get the start and stop dates
-        import pyfits
-        try:
-            hdu=pyfits.open(self.allskyGti)
-        except:
-            print 'Exception: can not open file '+allskyGti
-            raise
-        header=hdu[0].header
-        
-        filter['tmin']=header['TSTART']
-        filter['tmax']=header['TSTOP']
+        filter['rad']=self.roi
+        filter['emin']=self.emin
+        filter['emax']=self.emax
+        filter['tmin']=self.tstart
+        filter['tmax']=self.tstop
         filter['zmax']=100.
         filter['evclass']=2
         filter.run()
 
 
-    def makeTime(src):
+    def makeTime(self,src,ra,dec):
         """
         Filter the GTI for a given source
         """
-        print "Not yet implemented"
+        maketime['scfile']=self.spacecraft
+
+        outfile=self.workDir+'/'+str(src)+'_gti.fits'
+        maketime['outfile']=outfile
         
+        # If outfile exsits, we remove it before updating it
+        if os.path.isfile(outfile):
+            os.remove(outfile)
+
+        maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<52 && ANGSEP("+ra+","+dec+",RA_SUN,DEC_SUN)+"+self.roi+">5."
+        maketime['roicut']='yes'
+        maketime['tstart']=self.tstart
+        maketime['tstop']=self.tstop
+        maketime['evfile']=self.workDir+'/'+str(src)+'.fits'
+        maketime.run()
 
 
-    def computePhotometricLC(src):
+    def photomLC(src):
         """
         Compute the photometric light curve for a given source
         """
@@ -121,9 +146,9 @@ def main(argv=None):
     else:
         auto=autoLC()
 
-    srcLst=auto.readSourceList()
-    src1=srcLst[0]
-    auto.selectSrc(zip(*src1))
+    src,ra,dec,z=auto.readSourceList()
+    auto.selectSrc(src[0],ra[0],dec[0])
+    auto.makeTime(src[0],ra[0],dec[0])
     
 
 
