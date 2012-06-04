@@ -9,30 +9,45 @@ Automatic generation of photometric light curves of Fermi sources.
 """
 
 import sys, os, asciidata
+from numpy import *
 
-def readSourceList(file="/home/jplenain/fermi/automaticLightSource/listSources.txt"):
-    try:
-        import asciidata
-    except ImportError:
-        print "ERROR Can't import asciidata, needed to read the list of sources. Aborting..."
-        sys.exit(1)
+# Flags
+DEBUG=True
 
-    try:
-        srcList=asciidata.open(file)
-    except IOError:
-        print "ERROR Can't open "+file
-        sys.exit(1)
 
-    src = srcList[0]
-    ra  = srcList[1]
-    dec = srcList[2]
-    z   = srcList[3]
+
+class autoLC:
+    def __init__(self,file="/home/jplenain/fermi/automaticLightCurve/listSources.txt"):
+        self.file=file
+
+    def readSourceList(self):
+        try:
+            import asciidata
+        except ImportError:
+            print "ERROR Can't import asciidata, needed to read the list of sources. Aborting..."
+            sys.exit(1)
+
+        try:
+            srcList=asciidata.open(self.file)
+        except IOError:
+            print "ERROR Can't open "+self.file
+            sys.exit(1)
+
+        src = srcList[0]
+        ra  = srcList[1].tonumpy()
+        dec = srcList[2].tonumpy()
+        z   = srcList[3].tonumpy()
     
-    if DEBUG:
-        print "DEBUG src="+src[1]
-        print "DEBUG ra ="+ra[1]
-        print "DEBUG dec="+dec[1]
-        print "DEBUG z  ="+z[1]
+        if DEBUG:
+            for i in range(len(src)):
+                print "DEBUG src=",src[i]
+                print "DEBUG ra =",ra[i]
+                print "DEBUG dec=",dec[i]
+                print "DEBUG z  =",z[i]
+
+
+    def computePhotometricLC():
+        print "Not yet implemented"
 
 
 
@@ -48,9 +63,11 @@ def main(argv=None):
     if(argc==2):
         file=argList[0]
         print "Overriding default list of source: using "+file
-        readSourceList(file)
+        auto=autoLC(file)
     else:
-        readSourceList
+        auto=autoLC()
+
+    auto.readSourceList()
 
 
 if __name__ == '__main__':
