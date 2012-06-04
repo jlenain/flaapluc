@@ -307,7 +307,7 @@ class autoLC:
 
 
 
-def main(argv=None):
+def processSrc(argv=None):
     """
     Main procedure
     """
@@ -341,4 +341,4 @@ if __name__ == '__main__':
     Execute main()
     """
 
-    main()
+    processSrc()
