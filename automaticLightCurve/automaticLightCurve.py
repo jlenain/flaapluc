@@ -294,8 +294,12 @@ class autoLC:
         ax.set_xlabel('MJD')
         
         errorbar(x=t, y=flux, yerr=fluxerror, fmt='ro')
+        
+        threshold=1.e-6 # ph cm^-2 s^-1
+        axhline(y=threshold,color='k')
+
         # Don't show the figure in batch mode
-        if ! BATCH:
+        if BATCH is False:
             show()
         ## Save the figure
         fig.savefig(outfig)
