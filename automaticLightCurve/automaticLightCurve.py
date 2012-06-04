@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Automatic generation of aperture photometric light curves of Fermi sources.
+Automatic generation of aperture photometric light curves of Fermi sources, for a given source.
 
 No likelihood fit is performed, the results solely rely on the 2FGL spectral fits.
 
@@ -59,7 +59,7 @@ class autoLC:
         self.tstop  = header['TSTOP']
 
 
-    def readSourceList(self):
+    def readSourceList(self,mysrc):
         """
         Read the list of sources.
 
@@ -84,16 +84,16 @@ class autoLC:
         z   = srcList[3].tonumpy()
         fglName=srcList[4]
     
-        if DEBUG:
-            for i in range(len(src)):
-                print "DEBUG src=",src[i]
-                print "DEBUG ra =",ra[i]
-                print "DEBUG dec=",dec[i]
-                print "DEBUG z  =",z[i]
-                print "DEBUG fglName=",fglName[i]
-
-        return src,ra,dec,z,fglName
-
+        # Find our input src in the list of sources
+        found=False
+        for i in range(len(src)):
+            if src[i]==mysrc:
+                found=True
+                return src[i],ra[i],dec[i],z[i],fglName[i]
+            
+        # If we end up without any found source, print an error and exits
+        print "ERROR Can't find your source "+str(mysrc)+" in the list of sources !"
+        sys.exit(1)
 
 
     def selectSrc(self,src,ra,dec):
@@ -231,18 +231,19 @@ class autoLC:
         outfile=self.workDir+'/'+str(src)+'_lc.dat'
         file=open(outfile,'w')
         file.write("#Time[MET]\tFlux[ph.cm^-2.s^-1]\tFluxError[ph.cm^-2.s^-1]\n")
-        for value in data:
-            time      = data.field('TIME')
-            counts    = data.field('COUNTS')
-            countsErr = data.field('ERROR') # error on counts
-            expo      = data.field('EXPOSURE') # cm^2 s^1
-            flux      = counts/exposure # approximate flux in ph cm^-2 s^-1
-            fluxErr   = countsErr/exposure # approximate flux error in ph cm^-2 s^-1
-            file.write("%8d\t%5.5e\t%5.5e\n")%(time,flux,fluxErr)
+        time      = data.field('TIME')     # MET
+        counts    = data.field('COUNTS')
+        countsErr = data.field('ERROR')    # error on counts
+        exposure  = data.field('EXPOSURE') # cm^2 s^1
+        flux      = counts/exposure        # approximate flux in ph cm^-2 s^-1
+        fluxErr   = countsErr/exposure     # approximate flux error in ph cm^-2 s^-1
+        
+        for i in range(len(time)):
+            file.write(str(time[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
 
 
-    def met2mjd(time):
+    def met2mjd(self,time):
         """
         Converts Mission Elapsed Time (MET, in seconds) in Modified Julian Day.
         Cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Data/Time_in_ScienceTools.html
@@ -259,8 +260,6 @@ class autoLC:
     def createPNG(self,src,fglName):
         """
         Create a PNG figure with the light curve of a given source.
-        
-        @todo Read the .dat LC file differently ? We currently read it 3 times, for each column, so it generates a lot of I/O. Not optimal :-(
         """
 
         try:
@@ -272,28 +271,30 @@ class autoLC:
 
         # Read the .dat LC file
         infile  = self.workDir+'/'+str(src)+'_lc.dat'
-        time    = num.array([float(line[:-1].split('\t')[0]) for line in open(infile,'r')])
-        flux    = num.array([float(line[:-1].split('\t')[1]) for line in open(infile,'r')])
-        fluxErr = num.array([float(line[:-1].split('\t')[2]) for line in open(infile,'r')])
+        data    = asciidata.open(infile)
+        time    = data[0].tonumpy()
+        flux    = data[1].tonumpy()
+        fluxErr = data[2].tonumpy()
 
         outfig=self.workDir+'/'+str(src)+'_lc.png'
         fig=figure()
         ax = fig.add_subplot(111)
-        ax.set_title(str(src)+', '+str(fglName))
+        ax.set_title(str(src)+', '+str(fglName).replace('_2FGLJ','2FGL J'))
 
         # Force the y-axis ticks to use 1e-8 as a base exponent
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.1f')%(x*1e8)))
-        ax.set_ylabel('Flux (x $10^{-8}$ ph cm$^{-2}$ s$^{-1}$)')
+        ax.set_ylabel('$F_{100 MeV-100 GeV}$ (x $10^{-8}$ ph cm$^{-2}$ s$^{-1}$)')
 
         # Make the x-axis ticks formatted to 0 decimal places
         day=24.*60.*60.
-        t = met2mjd(time)  # Conversion MET -> MJD
+        toffset=54600
+        time = self.met2mjd(time)  # Conversion MET -> MJD
         # We can do this because t is NOT a list, but a numpy.array
 
-        #ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.2f'%x))
-        ax.set_xlabel('MJD')
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-54600.)))
+        ax.set_xlabel('MJD-'+str(toffset))
         
-        errorbar(x=t, y=flux, yerr=fluxerror, fmt='ro')
+        errorbar(x=time, y=flux, yerr=fluxErr, fmt='ro')
         
         threshold=1.e-6 # ph cm^-2 s^-1
         axhline(y=threshold,color='k')
@@ -315,22 +316,24 @@ def main(argv=None):
     argList = sys.argv
     
     if(argc==2):
-        file=argList[0]
-        print "Overriding default list of source: using "+file
-        auto=autoLC(file)
-    else:
+    #    file=argList[0]
+    #    print "Overriding default list of source: using "+file
+    #    auto=autoLC(file)
+        src=argList[1]
         auto=autoLC()
+    else:
+        print "ERROR Missing input source !"
+        sys.exit(1)
 
-    src,ra,dec,z,fglName=auto.readSourceList()
+    src,ra,dec,z,fglName=auto.readSourceList(src)
 
-    for i in range(len(src)):
-        auto.selectSrc(src[i],ra[i],dec[i])
-        auto.makeTime(src[i],ra[i],dec[i])
-        auto.createXML(src[i])
-        auto.photoLC(src[i])
-        auto.exposure(src[i],fglName[i])
-        createDAT(src[i])
-        createPNG(src[i],fglName[i])
+    auto.selectSrc(src,ra,dec)
+    auto.makeTime(src,ra,dec)
+    auto.createXML(src)
+    auto.photoLC(src)
+    auto.exposure(src,fglName)
+    auto.createDAT(src)
+    auto.createPNG(src,fglName)
 
 
 if __name__ == '__main__':
