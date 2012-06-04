@@ -40,7 +40,7 @@ def main(argv=None):
     print
 
     for i in range(nbSrc):
-        cmd='echo "./automaticLightCurve "'+str(src[i]) # | batch # to launch it
+        cmd='echo "./automaticLightCurve "'+str(src[i]+' | batch') # | batch # to launch it
         os.system(cmd)
 
 
