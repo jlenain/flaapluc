@@ -10,8 +10,9 @@ Process all sources for automatic aperture photometry of interesting 2FGL source
 
 import sys, os
 
-#os.environ['PYTHONPATH']='/usr/local/fermi/src/ScienceTools-v9r27p1-fssc-20120410/external/x86_64-unknown-linux-gnu-libc2.12.2/lib/python2.7/site-packages:'+os.getenv('PYTHONPATH')
-#os.environ['PATH']='/usr/kerberos/sbin:/usr/kerberos/bin:/usr/local/root/5.28.00/bin:/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:/home/jplenain/hess/bin:/usr/local/hess/bin:/opt/dell/srvadmin/bin:/home/jplenain/local/matlab/bin:/home/jplenain/bin'
+# Flags
+MULTITHREAD=True
+
 
 # Import custom module
 try:
@@ -43,19 +44,31 @@ def main(argv=None):
     print
 
     
+    ## Do it the dirty way, invoking os.system
     #for i in range(nbSrc):
     #    cmd='echo "./automaticLightCurve.py "'+str(src[i]+' | batch')
     #    os.system(cmd)
     
-    from multiprocessing import Process, Queue
-    q=Queue()
-    #proc=[]
-    for i in range(nbSrc):
-        print 'Starting proc ',i,' for source ',src[i]
-        proc=Process(target=processSrc, args=(src[i],q))
-        proc.start()
-        #processSrc(src[i],q)
 
+    if MULTITHREAD:
+
+        # Use the multiprocessing Python module
+        from multiprocessing import Process, Queue
+        q=Queue()
+        proc=[]
+        for i in range(nbSrc):
+            print 'Starting proc ',i,' for source ',src[i]
+            proc.append(Process(target=processSrc, args=(src[i],q)))
+            proc[i].start()
+
+    else:
+
+        # Or directly process everything sequentially
+        for i in range(nbSrc):
+            print 'Starting process ',i,' for source ',src[i]
+            processSrc(src[i],q)
+    
+    return True
 
 
 

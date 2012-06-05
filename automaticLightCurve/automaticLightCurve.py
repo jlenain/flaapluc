@@ -23,6 +23,8 @@ except ImportError:
     print "ERROR Can't import the Fermi Science tools"
     sys.exit(1)
 
+
+
 # Flags
 DEBUG=False # Debugging flag
 BATCH=True  # True in batch mode
@@ -47,6 +49,8 @@ class autoLC:
         self.emin = 1.e2 # E min
         self.emax = 1.e5 # E max
         self.zmax = 100.
+        self.tbin = 7.*24.*60.*60. # seconds
+        self.threshold = 1.e-6 # ph cm^-2 s^-1
 
         # Open allsky file to get the start and stop dates
         import pyfits
@@ -197,7 +201,7 @@ class autoLC:
         evtbin['tbinalg']='LIN'
         evtbin['tstart']=self.tstart
         evtbin['tstop']=self.tstop
-        evtbin['dtime']=604800 # sec. = 1 week
+        evtbin['dtime']=self.tbin
         evtbin.run()
 
     def exposure(self,src,fglName):
@@ -303,14 +307,94 @@ class autoLC:
         
         errorbar(x=time, y=flux, yerr=fluxErr/2., fmt='ro')
         
-        threshold=1.e-6 # ph cm^-2 s^-1
-        axhline(y=threshold,color='k')
+        axhline(y=self.threshold,color='k')
 
         # Don't show the figure in batch mode
         if BATCH is False:
             show()
         ## Save the figure
         fig.savefig(outfig)
+
+
+    def sendAlert(self,src):
+
+        # Import modules
+        try:
+            # Import smtplib to send mails
+            import smtplib
+
+            # Here are the email package modules we'll need
+            from email.MIMEImage import MIMEImage
+            from email.MIMEMultipart import MIMEMultipart
+            from email.MIMEText import MIMEText
+
+        except:
+            print "ERROR sendAlert: Can't import mail modules."
+            sys.exit(1)
+
+
+
+        # Read the light curve file
+        infile  = self.workDir+'/'+str(src)+'_lc.dat'
+        data    = asciidata.open(infile)
+        time    = data[0].tonumpy()
+        flux    = data[1].tonumpy()
+        fluxErr = data[2].tonumpy()
+
+        # Catch the last flux point
+        lastFlux=flux[-1:]
+    
+        # If the last flux is above the threshold, we send a mail
+        if lastFlux >= self.threshold:
+            # Create the container email message.
+            msg = MIMEMultipart()
+            msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
+            sender = 'Fermi LC robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
+            
+            recipient = ['Jean-Philippe Lenain <jean-philippe.lenain@lsw.uni-heidelberg.de>']
+
+            msg['From'] = sender
+            COMMASPACE = ', '
+            msg['To'] =COMMASPACE.join( recipient )
+            msg.preamble = 'You will not see this in a MIME-aware mail reader.\n'
+            # Guarantees the message ends in a newline
+            msg.epilogue = ''
+            
+            mailtext="""
+     *** Flux of %s exceeds the trigger threshold ***
+
+     The most recent lightcurve is attached.
+
+     All available data can be found on 'hess-lsw' at
+     %s
+
+     (NB: The fermi account password is the first name of the eponym physicist, in lower case).
+     
+    """ %(src,self.workDir)
+        
+            txt = MIMEText(mailtext)
+            msg.attach(txt)
+            
+            pngFig=self.workDir+'/'+str(src)+'_lc.png'
+
+            # Open the files in binary mode.  Let the MIMEImage class automatically
+            # guess the specific image type.
+            fp = open(pngFig, 'rb')
+            img = MIMEImage(fp.read())
+            fp.close()
+            msg.attach(img)
+
+            # Send the email via our own SMTP server.
+            s = smtplib.SMTP()
+            s.set_debuglevel(0)
+            s.connect()
+            s.sendmail(sender, recipient, msg.as_string())
+            s.quit()
+
+            print "Alert sent for %s"%src
+
+        return True
+
 
 
 
@@ -340,6 +424,7 @@ def processSrc(mysrc=None,q=None):
         auto.exposure(src,fglName)
         auto.createDAT(src)
         auto.createPNG(src,fglName)
+        auto.sendAlert(src)
     else:
         q.put([
                 auto.selectSrc(src,ra,dec),
@@ -348,14 +433,8 @@ def processSrc(mysrc=None,q=None):
                 auto.photoLC(src),
                 auto.exposure(src,fglName),
                 auto.createDAT(src),
-                auto.createPNG(src,fglName)
+                auto.createPNG(src,fglName),
+                auto.sendAlert(src)
                 ])
     
-
-
-if __name__ == '__main__':
-    """
-    Execute main()
-    """
-
-    processSrc()
+    return True
