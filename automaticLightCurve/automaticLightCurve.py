@@ -400,13 +400,11 @@ class autoLC:
 
 def processSrc(mysrc=None,q=None):
     """
-    Main procedure
+    Process a given source.
     """
 
-    #argc    = len(sys.argv)
-    #argList = sys.argv
-
-    print 'src=',mysrc
+    if DEBUG:
+        print 'src=',mysrc
     
     if(mysrc != None):
         auto=autoLC()
@@ -438,3 +436,30 @@ def processSrc(mysrc=None,q=None):
                 ])
     
     return True
+
+
+def main(argv=None):
+    """
+    Main procedure
+    """
+
+    argc    = len(sys.argv)
+    argList = sys.argv
+
+    print "argList=",argList
+
+    if argc != 2:
+        print "ERROR Main: wrong number of arguments"
+        sys.exit(1)
+
+    processSrc(argList[1])
+
+    return True
+
+
+if __name__ == '__main__':
+    """
+    Execute main()
+    """
+
+    main()

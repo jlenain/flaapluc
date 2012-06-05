@@ -11,7 +11,8 @@ Process all sources for automatic aperture photometry of interesting 2FGL source
 import sys, os
 
 # Flags
-MULTITHREAD=True
+MULTITHREAD=False
+PARALLEL=True
 
 
 # Import custom module
@@ -63,10 +64,20 @@ def main(argv=None):
 
     else:
 
-        # Or directly process everything sequentially
-        for i in range(nbSrc):
-            print 'Starting process ',i,' for source ',src[i]
-            processSrc(src[i],q)
+        # Or use the shell command "parallel"
+        if PARALLEL:
+            options=[]
+            for i in range(nbSrc):
+                options.append('\"./automaticLightCurve.py '+str(src[i])+'\"')
+            cmd="parallel --jobs 8 ::: "+" ".join(options)
+            # use --dry-run just to test the parallel command
+            os.system(cmd)
+
+        else:
+            # Or directly process everything sequentially
+            for i in range(nbSrc):
+                print 'Starting process ',i,' for source ',src[i]
+                processSrc(src[i],q)
     
     return True
 
