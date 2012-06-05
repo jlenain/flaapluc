@@ -13,6 +13,7 @@ import sys, os
 # Flags
 MULTITHREAD=False
 PARALLEL=True
+USETHRESHOLD=True
 
 
 # Import custom module
@@ -33,9 +34,9 @@ def main(argv=None):
     if(argc==2):
         file=argList[0]
         print "Overriding default list of source: using "+file
-        auto=autoLC(file)
+        auto=autoLC(file,customThreshold=USETHRESHOLD)
     else:
-        auto=autoLC()
+        auto=autoLC(customThreshold=USETHRESHOLD)
 
     src,ra,dec,z,fglName=auto.readSourceList()
     # Number of sources
@@ -77,7 +78,7 @@ def main(argv=None):
             # Or directly process everything sequentially
             for i in range(nbSrc):
                 print 'Starting process ',i,' for source ',src[i]
-                processSrc(src[i],q)
+                processSrc(src[i])
     
     return True
 

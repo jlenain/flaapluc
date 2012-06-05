@@ -16,6 +16,14 @@ import sys, os, asciidata
 from numpy import *
 from multiprocessing import Process, Queue
 
+# Import some matplotlib modules
+try:
+    from matplotlib.pyplot import *
+    from matplotlib.ticker import FuncFormatter
+except ImportError:
+    print "ERROR Can't import matplotlib"
+    sys.exit(1)
+
 # Import the Science Tools modules
 try:
     from gt_apps import *
@@ -35,22 +43,25 @@ class autoLC:
     Automatic aperture photometry light curve generation, for a list of sources
     """
 
-    def __init__(self,file="/home/jplenain/fermi/automaticLightCurve/listSources.txt"):
+    def __init__(self,file="/home/jplenain/fermi/automaticLightCurve/listSources.txt",customThreshold=False):
         self.file=file
 
         # Setting file names and directories
-        self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
+        #self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
+        self.allsky     = "/data/fermi/archive/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
-        self.workDir    = "/home/fermi/tmp"
+        self.workDir    = "/home/fermi/automaticLightCurveOutput"
         self.fermiDir   = os.getenv('FERMI_DIR')
 
         # Setting default parameters
         self.roi  = 1.   # degrees (http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html: "For aperture photometry we select a very small aperture (rad=1 degree), because we are not fitting the background.")
         self.emin = 1.e2 # E min
         self.emax = 1.e5 # E max
-        self.zmax = 100.
-        self.tbin = 7.*24.*60.*60. # seconds
+        self.zmax = 100. # degrees
+        #self.tbin = 7.*24.*60.*60. # seconds
+        self.tbin = 24.*60.*60. # seconds
         self.threshold = 1.e-6 # ph cm^-2 s^-1
+        self.customThreshold=customThreshold
 
         # Open allsky file to get the start and stop dates
         import pyfits
@@ -88,6 +99,10 @@ class autoLC:
         dec = srcList[2].tonumpy()
         z   = srcList[3].tonumpy()
         fglName=srcList[4]
+        # Read the threshold for the source from the source list, if we asked to process with custom thresholds when instanciating the class
+        if self.customThreshold is True:
+            myThreshold=srcList[5].tonumpy()
+
     
         # If we ask for a particular source, return the parameters for that source
         if mysrc != None:
@@ -96,6 +111,11 @@ class autoLC:
             for i in range(len(src)):
                 if src[i]==mysrc:
                     found=True
+
+                    # Redefine the class threshold if we provided a custom threshold
+                    if self.customThreshold is True and myThreshold[i] != 0.:
+                        self.threshold=myThreshold[i]
+                        
                     return src[i],ra[i],dec[i],z[i],fglName[i]
             
             # If we end up without any found source, print an error and exits
@@ -250,7 +270,8 @@ class autoLC:
         fluxErr   = countsErr/exposure     # approximate flux error in ph cm^-2 s^-1
         
         for i in range(len(time)):
-            file.write(str(time[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
+            if exposure[i] != 0.:
+                file.write(str(time[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
 
 
@@ -272,13 +293,6 @@ class autoLC:
         """
         Create a PNG figure with the light curve of a given source.
         """
-
-        try:
-            from matplotlib.pyplot import *
-            from matplotlib.ticker import FuncFormatter
-        except ImportError:
-            print "ERROR Can't import matplotlib"
-            sys.exit(1)
 
         # Read the .dat LC file
         infile  = self.workDir+'/'+str(src)+'_lc.dat'
@@ -307,7 +321,7 @@ class autoLC:
         
         errorbar(x=time, y=flux, yerr=fluxErr/2., fmt='ro')
         
-        axhline(y=self.threshold,color='k')
+        axhline(y=self.threshold,linewidth=4,linestyle='--',color='r')
 
         # Don't show the figure in batch mode
         if BATCH is False:
@@ -343,6 +357,12 @@ class autoLC:
 
         # Catch the last flux point
         lastFlux=flux[-1:]
+
+        if DEBUG:
+            print
+            print "self.threshold=",self.threshold
+            print "lastFlux=",lastFlux
+            print
     
         # If the last flux is above the threshold, we send a mail
         if lastFlux >= self.threshold:
@@ -398,7 +418,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,q=None):
+def processSrc(mysrc=None,q=None,useThresh=True):
     """
     Process a given source.
     """
@@ -407,7 +427,7 @@ def processSrc(mysrc=None,q=None):
         print 'src=',mysrc
     
     if(mysrc != None):
-        auto=autoLC()
+        auto=autoLC(customThreshold=useThresh)
     else:
         print "ERROR Missing input source !"
         sys.exit(1)
@@ -445,8 +465,6 @@ def main(argv=None):
 
     argc    = len(sys.argv)
     argList = sys.argv
-
-    print "argList=",argList
 
     if argc != 2:
         print "ERROR Main: wrong number of arguments"
