@@ -43,12 +43,12 @@ class autoLC:
     Automatic aperture photometry light curve generation, for a list of sources
     """
 
-    def __init__(self,file="/home/jplenain/fermi/automaticLightCurve/listSources.txt",customThreshold=False):
+    def __init__(self,file="/home/jplenain/fermi/automaticLightCurve/listSources.txt",customThreshold=False,daily=False):
         self.file=file
 
         # Setting file names and directories
         #self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
-        self.allsky     = "/data/fermi/archive/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
+        self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
         self.workDir    = "/home/fermi/automaticLightCurveOutput"
         self.fermiDir   = os.getenv('FERMI_DIR')
@@ -58,8 +58,12 @@ class autoLC:
         self.emin = 1.e2 # E min
         self.emax = 1.e5 # E max
         self.zmax = 100. # degrees
-        #self.tbin = 7.*24.*60.*60. # seconds
-        self.tbin = 24.*60.*60. # seconds
+        
+        if not daily:
+            self.tbin = 7.*24.*60.*60. # seconds, weekly bins
+        else:
+            self.tbin = 24.*60.*60. # seconds, daily bins
+
         self.threshold = 1.e-6 # ph cm^-2 s^-1
         self.customThreshold=customThreshold
 
@@ -119,8 +123,9 @@ class autoLC:
                     return src[i],ra[i],dec[i],z[i],fglName[i]
             
             # If we end up without any found source, print an error and exits
-            print "ERROR Can't find your source "+str(mysrc)+" in the list of sources !"
-            sys.exit(1)
+            print "WARNING Can't find your source "+str(mysrc)+" in the list of sources !"
+            return None,None,None,None,None
+            #sys.exit(1)
   
         # Otherwise, return the whole list of parameters for all the sources
         else:
@@ -224,7 +229,7 @@ class autoLC:
         evtbin['dtime']=self.tbin
         evtbin.run()
 
-    def exposure(self,src,fglName):
+    def exposure(self,src,fglName,gamma=None):
         """
         Compute exposure on source src, to add a flux column for the photometric light curve.
 
@@ -238,7 +243,10 @@ class autoLC:
         target=fglName
         rad=str(self.roi)
         
-        options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target='+target+' rad='+rad
+        if gamma is None:
+            options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target='+target+' rad='+rad
+        else:
+            options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl="none" specin='+str(gamma)+' rad='+rad
         os.system(self.fermiDir+'/bin/gtexposure '+options)
 
 
@@ -427,7 +435,7 @@ def processSrc(mysrc=None,q=None,useThresh=True):
         print 'src=',mysrc
     
     if(mysrc != None):
-        auto=autoLC(customThreshold=useThresh)
+        auto=autoLC(customThreshold=useThresh,daily=False)
     else:
         print "ERROR Missing input source !"
         sys.exit(1)
@@ -437,23 +445,30 @@ def processSrc(mysrc=None,q=None,useThresh=True):
     if q==None:
         auto.selectSrc(src,ra,dec)
         auto.makeTime(src,ra,dec)
-        auto.createXML(src)
+        if fglName is not None:
+            auto.createXML(src)
+            mygamma=None
+        else:
+            mygamma=-2.5
+            print 'Your source '+src+' has no 2FGL name in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
         auto.photoLC(src)
-        auto.exposure(src,fglName)
+        auto.exposure(src,fglName,gamma=mygamma)
         auto.createDAT(src)
         auto.createPNG(src,fglName)
         auto.sendAlert(src)
     else:
-        q.put([
-                auto.selectSrc(src,ra,dec),
-                auto.makeTime(src,ra,dec),
-                auto.createXML(src),
-                auto.photoLC(src),
-                auto.exposure(src,fglName),
-                auto.createDAT(src),
-                auto.createPNG(src,fglName),
-                auto.sendAlert(src)
-                ])
+        print "The MULTITHREAD flag is deprecated. Aborting..."
+        return False
+        #q.put([
+        #        auto.selectSrc(src,ra,dec),
+        #        auto.makeTime(src,ra,dec),
+        #        auto.createXML(src),
+        #        auto.photoLC(src),
+        #        auto.exposure(src,fglName),
+        #        auto.createDAT(src),
+        #        auto.createPNG(src,fglName),
+        #        auto.sendAlert(src)
+        #        ])
     
     return True
 
