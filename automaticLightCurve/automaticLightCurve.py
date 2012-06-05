@@ -58,7 +58,8 @@ class autoLC:
         self.emin = 1.e2 # E min
         self.emax = 1.e5 # E max
         self.zmax = 100. # degrees
-        
+        self.daily=daily
+
         if not daily:
             self.tbin = 7.*24.*60.*60. # seconds, weekly bins
         else:
@@ -137,7 +138,10 @@ class autoLC:
         Filter a given source, running gtselect
         """
         filter['infile']=self.allsky
-        outfile=self.workDir+'/'+str(src)+'.fits'
+        if self.daily:
+            outfile=self.workDir+'/'+str(src)+'_daily.fits'
+        else:
+            outfile=self.workDir+'/'+str(src)+'.fits'
         filter['outfile']=outfile
         
         # If outfile exsits, we remove it before updating it
@@ -164,7 +168,10 @@ class autoLC:
         """
         maketime['scfile']=self.spacecraft
 
-        outfile=self.workDir+'/'+str(src)+'_gti.fits'
+        if self.daily:
+            outfile=self.workDir+'/'+str(src)+'_daily_gti.fits'
+        else:
+            outfile=self.workDir+'/'+str(src)+'_gti.fits'
         maketime['outfile']=outfile
         
         # If outfile exsits, we remove it before updating it
@@ -193,8 +200,12 @@ class autoLC:
             print "ERROR Can't import make2FGLxml."
             sys.exit(1)
         
-        evfile=self.workDir+'/'+str(src)+'_gti.fits'
-        modelfile=self.workDir+'/'+str(src)+'.xml'
+        if self.daily:
+            evfile=self.workDir+'/'+str(src)+'_daily_gti.fits'
+            modelfile=self.workDir+'/'+str(src)+'_daily.xml'
+        else:
+            evfile=self.workDir+'/'+str(src)+'_gti.fits'
+            modelfile=self.workDir+'/'+str(src)+'.xml'
 
         # If modelfile exsits, we remove it
         if os.path.isfile(modelfile):
@@ -211,8 +222,12 @@ class autoLC:
         Compute the photometric light curve for a given source
         """
 
-        evtbin['evfile']=self.workDir+'/'+str(src)+'_gti.fits'
-        outfile=self.workDir+'/'+str(src)+'_lc.fits'
+        if self.daily:
+            evtbin['evfile']=self.workDir+'/'+str(src)+'_daily_gti.fits'
+            outfile=self.workDir+'/'+str(src)+'_daily_lc.fits'
+        else:
+            evtbin['evfile']=self.workDir+'/'+str(src)+'_gti.fits'
+            outfile=self.workDir+'/'+str(src)+'_lc.fits'
 
         # If outfile exsits, we remove it before updating it
         if os.path.isfile(outfile):
@@ -236,10 +251,15 @@ class autoLC:
         Warning: the input file is modified in place !
         """
 
-        infile=self.workDir+'/'+str(src)+'_lc.fits'
+        if self.daily:
+            infile=self.workDir+'/'+str(src)+'_daily_lc.fits'
+            srcmdl=self.workDir+'/'+str(src)+'_daily.xml'
+        else:
+            infile=self.workDir+'/'+str(src)+'_lc.fits'
+            srcmdl=self.workDir+'/'+str(src)+'.xml'
+
         scfile=self.spacecraft
         irfs='P7SOURCE_V6'
-        srcmdl=self.workDir+'/'+str(src)+'.xml'
         target=fglName
         rad=str(self.roi)
         
@@ -256,7 +276,12 @@ class autoLC:
         """
 
         # Read LC file
-        infile=self.workDir+'/'+str(src)+'_lc.fits'
+        if self.daily:
+            infile=self.workDir+'/'+str(src)+'_daily_lc.fits'
+            outfile=self.workDir+'/'+str(src)+'_daily_lc.dat'
+        else:
+            infile=self.workDir+'/'+str(src)+'_lc.fits'
+            outfile=self.workDir+'/'+str(src)+'_lc.dat'
 
         import pyfits
         try:
@@ -267,7 +292,6 @@ class autoLC:
         data=hdu[1].data
         duration=data.field('TIMEDEL')[0]/3600./24. # sec -> days
 
-        outfile=self.workDir+'/'+str(src)+'_lc.dat'
         file=open(outfile,'w')
         file.write("#Time[MET]\tFlux[ph.cm^-2.s^-1]\tFluxError[ph.cm^-2.s^-1]\n")
         time      = data.field('TIME')     # MET
@@ -303,13 +327,18 @@ class autoLC:
         """
 
         # Read the .dat LC file
-        infile  = self.workDir+'/'+str(src)+'_lc.dat'
+        if self.daily:
+            infile=self.workDir+'/'+str(src)+'_daily_lc.dat'
+            outfig=self.workDir+'/'+str(src)+'_daily_lc.png'
+        else:
+            infile=self.workDir+'/'+str(src)+'_lc.dat'
+            outfig=self.workDir+'/'+str(src)+'_lc.png'
+
         data    = asciidata.open(infile)
         time    = data[0].tonumpy()
         flux    = data[1].tonumpy()
         fluxErr = data[2].tonumpy()
 
-        outfig=self.workDir+'/'+str(src)+'_lc.png'
         fig=figure()
         ax = fig.add_subplot(111)
         ax.set_title(str(src)+', '+str(fglName).replace('_2FGLJ','2FGL J'))
@@ -357,7 +386,12 @@ class autoLC:
 
 
         # Read the light curve file
-        infile  = self.workDir+'/'+str(src)+'_lc.dat'
+        if self.daily:
+            infile  = self.workDir+'/'+str(src)+'_daily_lc.dat'
+            pngFig=self.workDir+'/'+str(src)+'_daily_lc.png'
+        else:
+            infile  = self.workDir+'/'+str(src)+'_lc.dat'
+            pngFig=self.workDir+'/'+str(src)+'_lc.png'
         data    = asciidata.open(infile)
         time    = data[0].tonumpy()
         flux    = data[1].tonumpy()
@@ -403,8 +437,6 @@ class autoLC:
             txt = MIMEText(mailtext)
             msg.attach(txt)
             
-            pngFig=self.workDir+'/'+str(src)+'_lc.png'
-
             # Open the files in binary mode.  Let the MIMEImage class automatically
             # guess the specific image type.
             fp = open(pngFig, 'rb')
