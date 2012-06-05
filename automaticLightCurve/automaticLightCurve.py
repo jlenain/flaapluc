@@ -414,9 +414,14 @@ class autoLC:
             # Create the container email message.
             msg = MIMEMultipart()
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
-            sender = 'Fermi LC robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
+            sender = 'Fermi automatic light curve robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
             
-            recipient = ['Jean-Philippe Lenain <jean-philippe.lenain@lsw.uni-heidelberg.de>']
+            recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
+                         'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
+                         'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
+                         'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
+                         'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
+                         'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
 
             msg['From'] = sender
             COMMASPACE = ', '
@@ -426,17 +431,16 @@ class autoLC:
             msg.epilogue = ''
             
             mailtext="""
-     *** Flux of %s exceeds the trigger threshold ***
+     *** The Fermi/LAT flux (100 MeV-100 GeV) of %s exceeds the trigger threshold of %.2g ph cm^-2 s^-1***
 
      The most recent lightcurve is attached.
 
      All available data can be found on 'hess-lsw' at
      %s
-
-     (NB: The fermi account password is the first name of the eponym physicist, in lower case).
      
-    """ %(src,self.workDir)
-        
+    """ %(src,self.threshold,self.workDir)
+            # (PS: The 'fermi' account password is the first name of the eponym famous physicist, in lower case ;-) ).
+ 
             txt = MIMEText(mailtext)
             msg.attach(txt)
             
