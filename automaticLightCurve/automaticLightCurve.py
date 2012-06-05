@@ -416,12 +416,14 @@ class autoLC:
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
             sender = 'Fermi automatic light curve robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
             
-            recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
-                         'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
-                         'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
-                         'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
-                         'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
-                         'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
+            #recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
+            #             'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
+            #             'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
+            #             'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
+            #             'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
+            #             'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
+
+            recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
 
             msg['From'] = sender
             COMMASPACE = ', '
@@ -431,14 +433,14 @@ class autoLC:
             msg.epilogue = ''
             
             mailtext="""
-     *** The Fermi/LAT flux (100 MeV-100 GeV) of %s exceeds the trigger threshold of %.2g ph cm^-2 s^-1***
+     *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
-     The most recent lightcurve is attached.
+     The most recent lightcurve (%.0f-day binned) is attached.
 
      All available data can be found on 'hess-lsw' at
      %s
      
-    """ %(src,self.threshold,self.workDir)
+    """ %(self.emin,self.emax/1000.,src,self.threshold,self.tbin/24./60./60.,self.workDir)
             # (PS: The 'fermi' account password is the first name of the eponym famous physicist, in lower case ;-) ).
  
             txt = MIMEText(mailtext)
