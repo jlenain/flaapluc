@@ -346,9 +346,9 @@ class autoLC:
         ax = fig.add_subplot(111)
         ax.set_title(str(src)+', '+str(fglName).replace('_2FGLJ','2FGL J'))
 
-        # Force the y-axis ticks to use 1e-8 as a base exponent
-        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.1f')%(x*1e8)))
-        ax.set_ylabel('$F_{100 MeV-100 GeV}$ (x $10^{-8}$ ph cm$^{-2}$ s$^{-1}$)')
+        # Force the y-axis ticks to use 1e-6 as a base exponent
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.1f')%(x*1e6)))
+        ax.set_ylabel('$F_{100 MeV-100 GeV}$ (x $10^{-6}$ ph cm$^{-2}$ s$^{-1}$)')
 
         # Make the x-axis ticks formatted to 0 decimal places
         day=24.*60.*60.
@@ -361,10 +361,10 @@ class autoLC:
         
         errorbar(x=time, y=flux, yerr=fluxErr/2., fmt='ro')
         
-        axhline(y=self.threshold,linewidth=4,linestyle='--',color='r')
+        axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
 
         # Don't show the figure in batch mode
-        if BATCH is False:
+        if not BATCH:
             show()
         ## Save the figure
         fig.savefig(outfig)
@@ -416,15 +416,13 @@ class autoLC:
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
             sender = 'Fermi automatic light curve robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
             
-            #recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
-            #             'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
-            #             'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
-            #             'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
-            #             'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
-            #             'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
-
-            recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
-
+            recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
+                         'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
+                         'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
+                         'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
+                         'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
+                         'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
+            
             msg['From'] = sender
             COMMASPACE = ', '
             msg['To'] =COMMASPACE.join( recipient )
