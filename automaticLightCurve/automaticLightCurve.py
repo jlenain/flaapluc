@@ -1,5 +1,4 @@
-#!/usr/bin/python
-###!/usr/bin/env python
+#!/usr/bin/env python
 
 """
 Automatic generation of aperture photometric light curves of Fermi sources, for a given source.
@@ -15,6 +14,7 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 
 import sys, os, asciidata
 from numpy import *
+from multiprocessing import Process, Queue
 
 # Import the Science Tools modules
 try:
@@ -301,7 +301,7 @@ class autoLC:
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-54600.)))
         ax.set_xlabel('MJD-'+str(toffset))
         
-        errorbar(x=time, y=flux, yerr=fluxErr, fmt='ro')
+        errorbar(x=time, y=flux, yerr=fluxErr/2., fmt='ro')
         
         threshold=1.e-6 # ph cm^-2 s^-1
         axhline(y=threshold,color='k')
@@ -314,30 +314,43 @@ class autoLC:
 
 
 
-def processSrc(argv=None):
+def processSrc(mysrc=None,q=None):
     """
     Main procedure
     """
 
-    argc    = len(sys.argv)
-    argList = sys.argv
+    #argc    = len(sys.argv)
+    #argList = sys.argv
+
+    print 'src=',mysrc
     
-    if(argc==2):
-        src=argList[1]
+    if(mysrc != None):
         auto=autoLC()
     else:
         print "ERROR Missing input source !"
         sys.exit(1)
 
-    src,ra,dec,z,fglName=auto.readSourceList(src)
+    src,ra,dec,z,fglName=auto.readSourceList(mysrc)
 
-    auto.selectSrc(src,ra,dec)
-    auto.makeTime(src,ra,dec)
-    auto.createXML(src)
-    auto.photoLC(src)
-    auto.exposure(src,fglName)
-    auto.createDAT(src)
-    auto.createPNG(src,fglName)
+    if q==None:
+        auto.selectSrc(src,ra,dec)
+        auto.makeTime(src,ra,dec)
+        auto.createXML(src)
+        auto.photoLC(src)
+        auto.exposure(src,fglName)
+        auto.createDAT(src)
+        auto.createPNG(src,fglName)
+    else:
+        q.put([
+                auto.selectSrc(src,ra,dec),
+                auto.makeTime(src,ra,dec),
+                auto.createXML(src),
+                auto.photoLC(src),
+                auto.exposure(src,fglName),
+                auto.createDAT(src),
+                auto.createPNG(src,fglName)
+                ])
+    
 
 
 if __name__ == '__main__':

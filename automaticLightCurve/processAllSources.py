@@ -49,10 +49,12 @@ def main(argv=None):
     
     from multiprocessing import Process, Queue
     q=Queue()
-    proc=[]
+    #proc=[]
     for i in range(nbSrc):
-        p[i]=Process(target=processSrc, args=(src[i]))
-        p[i].start()
+        print 'Starting proc ',i,' for source ',src[i]
+        proc=Process(target=processSrc, args=(src[i],q))
+        proc.start()
+        #processSrc(src[i],q)
 
 
 
