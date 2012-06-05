@@ -12,7 +12,7 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 @version $Id$
 """
 
-import sys, os, asciidata
+import sys, os, asciidata, datetime
 from numpy import *
 from multiprocessing import Process, Queue
 
@@ -43,14 +43,17 @@ class autoLC:
     Automatic aperture photometry light curve generation, for a list of sources
     """
 
-    def __init__(self,file="/home/jplenain/fermi/automaticLightCurve/listSources.txt",customThreshold=False,daily=False):
+    def __init__(self,file="/home/fermi/local/automaticLightCurve/listSources.txt",customThreshold=False,daily=False):
         self.file=file
 
         # Setting file names and directories
         #self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
         self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
-        self.workDir    = "/home/fermi/data/automaticLightCurveOutput"
+        self.workDir    = "/home/fermi/data/automaticLightCurveOutput/"+datetime.date.today().strftime('%Y%m%d')
+        if not os.path.isdir(self.workDir):
+            os.makedirs(self.workDir)
+
         self.fermiDir   = os.getenv('FERMI_DIR')
 
         # Setting default parameters
