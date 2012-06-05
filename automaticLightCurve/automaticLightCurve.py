@@ -50,7 +50,7 @@ class autoLC:
         #self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
         self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
-        self.workDir    = "/home/fermi/automaticLightCurveOutput"
+        self.workDir    = "/home/fermi/data/automaticLightCurveOutput"
         self.fermiDir   = os.getenv('FERMI_DIR')
 
         # Setting default parameters
