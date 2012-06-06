@@ -14,8 +14,6 @@ from optparse import OptionParser
 # Flags
 MULTITHREAD=False
 PARALLEL=True
-USETHRESHOLD=True
-
 
 # Import custom module
 try:
@@ -90,6 +88,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='use ATOM list of sources')
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
                       help='use daily bins for the light curves (defaulted to weekly)')
+    parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
+                      help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
 
     (opt, args) = parser.parse_args()
 
@@ -100,12 +100,18 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     else:
         DAILY=False
 
+    # If custom thresholds
+    if opt.c:
+        USECUSTOMTHRESHOLD=True
+    else:
+        USECUSTOMTHRESHOLD=False
+
     if(len(args)!=0):
         file=args[0]
         print "Overriding default list of source: using "+file
-        auto=autoLC(file,customThreshold=USETHRESHOLD,daily=DAILY)
+        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY)
     else:
-        auto=autoLC(customThreshold=USETHRESHOLD,daily=DAILY)
+        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY)
 
 
         
@@ -148,24 +154,35 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     #    os.system(cmd)
     
 
-    if MULTITHREAD:
 
-        # Use the multiprocessing Python module
-        from multiprocessing import Process, Queue
-        q=Queue()
-        proc=[]
-        for i in range(nbSrc):
-            print 'Starting proc ',i,' for source ',src[i]
-            proc.append(Process(target=processSrc, args=(src[i],q)))
-            proc[i].start()
+    if MULTITHREAD:
+        print "The MULTITHREAD flag is deprecated. Aborting..."
+        return False
+
+        ## Use the multiprocessing Python module
+        #from multiprocessing import Process, Queue
+        #q=Queue()
+        #proc=[]
+        #for i in range(nbSrc):
+        #    print 'Starting proc ',i,' for source ',src[i]
+        #    proc.append(Process(target=processSrc, args=(src[i],q)))
+        #    proc[i].start()
 
     else:
 
         # Or use the shell command "parallel"
         if PARALLEL:
             options=[]
+            
+            # Set the options for automaticLightCurve
+            autoOptions=[]
+            if USECUSTOMTHRESHOLD:
+                autoOptions.append("-c")
+            if DAILY:
+                autoOptions.append("-d")
+
             for i in range(nbSrc):
-                options.append('\"./automaticLightCurve.py '+str(src[i])+'\"')
+                options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
             cmd="parallel --jobs 8 ::: "+" ".join(options)
             # use --dry-run just to test the parallel command
             os.system(cmd)
@@ -174,7 +191,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             # Or directly process everything sequentially
             for i in range(nbSrc):
                 print 'Starting process ',i,' for source ',src[i]
-                processSrc(src[i])
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY)
     
     return True
 

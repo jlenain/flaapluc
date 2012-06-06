@@ -14,7 +14,8 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 
 import sys, os, asciidata, datetime
 from numpy import *
-from multiprocessing import Process, Queue
+#from multiprocessing import Process, Queue
+from optparse import OptionParser
 
 # Import some matplotlib modules
 try:
@@ -149,8 +150,6 @@ class autoLC:
         
         # If outfile exsits, we remove it before updating it
         if os.path.isfile(outfile):
-            if DEBUG:
-                return
             os.remove(outfile)
 
         filter['ra']=ra
@@ -172,15 +171,15 @@ class autoLC:
         maketime['scfile']=self.spacecraft
 
         if self.daily:
+            maketime['evfile']=self.workDir+'/'+str(src)+'_daily.fits'
             outfile=self.workDir+'/'+str(src)+'_daily_gti.fits'
         else:
+            maketime['evfile']=self.workDir+'/'+str(src)+'.fits'
             outfile=self.workDir+'/'+str(src)+'_gti.fits'
         maketime['outfile']=outfile
         
         # If outfile exsits, we remove it before updating it
         if os.path.isfile(outfile):
-            if DEBUG:
-                return
             os.remove(outfile)
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
@@ -188,7 +187,6 @@ class autoLC:
         maketime['roicut']='no'
         maketime['tstart']=self.tstart
         maketime['tstop']=self.tstop
-        maketime['evfile']=self.workDir+'/'+str(src)+'.fits'
         maketime.run()
 
 
@@ -416,12 +414,14 @@ class autoLC:
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
             sender = 'Fermi automatic light curve robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
             
-            recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
-                         'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
-                         'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
-                         'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
-                         'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
-                         'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
+            #recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
+            #             'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
+            #             'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
+            #             'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
+            #             'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
+            #             'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
+
+            recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
             
             msg['From'] = sender
             COMMASPACE = ', '
@@ -465,7 +465,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,q=None,useThresh=True):
+def processSrc(mysrc=None,q=None,useThresh=False,daily=False):
     """
     Process a given source.
     """
@@ -474,7 +474,7 @@ def processSrc(mysrc=None,q=None,useThresh=True):
         print 'src=',mysrc
     
     if(mysrc != None):
-        auto=autoLC(customThreshold=useThresh,daily=False)
+        auto=autoLC(customThreshold=useThresh,daily=daily)
     else:
         print "ERROR Missing input source !"
         sys.exit(1)
@@ -517,14 +517,46 @@ def main(argv=None):
     Main procedure
     """
 
-    argc    = len(sys.argv)
-    argList = sys.argv
+    # options parser:
+    helpmsg="""%prog [options] <source>
 
-    if argc != 2:
+This is the version $Id$
+
+Use '-h' to get the help message
+
+"""
+
+    parser = OptionParser(version="$Id$",
+                          usage=helpmsg)
+
+    parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
+                      help='use daily bins for the light curves (defaulted to weekly)')
+    parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
+                      help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
+
+    (opt, args) = parser.parse_args()
+
+
+    # If daily bins
+    if opt.d:
+        DAILY=True
+    else:
+        DAILY=False
+
+    # If custom thresholds
+    if opt.c:
+        USECUSTOMTHRESHOLD=True
+    else:
+        USECUSTOMTHRESHOLD=False
+
+    # Check that we provided the mandatory argument: a source to process !
+    if len(args) != 1:
         print "ERROR Main: wrong number of arguments"
         sys.exit(1)
+    
+    src=args[0]
 
-    processSrc(argList[1])
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY)
 
     return True
 
