@@ -50,7 +50,7 @@ class autoLC:
         # Setting file names and directories
         #self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
         #self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
-        self.allsky     = "/data/fermi/allsky/allsky_last100days_30MeV_300GeV_diffuse_filtered.fits"
+        self.allsky     = "/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
         self.workDir    = "/home/fermi/data/automaticLightCurveOutput/"+datetime.date.today().strftime('%Y%m%d')
         if not os.path.isdir(self.workDir):
@@ -358,9 +358,15 @@ class autoLC:
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-54600.)))
         ax.set_xlabel('MJD-'+str(toffset))
         
+        # Plot a line at the threshold value
+        axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
+
+        # Plot a line at flux=0, for visibility/readibility
+        axhline(y=0.,color='k')
+
+        # Plot the light curve
         errorbar(x=time, y=flux, yerr=fluxErr/2., fmt='ro')
         
-        axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
 
         # Don't show the figure in batch mode
         if not BATCH:
@@ -415,12 +421,14 @@ class autoLC:
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
             sender = 'Fermi automatic light curve robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
             
-            recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
-                         'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
-                         'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
-                         'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
-                         'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
-                         'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
+            #recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
+            #             'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
+            #             'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
+            #             'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
+            #             'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
+            #             'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
+
+            recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
             
             msg['From'] = sender
             COMMASPACE = ', '
