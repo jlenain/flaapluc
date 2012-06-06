@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 """
 Process all sources for automatic aperture photometry of interesting 2FGL sources, with parametric batch jobs.
