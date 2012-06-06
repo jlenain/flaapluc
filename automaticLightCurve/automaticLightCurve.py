@@ -49,7 +49,8 @@ class autoLC:
 
         # Setting file names and directories
         #self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
-        self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
+        #self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
+        self.allsky     = "/data/fermi/allsky/allsky_last100days_30MeV_300GeV_diffuse_filtered.fits"
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
         self.workDir    = "/home/fermi/data/automaticLightCurveOutput/"+datetime.date.today().strftime('%Y%m%d')
         if not os.path.isdir(self.workDir):
