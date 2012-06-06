@@ -475,7 +475,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,q=None,useThresh=False,daily=False):
+def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True):
     """
     Process a given source.
     """
@@ -504,7 +504,8 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False):
         auto.exposure(src,fglName,gamma=mygamma)
         auto.createDAT(src)
         auto.createPNG(src,fglName)
-        auto.sendAlert(src)
+        if MAIL is True:
+            auto.sendAlert(src)
     else:
         print "The MULTITHREAD flag is deprecated. Aborting..."
         return False
@@ -543,6 +544,8 @@ Use '-h' to get the help message
                       help='use daily bins for the light curves (defaulted to weekly)')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
+    parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
+                      help='no mail is sent if a source is above the trigger threshold (by default, mail alerts are sent)')
 
     (opt, args) = parser.parse_args()
 
@@ -559,6 +562,12 @@ Use '-h' to get the help message
     else:
         USECUSTOMTHRESHOLD=False
 
+    # If no mail is sent
+    if opt.n:
+        MAIL=False
+    else:
+        MAIL=True
+
     # Check that we provided the mandatory argument: a source to process !
     if len(args) != 1:
         print "ERROR Main: wrong number of arguments"
@@ -566,7 +575,7 @@ Use '-h' to get the help message
     
     src=args[0]
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL)
 
     return True
 

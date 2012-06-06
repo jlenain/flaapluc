@@ -90,6 +90,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='use daily bins for the light curves (defaulted to weekly)')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
+    parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
+                      help='no mail is sent if a source is above the trigger threshold (by default, mail alerts are sent)')
 
     (opt, args) = parser.parse_args()
 
@@ -105,6 +107,12 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         USECUSTOMTHRESHOLD=True
     else:
         USECUSTOMTHRESHOLD=False
+
+    # If no mail is sent
+    if opt.n:
+        MAIL=False
+    else:
+        MAIL=True
 
     if(len(args)!=0):
         file=args[0]
@@ -180,6 +188,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 autoOptions.append("-c")
             if DAILY:
                 autoOptions.append("-d")
+            if MAIL is False:
+                autoOptions.append("-n")
 
             for i in range(nbSrc):
                 options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
@@ -191,7 +201,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             # Or directly process everything sequentially
             for i in range(nbSrc):
                 print 'Starting process ',i,' for source ',src[i]
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY)
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL)
     
     return True
 
