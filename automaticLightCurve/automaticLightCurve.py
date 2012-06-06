@@ -414,14 +414,12 @@ class autoLC:
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
             sender = 'Fermi automatic light curve robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
             
-            #recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
-            #             'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
-            #             'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
-            #             'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
-            #             'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
-            #             'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
-
-            recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
+            recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
+                         'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
+                         'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
+                         'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
+                         'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
+                         'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
             
             msg['From'] = sender
             COMMASPACE = ', '
