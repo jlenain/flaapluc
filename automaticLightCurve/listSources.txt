@@ -5,7 +5,7 @@ APLib		229.424221	-24.372077	0.049	_2FGLJ1517.7-2421	0
 PKS0301-243	45.860417	-24.119861	0.260	_2FGLJ0303.4-2407	0
 RGBJ0152+017	28.165187	1.787989	0.080	_2FGLJ0152.6+0148	0
 3C66A		35.665046	43.035501	0.444	_2FGLJ0222.6+4302	0
-# Yes, you can comment some lines out, it won't prevent the rest of the file to be read ! :-)
+# Yes, you can comment some lines out, it won't prevent the rest of the file to be read ! :-) See the example below:
 # NGC1068		40.669879	-0.013289	0.003786	_2FGLJ0242.5+0006	0
 PMNJ2345-1555	356.301926	-15.918843	0.621	_2FGLJ2345.0-1553	0
 PG1553+113	238.929350	11.190102	0.360	_2FGLJ1555.7+1111	0

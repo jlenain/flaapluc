@@ -38,6 +38,9 @@ except ImportError:
 DEBUG=False # Debugging flag
 BATCH=True  # True in batch mode
 
+# Global variables
+TOFFSET=54600. # MJD
+
 
 class autoLC:
     """
@@ -272,6 +275,20 @@ class autoLC:
         os.system(self.fermiDir+'/bin/gtexposure '+options)
 
 
+    def met2mjd(self,time):
+        """
+        Converts Mission Elapsed Time (MET, in seconds) in Modified Julian Day.
+        Cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Data/Time_in_ScienceTools.html
+        to see how the time is handled in the Fermi Science Tools.
+        
+        Input: time in MET (s)
+        Output: time in MJD (fraction of a day)
+        """
+        MJDREFI=51910.0
+        MJDREFF=7.428703703703703e-4
+        return(MJDREFI+MJDREFF+time/24./60./60.)
+
+
     def createDAT(self,src):
         """
         Create a data file with the light curve of a given source.
@@ -292,35 +309,26 @@ class autoLC:
             print 'Exception: can not open file '+infile
             raise
         data=hdu[1].data
-        duration=data.field('TIMEDEL')[0]/3600./24. # sec -> days
+        #NOT USED ANYWHERE:
+        #duration=data.field('TIMEDEL')[0]/3600./24. # sec -> days
 
         file=open(outfile,'w')
-        file.write("#Time[MET]\tFlux[ph.cm^-2.s^-1]\tFluxError[ph.cm^-2.s^-1]\n")
+        file.write("# Time[MET]\tTime[MJD]\tFlux[ph.cm^-2.s^-1]\tFluxError[ph.cm^-2.s^-1]\n")
         time      = data.field('TIME')     # MET
         counts    = data.field('COUNTS')
         countsErr = data.field('ERROR')    # error on counts
         exposure  = data.field('EXPOSURE') # cm^2 s^1
         flux      = counts/exposure        # approximate flux in ph cm^-2 s^-1
         fluxErr   = countsErr/exposure     # approximate flux error in ph cm^-2 s^-1
+
+        timeMjd=self.met2mjd(time)
+        # We can do this because t is NOT a list, but a numpy.array
         
         for i in range(len(time)):
-            if exposure[i] != 0.:
-                file.write(str(time[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
+            #if exposure[i] != 0.:
+            file.write(str(time[i])+"\t"+str(timeMjd[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
 
-
-    def met2mjd(self,time):
-        """
-        Converts Mission Elapsed Time (MET, in seconds) in Modified Julian Day.
-        Cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Data/Time_in_ScienceTools.html
-        to see how the time is handled in the Fermi Science Tools.
-        
-        Input: time in MET (s)
-        Output: time in MJD (fraction of a day)
-        """
-        MJDREFI=51910.0
-        MJDREFF=7.428703703703703e-4
-        return(MJDREFI+MJDREFF+time/24./60./60.)
 
         
     def createPNG(self,src,fglName):
@@ -337,9 +345,9 @@ class autoLC:
             outfig=self.workDir+'/'+str(src)+'_lc.png'
 
         data    = asciidata.open(infile)
-        time    = data[0].tonumpy()
-        flux    = data[1].tonumpy()
-        fluxErr = data[2].tonumpy()
+        time    = data[1].tonumpy()
+        flux    = data[2].tonumpy()
+        fluxErr = data[3].tonumpy()
 
         fig=figure()
         ax = fig.add_subplot(111)
@@ -349,25 +357,24 @@ class autoLC:
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.1f')%(x*1e6)))
         ax.set_ylabel('$F_{%.0f MeV-%.0f GeV}$ (x $10^{-6}$ ph cm$^{-2}$ s$^{-1}$)'%(self.emin,self.emax/1000.))
 
-        # Make the x-axis ticks formatted to 0 decimal places
         day=24.*60.*60.
-        toffset=54600
-        time = self.met2mjd(time)  # Conversion MET -> MJD
+        # OBSOLETE: the times are already read as MJD, cf createDAT function.
+        #time = self.met2mjd(time)  # Conversion MET -> MJD
         # We can do this because t is NOT a list, but a numpy.array
 
-        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-54600.)))
-        ax.set_xlabel('MJD-'+str(toffset))
+        # Make the x-axis ticks shifted by some value
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
+        ax.set_xlabel('MJD-'+str(TOFFSET))
         
+        # Plot the light curve
+        errorbar(x=time, y=flux, yerr=fluxErr/2., fmt='ro')
+
         # Plot a line at the threshold value
         axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
 
         # Plot a line at flux=0, for visibility/readibility
         axhline(y=0.,color='k')
-
-        # Plot the light curve
-        errorbar(x=time, y=flux, yerr=fluxErr/2., fmt='ro')
         
-
         # Don't show the figure in batch mode
         if not BATCH:
             show()
@@ -401,9 +408,7 @@ class autoLC:
             infile  = self.workDir+'/'+str(src)+'_lc.dat'
             pngFig=self.workDir+'/'+str(src)+'_lc.png'
         data    = asciidata.open(infile)
-        time    = data[0].tonumpy()
-        flux    = data[1].tonumpy()
-        fluxErr = data[2].tonumpy()
+        flux    = data[2].tonumpy()
 
         # Catch the last flux point
         lastFlux=flux[-1:]
