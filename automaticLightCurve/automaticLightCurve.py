@@ -504,7 +504,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True):
         auto.exposure(src,fglName,gamma=mygamma)
         auto.createDAT(src)
         auto.createPNG(src,fglName)
-        if MAIL is True:
+        if mail is True:
             auto.sendAlert(src)
     else:
         print "The MULTITHREAD flag is deprecated. Aborting..."
