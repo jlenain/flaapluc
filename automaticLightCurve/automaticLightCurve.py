@@ -450,8 +450,9 @@ class autoLC:
 
      All available data can be found on 'hess-lsw' at
      %s
-     
-    """ %(self.emin,self.emax/1000.,src,self.threshold,self.tbin/24./60./60.,self.workDir)
+
+     *Disclaimer:* Be careful, though, that these light curves are not computed using the usual, clean, standard (un)binned likelihood procedure one should normally use for a good quality, publication-ready result. Those reported here only rely on a "quick & dirty" aperture photometric analysis (cf. e.g. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html), which basically assumes that the data set, within 1 degree around the source, is background-free.
+""" %(self.emin,self.emax/1000.,src,self.threshold,self.tbin/24./60./60.,self.workDir)
             # (PS: The 'fermi' account password is the first name of the eponym famous physicist, in lower case ;-) ).
  
             txt = MIMEText(mailtext)
