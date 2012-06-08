@@ -1,1 +1,2 @@
-- Put the output in a directory YEAR-MONTH-DAY, to keep the results for more than 1 day.
+- *DONE* Put the output in a directory YEAR-MONTH-DAY, to keep the results for more than 1 day. 
+- Keep a long-term LC for each object, updating it with the new generated LC, each day. Try to merge the 2 FITS files and avoid any duplication of entries.
