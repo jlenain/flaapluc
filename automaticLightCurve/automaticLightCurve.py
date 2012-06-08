@@ -549,7 +549,7 @@ Use '-h' to get the help message
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
-                      help='no mail is sent if a source is above the trigger threshold (by default, mail alerts are sent)')
+                      help='do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
 
     (opt, args) = parser.parse_args()
 
