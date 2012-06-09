@@ -355,7 +355,7 @@ class autoLC:
             title=str(src)+', '+str(fglName).replace('_2FGLJ','2FGL J')
         else:
             title=str(src)+', no known 2FGL counterpart'
-        if z is not None:
+        if z=='--': # this is the result of the conversion of None to a float
             title=title+' (z='+str(z)+')'
         else:
             title=title+' (z unknown)'
