@@ -47,15 +47,19 @@ class autoLC:
     Automatic aperture photometry light curve generation, for a list of sources
     """
 
-    def __init__(self,file="/home/fermi/local/automaticLightCurve/listSources.txt",customThreshold=False,daily=False):
+    def __init__(self,file="/home/fermi/local/automaticLightCurve/listSources.txt",customThreshold=False,daily=False,longTerm=False):
         self.file=file
 
         # Setting file names and directories
-        #self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
         #self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
-        self.allsky     = "/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
+        if longTerm is True:
+            self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
+            self.workDir    = "/home/fermi/data/automaticLightCurveOutput/longTerm_upto_"+datetime.date.today().strftime('%Y%m%d')
+        else:
+            self.allsky     = "/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
+            self.workDir    = "/home/fermi/data/automaticLightCurveOutput/"+datetime.date.today().strftime('%Y%m%d')
+
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
-        self.workDir    = "/home/fermi/data/automaticLightCurveOutput/"+datetime.date.today().strftime('%Y%m%d')
         if not os.path.isdir(self.workDir):
             os.makedirs(self.workDir)
 
@@ -325,8 +329,9 @@ class autoLC:
         # We can do this because t is NOT a list, but a numpy.array
         
         for i in range(len(time)):
-            #if exposure[i] != 0.:
-            file.write(str(time[i])+"\t"+str(timeMjd[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
+            if exposure[i] != 0.:
+                # Exposure can be 0 if longTerm=True and TSTOP in photon file > TSTOP in spacecraft file.
+                file.write(str(time[i])+"\t"+str(timeMjd[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
 
 
@@ -489,7 +494,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True):
+def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False):
     """
     Process a given source.
     """
@@ -498,7 +503,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True):
         print 'src=',mysrc
     
     if(mysrc != None):
-        auto=autoLC(customThreshold=useThresh,daily=daily)
+        auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm)
     else:
         print "ERROR Missing input source !"
         sys.exit(1)
@@ -558,6 +563,8 @@ Use '-h' to get the help message
                       help='use daily bins for the light curves (defaulted to weekly)')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
+    parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
+                      help='generate a long term light curve, using the whole mission time (defaulted to False)')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
 
@@ -582,6 +589,12 @@ Use '-h' to get the help message
     else:
         MAIL=True
 
+    # If long term
+    if opt.l:
+        LONGTERM=True
+    else:
+        LONGTERM=False
+
     # Check that we provided the mandatory argument: a source to process !
     if len(args) != 1:
         print "ERROR Main: wrong number of arguments"
@@ -589,7 +602,7 @@ Use '-h' to get the help message
     
     src=args[0]
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM)
 
     return True
 

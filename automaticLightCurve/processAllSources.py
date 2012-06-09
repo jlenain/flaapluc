@@ -90,6 +90,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='use daily bins for the light curves (defaulted to weekly)')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
+    parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
+                      help='generate a long term light curve, using the whole mission time (defaulted to False)')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
 
@@ -114,15 +116,20 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     else:
         MAIL=True
 
+    # If long term
+    if opt.l:
+        LONGTERM=True
+    else:
+        LONGTERM=False
+    
+    
     if(len(args)!=0):
         file=args[0]
         print "Overriding default list of source: using "+file
-        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY)
+        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM)
     else:
-        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY)
-
-
-        
+        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM)
+    
     # If use ATOM schedule
     if opt.a:
         src=[]
@@ -190,6 +197,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 autoOptions.append("-d")
             if MAIL is False:
                 autoOptions.append("-n")
+            if LONGTERM:
+                autoOptions.append("-l")
 
             for i in range(nbSrc):
                 options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
@@ -201,7 +210,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             # Or directly process everything sequentially
             for i in range(nbSrc):
                 print 'Starting process ',i,' for source ',src[i]
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL)
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM)
     
     return True
 
