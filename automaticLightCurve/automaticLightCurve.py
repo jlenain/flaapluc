@@ -331,7 +331,7 @@ class autoLC:
 
 
         
-    def createPNG(self,src,fglName):
+    def createPNG(self,src,fglName,z):
         """
         Create a PNG figure with the light curve of a given source.
         """
@@ -351,8 +351,18 @@ class autoLC:
 
         fig=figure()
         ax = fig.add_subplot(111)
-        ax.set_title(str(src)+', '+str(fglName).replace('_2FGLJ','2FGL J'))
+        if fglName is not None:
+            title=str(src)+', '+str(fglName).replace('_2FGLJ','2FGL J')
+        else:
+            title=str(src)+', no known 2FGL counterpart'
+        if z is not None:
+            title=title+' (z='+str(z)+')'
+        else:
+            title=title+' (z unknown)'
 
+        ax.set_title(title,size='small')
+
+        
         # Force the y-axis ticks to use 1e-6 as a base exponent
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.1f')%(x*1e6)))
         ax.set_ylabel('$F_{%.0f MeV-%.0f GeV}$ (x $10^{-6}$ ph cm$^{-2}$ s$^{-1}$)'%(self.emin,self.emax/1000.))
@@ -507,7 +517,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True):
         auto.photoLC(src)
         auto.exposure(src,fglName,gamma=mygamma)
         auto.createDAT(src)
-        auto.createPNG(src,fglName)
+        auto.createPNG(src,fglName,z)
         #if mail is True:
         auto.sendAlert(src,mailall=mail)
     else:
@@ -520,7 +530,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True):
         #        auto.photoLC(src),
         #        auto.exposure(src,fglName),
         #        auto.createDAT(src),
-        #        auto.createPNG(src,fglName),
+        #        auto.createPNG(src,fglName,z),
         #        auto.sendAlert(src)
         #        ])
     
