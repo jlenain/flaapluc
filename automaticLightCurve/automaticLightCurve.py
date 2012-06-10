@@ -361,9 +361,9 @@ class autoLC:
         else:
             title=str(src)+', no known 2FGL counterpart'
         if z=='--': # this is the result of the conversion of None to a float
-            title=title+' (z='+str(z)+')'
-        else:
             title=title+' (z unknown)'
+        else:
+            title=title+' (z='+str(z)+')'
 
         ax.set_title(title,size='small')
 
