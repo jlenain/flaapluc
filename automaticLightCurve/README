@@ -22,7 +22,7 @@ By default, the script 'processAllSources.py' uses the list of sources 'listSour
 
 On the machine 'hess-lsw', the script 'processAllSources.py' calls the shell command 'parallel', to process 8 different sources in parallel, in a "nice" way. It means that if other processes (such as an H.E.S.S. analysis) are running on 'hess-lsw', the pipeline will not overload the machine.
 
-If the last flux point of a source si above the trigger threshold, a mail will be generated and sent, with a PNG figure of the light curve in attachement.
+If the last flux point of a source is above the trigger threshold, a mail will be generated and sent, with a PNG figure of the light curve in attachement.
 
 The trigger threshold is set to 1.e-6 ph cm^-2 s^-1 by default. However, this threshold can be individually set for each source in the file 'listSources.txt'.
 
@@ -58,9 +58,9 @@ The pipeline depends on the Fermi Science Tools, and it is assumed that you have
 
 The pipeline depends on a few (big) files, which are automatically re-created every day on the LSW server 'hess-lsw':
 
-- /data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits	   	      event files for the whole sky, for the whole mission (kept up-to-date from the NASA servers every day).
-- /data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits     event files for the whole sky, for the last 70 days. Useful to speed up the light curve generation process. 
-- /data/fermi/allsky/allsky_SC00.fits					      last "spacecraft" file, which includes the telemetry of the Fermi spacecraft (kept up-to-date from the NASA servers every day).
+- /data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits	   	      event file for the whole sky, for the whole mission (kept up-to-date from the NASA servers every day).
+- /data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits     event file for the whole sky, for the last 70 days. Useful to speed up the light curve generation process for the last data. 
+- /data/fermi/allsky/allsky_SC00.fits					      most recent "spacecraft" file, which includes the telemetry of the Fermi spacecraft (kept up-to-date from the NASA servers every day).
 
 
 
