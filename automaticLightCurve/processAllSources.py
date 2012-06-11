@@ -94,9 +94,19 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='generate a long term light curve, using the whole mission time (defaulted to False)')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
+    parser.add_option("--dry-run", action="store_true", dest="dryRun", default=False,
+                      help='simulate only what the pipeline would do, forcing the use of ATOM sources, without actually processing any Fermi/LAT event. This is useful to see if the master list of sources is up-to-date with the ATOM sources in the current schedule.')
 
     (opt, args) = parser.parse_args()
 
+
+    # If dry run
+    if opt.dryRun:
+        DRYRUN=True
+        # Force opt.a to be True
+        opt.a=True
+    else:
+        DRYRUN=False
         
     # If daily bins
     if opt.d:
@@ -161,6 +171,10 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
 
     print "I will process ",nbSrc," sources."
     print
+    
+    # If dry run, we exit here
+    if DRYRUN:
+        return True
 
     
     ## Do it the dirty way, invoking os.system
