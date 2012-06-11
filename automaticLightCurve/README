@@ -35,7 +35,7 @@ To download the pipeline, type in a terminal:
 
 > svn co svn+ssh://fermi@hess-lsw/home/fermi/svn/automaticLightCurve
 
-The password is the first name of the famous eponym physicist, in lower case :-)
+The password is the first name of the famous eponymous physicist, in lower case :-)
 
 
 The pipeline includes:
