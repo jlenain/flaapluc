@@ -30,6 +30,7 @@ def readATOMschedule(infile='/home/fermi/'+datetime.date.today().strftime('%y%m%
     By default, it takes as argument the schedule file of today.
     """
 
+    print 'First, we look for the ATOM schedule for today:'+infile
     if not os.path.isfile(infile):
         print "WARNING readATOMschedule: ",infile," does not exist. I will try to see if there is any ATOM schedule file for the last 10 days."
     
