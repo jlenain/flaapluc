@@ -45,6 +45,7 @@ The pipeline includes:
 
 - automaticLightCurve.py	to process a single source.
 - processAllSources.py		to process a bunch of sources, which actually calls the script 'automaticLightCurve.py' for each individual source.
+- createResultWebsite.py	to generate a result web page for all sources (al la ATOM ADRAS).
 - listSources.txt		the master list of sources, including ATOM sources, TeVCat sources (mainly AGN only, for the moment), and others.
 - gll_psc_v07.fit		the last official release of the 2FGL catalogue, in FITS format.
 - make2FGLxml.py		user-contributed Fermi Science Tools script, which is used to generate an XML model file from the FITS 2FGL catalogue file.
