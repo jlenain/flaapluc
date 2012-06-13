@@ -150,12 +150,22 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     else:
         MAIL=True
 
+    if TEST is True and MAIL is False:
+        print "ERROR You asked for both the --test and --no-mail options."
+        print "      These are mutually exclusive options."
+        sys.exit(1)
+
     # If long term
     if opt.l:
         LONGTERM=True
     else:
         LONGTERM=False
     
+    if LONGTERM is True and DAILY is True:
+        print "ERROR You asked for both the --long-term and --daily options."
+        print "      Since this is too CPU intensive, we disabled this combination."
+        sys.exit(1)
+        
     
     if(len(args)!=0):
         file=args[0]
@@ -241,8 +251,10 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             for i in range(nbSrc):
                 # If source is in ATOM schedule and DAILY is False, force the creation of a daily-binned light curve
                 if src[i] in ATOMsrcsInSchedule and DAILY is False:
-                    autoOptions.append("-d")
-                options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
+                    # Put the -d option only for this source
+                    options.append('\"./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
+                else:
+                    options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
             cmd="parallel --jobs 8 ::: "+" ".join(options)
             # use --dry-run just to test the parallel command
             os.system(cmd)
