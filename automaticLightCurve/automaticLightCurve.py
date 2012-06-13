@@ -620,7 +620,7 @@ Use '-h' to get the help message
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
                       help='use daily bins for the light curves (defaulted to weekly)')
     parser.add_option("-i", "--is-in-atom-schedule", action="store_true", dest="i", default=False,
-                      help='automatic option switched on/off by processAllSources.py. Use it if you want to tell this script that your source is peresent in the current ATOM schedule (by default, you would not want to manually use this option)')
+                      help='automatic option switched on/off by processAllSources.py. Use it if you want to tell this script that your source is present in the current ATOM schedule, and only if you are really sure about that (*WARNING* by default, you would not want to manually use this option)')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
