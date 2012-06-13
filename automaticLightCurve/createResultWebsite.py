@@ -37,10 +37,9 @@ if not (os.access(PATH_TO_FILES, os.W_OK | os.R_OK) ):
 
 
 
-helpmsg="""create Fermi/LAT light curve result webpage. Give file name as 1st argument.
+helpmsg="""create Fermi/LAT light curve result webpage.
 
-Note: due to different reasons, the PATHNAME for all to-be created files is
-FIXED to >%s<!
+Note: due to different reasons, the PATHNAME for all created files is FIXED to %s !
 """ % PATH_TO_FILES
 
 parser = OptionParser(version="%prog:  $Id$",
@@ -145,7 +144,7 @@ f1.write( """
 
 # Retrieving information from the list of sources
 auto=autoLC()
-autoLT=autoLC(longTerm=True)
+autoLT=autoLC(longTerm=True,mergelongterm=True)
 WORKDIR=auto.workDir
 WORKDIRLT=autoLT.workDir
 src,ra,dec,z,fglName=auto.readSourceList()
@@ -205,8 +204,7 @@ f1.write( """
 
   <li>This webpage is updated daily.</li>
 
-  <li>If you need more information, please send a mail to me: <a
-  href="mailto:jp.lenain@lsw.uni-heidelberg.de">jp.lenain@lsw.uni-heidelberg.de</a>
+  <li>If you need more information, please send a mail to: <a href="mailto:jp.lenain@lsw.uni-heidelberg.de">jp.lenain@lsw.uni-heidelberg.de</a>
   </li>
 
 </ul>
