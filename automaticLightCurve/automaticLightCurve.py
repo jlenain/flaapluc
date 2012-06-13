@@ -92,14 +92,17 @@ class autoLC:
     Automatic aperture photometry light curve generation, for a list of sources
     """
 
-    def __init__(self,file="/home/fermi/local/automaticLightCurve/listSources.txt",customThreshold=False,daily=False,longTerm=False,yearmonth=None):
+    def __init__(self,file="/home/fermi/local/automaticLightCurve/listSources.txt",customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False):
         self.file=file
 
         # Setting file names and directories
         #self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
         if longTerm is True:
             self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
-            self.workDir    = "/home/fermi/data/automaticLightCurveOutput/longTerm/"+yearmonth
+            if mergelongterm is False:
+                self.workDir    = "/home/fermi/data/automaticLightCurveOutput/longTerm/"+yearmonth
+            else:
+                self.workDir    = "/home/fermi/data/automaticLightCurveOutput/longTerm/merged"
         else:
             self.allsky     = "/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
             self.workDir    = "/home/fermi/data/automaticLightCurveOutput/"+datetime.date.today().strftime('%Y%m%d')
@@ -138,34 +141,46 @@ class autoLC:
             self.tstop  = header['TSTOP']
             
         else:
-            # Need to convert 'yearmonth' in MET
-            # self.tstart is the first day of yearmonth at 00:00:00, or missionStart
-            # self.tstop  is the first day of next month at 00:00:00, or missionStop
             missionStart = header['TSTART'] # in MET
             missionStop  = header['TSTOP']  # in MET
 
-            year=yearmonth[:-2]
-            month=yearmonth[-2:]
+            if mergelongterm is False:
+                # Need to convert 'yearmonth' in MET
+                # self.tstart is the first day of yearmonth at 00:00:00, or missionStart
+                # self.tstop  is the first day of next month at 00:00:00, or missionStop
+                year=yearmonth[:-2]
+                month=yearmonth[-2:]
 
-            # Get date of first day of yearmonth at 00:00:00, in UNIX time (timetuple transform a datetime object in time object ???)
-            #                                              year       month         day  hour  minute  second  microsecond
-            yearmonthStart = time.mktime(datetime.datetime(int(year), int(month),     1,    0,      0,      0,           0).timetuple())
-            yearmonthStop  = time.mktime(datetime.datetime(int(year), int(month)+1,   1,    0,      0,      0,           0).timetuple())
+                # Get date of first day of yearmonth at 00:00:00, in UNIX time (timetuple transform a datetime object in time object ???)
+                #                                              year       month         day  hour  minute  second  microsecond
+                yearmonthStart = time.mktime(datetime.datetime(int(year), int(month),     1,    0,      0,      0,           0).timetuple())
+                if int(month)<12:
+                    yearmonthStop  = time.mktime(datetime.datetime(int(year), int(month)+1,   1,    0,      0,      0,           0).timetuple())
+                else:
+                    yearmonthStop  = time.mktime(datetime.datetime(int(year)+1,           1,   1,    0,      0,      0,           0).timetuple())
             
-            # Convert these from UNIX time to MET
-            tmptstart = mjd2met(unixtime2mjd(yearmonthStart))
-            tmptstop  = mjd2met(unixtime2mjd(yearmonthStop))
+                # Convert these from UNIX time to MET
+                tmptstart = mjd2met(unixtime2mjd(yearmonthStart))
+                tmptstop  = mjd2met(unixtime2mjd(yearmonthStop))
 
-            # Make sure that start of yearmonth is after the launch of Fermi, and that stop of yearmonth is before the very last data we have from NASA servers !
-            if tmptstart > missionStart:
-                self.tstart = tmptstart
-            else:
+                if DEBUG:
+                    print 'INIT yearmonthStart=',yearmonthStart
+                    print 'INIT yearmonthStop=',yearmonthStop
+
+                # Make sure that start of yearmonth is after the launch of Fermi, and that stop of yearmonth is before the very last data we have from NASA servers !
+                if tmptstart > missionStart:
+                    self.tstart = tmptstart
+                else:
+                    self.tstart = missionStart
+
+                if tmptstop < missionStop:
+                    self.tstop = tmptstop
+                else:
+                    self.tstop = missionStop
+
+            if mergelongterm is True:
                 self.tstart = missionStart
-
-            if tmptstop < missionStop:
-                self.tstop = tmptstop
-            else:
-                self.tstop = missionStop
+                self.tstop  = missionStop
 
 
     def readSourceList(self,mysrc=None):
@@ -413,6 +428,49 @@ class autoLC:
         file.close()
 
 
+    def mergeLTDAT(self,src):
+        """
+        Merge the data files for the month-by-month long-term light curves
+        """
+        
+        # TO BE CHANGED !!!
+        startyearmonth = '200808'
+        # Hardcoded !!! Beurk, not good, ugly, bad !!!
+
+        thisyearmonth  = datetime.date.today().strftime('%Y%m')
+        thisyear       = thisyearmonth[:-2]
+        thismonth      = thisyearmonth[-2:]
+        startyear      = startyearmonth[:-2]
+        startmonth     = startyearmonth[-2:]
+
+        finalfile=open(self.workDir+'/'+str(src)+'_lc.dat','w')
+        # Write header
+        finalfile.write("# Time[MET]\tTime[MJD]\tFlux[ph.cm^-2.s^-1]\tFluxError[ph.cm^-2.s^-1]\n")
+
+        # Loop on month from 2008/08 to this month
+        for year in range(int(startyear),int(thisyear)+1):
+            for month in range(1,13):
+                # To retrieve the correct results directories, 'month' should be made of 2 digits
+                month='%02d'%month
+                tmpyearmonth=str(year)+str(month)
+                if (year==int(startyear) and int(month) < int(startmonth)) or (year==int(thisyear) and int(month) > int(thismonth)):
+                    continue
+                tmpworkdir="/home/fermi/data/automaticLightCurveOutput/longTerm/"+str(year)+str(month)
+                tmpfile=tmpworkdir+'/'+str(src)+'_lc.dat'
+                try:
+                    f=open(tmpfile)
+                    # Skip header of each individual file
+                    f.next()
+                    for line in f:
+                        finalfile.write(line)
+                except IOError:
+                    pass
+        finalfile.close()
+
+        return True
+        
+        
+
         
     def createPNG(self,src,fglName,z):
         """
@@ -617,7 +675,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None):
+def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False):
     """
     Process a given source.
     """
@@ -630,11 +688,42 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         print "ERROR Missing input source !"
         sys.exit(1)
 
-    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth)
+    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm)
     src,ra,dec,z,fglName=auto.readSourceList(mysrc)
 
 
     if q==None:
+
+
+        if longTerm and mergelongterm:
+
+            # TO BE CHANGED !!!
+            startyearmonth = '200808'
+            # Hardcoded !!! Beurk, not good, ugly, bad !!!
+
+            thisyearmonth  = datetime.date.today().strftime('%Y%m')
+            thisyear       = thisyearmonth[:-2]
+            thismonth      = thisyearmonth[-2:]
+            startyear      = startyearmonth[:-2]
+            startmonth     = startyearmonth[-2:]
+
+            # First make sure that all the month-by-month long-term data have been processed
+
+            # Loop on month from 2008/08 to this month
+            for year in range(int(startyear),int(thisyear)+1):
+                for month in range(1,13):
+                    # To retrieve the correct results directories, 'month' should be made of 2 digits
+                    month='%02d'%month
+                    tmpyearmonth=str(year)+str(month)
+                    if (year==int(startyear) and int(month) < int(startmonth)) or (year==int(thisyear) and int(month) > int(thismonth)):
+                        continue
+                    auto=autoLC(customThreshold=useThresh,daily=False,longTerm=True,yearmonth=tmpyearmonth,mergelongterm=False)
+                    processSrc(mysrc=src,useThresh=useThresh,daily=False,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False)
+
+            auto.mergeLTDAT(src)
+            auto.createPNG(src,fglName,z)
+            # Exit here
+            return True
 
         auto.selectSrc(src,ra,dec)
         auto.makeTime(src,ra,dec)
@@ -650,6 +739,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         auto.createPNG(src,fglName,z)
         if mail is True:
             auto.sendAlert(src,nomailall=test)
+
 
     else:
         print "The MULTITHREAD flag is deprecated. Aborting..."
@@ -690,7 +780,9 @@ Use '-h' to get the help message
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
-                      help='generate a long term light curve, using the whole mission time (defaulted to False)')
+                      help='generate a long term light curve, month by month, using the whole mission time (defaulted to False)')
+    parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
+                      help='merge the long-term month-by-month light curves together')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send alert mails')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -747,6 +839,14 @@ Use '-h' to get the help message
             print "ERROR Main: wrong number of arguments"
             sys.exit(1)
         yearmonth=None
+
+    # If merge long term light curves
+    if opt.m:
+        MERGELONGTERM=True
+        LONGTERM=True
+    else:
+        MERGELONGTERM=False
+
     
     src=args[0]
 
@@ -754,9 +854,9 @@ Use '-h' to get the help message
     # If we asked for a daily light curve, first make sure that the weekly-binned data already exsits, otherwise this script will crash, since the daily-binned PNG needs the weekly-binned data to be created. No mail alert is sent at this step.
     # We automatically recreate here any weekly-binned missing data.
     if DAILY:
-        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth)
+        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM)
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM)
 
     return True
 
