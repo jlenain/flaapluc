@@ -254,8 +254,10 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 print 'Starting process ',i,' for source ',src[i]
                 # If source is in the ATOM schedule and DAILY is False, force the creation of a daily-binned light curve. The corresponding weekly-binned data will be automatically recreated, if missing, by automaticLightCurve.py
                 if src[i] in ATOMsrcsInSchedule and DAILY is False:
-                    DAILY=True
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
+                    tmpDAILY=True
+                else:
+                    tmpDAILY=DAILY
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
     
     return True
 
