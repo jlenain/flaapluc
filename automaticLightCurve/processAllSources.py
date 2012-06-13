@@ -65,6 +65,7 @@ def readATOMschedule(infile='/home/fermi/'+datetime.date.today().strftime('%y%m%
 
     # Now, we check that all the ATOM sources are known to the "master" list of sources
     FermiSrcInATOMSchedule=[]
+    auto=autoLC()
     for i in range(len(ATOMsrcs)):
         ATOMsrc=ATOMsrcs[i]
         print 'Searching for the ATOM source '+ATOMsrc+' in the master list of sources...'
@@ -100,7 +101,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                           usage=helpmsg)
 
     parser.add_option("-a", "--atom", action="store_true", dest="a", default=False,
-                      help='use ATOM list of sources')
+                      help='only process those sources which are in the current ATOM schedule, forcing daily-binned data to be processed (this will also automatically create weekly-binned data)')
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
                       help='use daily bins for the light curves (defaulted to weekly)')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
@@ -162,30 +163,28 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM)
     else:
         auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM)
+
+    ATOMsrcsInSchedule=readATOMschedule()
     
-    # TO BE OBSOLETED IN THE FUTURE
-    # If use ATOM schedule
+    # If process only sources which are in ATOM schedule
     if opt.a:
         src=[]
         ra=[]
         dec=[]
         z=[]
         fglName=[]
-        ATOMsrcs=readATOMschedule()
-        for i in range(len(ATOMsrcs)):
-            ATOMsrc=ATOMsrcs[i]
+        for i in range(len(ATOMsrcsInSchedule)):
+            ATOMsrc=ATOMsrcsInSchedule[i]
             tmpsrc,tmpra,tmpdec,tmpz,tmpfglName=auto.readSourceList(ATOMsrc)
             src.append(tmpsrc)
             ra.append(tmpra)
             dec.append(tmpdec)
             z.append(tmpz)
             fglName.append(tmpfglName)
-    # END TO BE OBSOLETED IN THE FUTURE
         
     else:
         src,ra,dec,z,fglName=auto.readSourceList()
 
-    ATOMsrcsInSchedule=readATOMschedule()
 
     # Total number of sources to process
     nbSrc=len(src)
@@ -240,8 +239,9 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
 
             # Loop on sources
             for i in range(nbSrc):
-                if src[i] in ATOMsrcsInSchedule:
-                    autoOptions.append("-i")
+                # If source is in ATOM schedule and DAILY is False, force the creation of a daily-binned light curve
+                if src[i] in ATOMsrcsInSchedule and DAILY is False:
+                    autoOptions.append("-d")
                 options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
             cmd="parallel --jobs 8 ::: "+" ".join(options)
             # use --dry-run just to test the parallel command
@@ -252,15 +252,10 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             # Loop on sources
             for i in range(nbSrc):
                 print 'Starting process ',i,' for source ',src[i]
-                if src[i] in ATOMsrcsInSchedule:
-                    # If source is in ATOM schedule:
-                    # - First, process the source with weekly bins, as usual, no mail sent
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,test=TEST)
-                    # - Secondly, process the source with daily bins, mail sent if trigger met
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=True,mail=True,longTerm=LONGTERM,test=TEST)
-                else:
-                    # If the source is not in ATOM schedule, procees as usual
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
+                # If source is in the ATOM schedule and DAILY is False, force the creation of a daily-binned light curve. The corresponding weekly-binned data will be automatically recreated, if missing, by automaticLightCurve.py
+                if src[i] in ATOMsrcsInSchedule and DAILY is False:
+                    DAILY=True
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
     
     return True
 

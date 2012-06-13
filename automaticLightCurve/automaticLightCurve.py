@@ -619,8 +619,6 @@ Use '-h' to get the help message
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
                       help='use daily bins for the light curves (defaulted to weekly)')
-    parser.add_option("-i", "--is-in-atom-schedule", action="store_true", dest="i", default=False,
-                      help='automatic option switched on/off by processAllSources.py. Use it if you want to tell this script that your source is present in the current ATOM schedule, and only if you are really sure about that (*WARNING* by default, you would not want to manually use this option)')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
@@ -657,17 +655,16 @@ Use '-h' to get the help message
     else:
         TEST=False
 
+    if TEST is True and MAIL is False:
+        print "ERROR You asked for both the --test and --no-mail options."
+        print "      These are mutually exclusive options."
+        sys.exit(1)
+
     # If long term
     if opt.l:
         LONGTERM=True
     else:
         LONGTERM=False
-
-    # If source is in ATOM schedule
-    if opt.i:
-        ISINATOMSCHEDULE=True
-    else:
-        ISINATOMSCHEDULE=False
 
     # Check that we provided the mandatory argument: a source to process !
     if len(args) != 1:
@@ -675,6 +672,11 @@ Use '-h' to get the help message
         sys.exit(1)
     
     src=args[0]
+
+    # If we asked for a daily light curve, first make sure that the weekly-binned data already exsits, otherwise this script will crash, since the daily-binned PNG needs the weekly-binned data to be created. No mail alert is sent at this step.
+    # We automatically recreate here any weekly-binned missing data.
+    if DAILY:
+        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM)
 
     processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
 
