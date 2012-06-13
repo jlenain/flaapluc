@@ -14,6 +14,7 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 
 import sys, os, asciidata, datetime
 from numpy import *
+import pyfits
 #from multiprocessing import Process, Queue
 from optparse import OptionParser
 
@@ -81,7 +82,6 @@ class autoLC:
         self.customThreshold=customThreshold
 
         # Open allsky file to get the start and stop dates
-        import pyfits
         try:
             hdu=pyfits.open(self.allsky)
         except:
@@ -156,9 +156,10 @@ class autoLC:
             outfile=self.workDir+'/'+str(src)+'.fits'
         filter['outfile']=outfile
         
-        # If outfile exsits, we remove it before updating it
+        # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
-            os.remove(outfile)
+            return True
+            #os.remove(outfile)
 
         filter['ra']=ra
         filter['dec']=dec
@@ -186,9 +187,10 @@ class autoLC:
             outfile=self.workDir+'/'+str(src)+'_gti.fits'
         maketime['outfile']=outfile
         
-        # If outfile exsits, we remove it before updating it
+        # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
-            os.remove(outfile)
+            return True
+            #os.remove(outfile)
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
         maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.)"
@@ -203,12 +205,6 @@ class autoLC:
         Create an XML model file based on the 2FGL catalogue
         """
         
-        try:
-            import make2FGLxml
-        except ImportError:
-            print "ERROR Can't import make2FGLxml."
-            sys.exit(1)
-        
         if self.daily:
             evfile=self.workDir+'/'+str(src)+'_daily_gti.fits'
             modelfile=self.workDir+'/'+str(src)+'_daily.xml'
@@ -216,11 +212,16 @@ class autoLC:
             evfile=self.workDir+'/'+str(src)+'_gti.fits'
             modelfile=self.workDir+'/'+str(src)+'.xml'
 
-        # If modelfile exsits, we remove it
+        # If modelfile already exists, we don't do anything
         if os.path.isfile(modelfile):
-            if DEBUG:
-                return
-            os.remove(modelfile)
+            return True
+            #os.remove(modelfile)
+
+        try:
+            import make2FGLxml
+        except ImportError:
+            print "ERROR Can't import make2FGLxml."
+            sys.exit(1)
         
         mymodel=make2FGLxml.srcList('./gll_psc_v07.fit',evfile,modelfile)
         mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source','/home/jplenain/fermi/2FGL/Templates')
@@ -238,11 +239,10 @@ class autoLC:
             evtbin['evfile']=self.workDir+'/'+str(src)+'_gti.fits'
             outfile=self.workDir+'/'+str(src)+'_lc.fits'
 
-        # If outfile exsits, we remove it before updating it
+        # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
-            if DEBUG:
-                return
-            os.remove(outfile)
+            return True
+            #os.remove(outfile)
 
         evtbin['outfile']=outfile
         evtbin['scfile']=self.spacecraft
@@ -252,6 +252,7 @@ class autoLC:
         evtbin['tstop']=self.tstop
         evtbin['dtime']=self.tbin
         evtbin.run()
+
 
     def exposure(self,src,fglName,gamma=None):
         """
@@ -266,6 +267,13 @@ class autoLC:
         else:
             infile=self.workDir+'/'+str(src)+'_lc.fits'
             srcmdl=self.workDir+'/'+str(src)+'.xml'
+
+        # If infile already contains an EXPOSURE column, we don't do anything
+        hdu=pyfits.open(infile)
+        if hdu[1].header.get('TTYPE5')=='EXPOSURE':
+            return True
+            #os.remove(outfile)
+
 
         scfile=self.spacecraft
         irfs='P7SOURCE_V6'
@@ -306,6 +314,11 @@ class autoLC:
             infile=self.workDir+'/'+str(src)+'_lc.fits'
             outfile=self.workDir+'/'+str(src)+'_lc.dat'
 
+        # If outfile already exists, we don't do anything
+        if os.path.isfile(outfile):
+            return True
+            #os.remove(outfile)
+
         import pyfits
         try:
             hdu=pyfits.open(infile)
@@ -315,6 +328,7 @@ class autoLC:
         data=hdu[1].data
         #NOT USED ANYWHERE:
         #duration=data.field('TIMEDEL')[0]/3600./24. # sec -> days
+
 
         file=open(outfile,'w')
         file.write("# Time[MET]\tTime[MJD]\tFlux[ph.cm^-2.s^-1]\tFluxError[ph.cm^-2.s^-1]\n")
@@ -345,6 +359,7 @@ class autoLC:
         if self.daily:
             infile=self.workDir+'/'+str(src)+'_daily_lc.dat'
             outfig=self.workDir+'/'+str(src)+'_daily_lc.png'
+            infileWeekly=self.workDir+'/'+str(src)+'_lc.dat'
         else:
             infile=self.workDir+'/'+str(src)+'_lc.dat'
             outfig=self.workDir+'/'+str(src)+'_lc.png'
@@ -353,6 +368,15 @@ class autoLC:
         time    = data[1].tonumpy()
         flux    = data[2].tonumpy()
         fluxErr = data[3].tonumpy()
+        duration=time[1]-time[0] # duration of a time bin
+
+        if self.daily:
+            dataWeekly    = asciidata.open(infileWeekly)
+            timeWeekly    = dataWeekly[1].tonumpy()
+            fluxWeekly    = dataWeekly[2].tonumpy()
+            fluxErrWeekly = dataWeekly[3].tonumpy()
+            durationWeekly=timeWeekly[1]-timeWeekly[0] # duration of a time bin
+
 
         fig=figure()
         ax = fig.add_subplot(111)
@@ -382,7 +406,12 @@ class autoLC:
         ax.set_xlabel('MJD-'+str(TOFFSET))
         
         # Plot the light curve
-        errorbar(x=time, y=flux, yerr=fluxErr/2., fmt='ro')
+        errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
+
+        if self.daily:
+            # Also plot the weekly-binned light curve
+            errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
+            
 
         # Plot a line at the threshold value
         axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
@@ -397,7 +426,7 @@ class autoLC:
         fig.savefig(outfig)
 
 
-    def sendAlert(self,src,mailall=True):
+    def sendAlert(self,src,nomailall=False):
 
         # Import modules
         try:
@@ -441,7 +470,7 @@ class autoLC:
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
             sender = 'Fermi automatic light curve robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
             
-            if mailall is True:
+            if nomailall is False:
                 recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
                              'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
                              'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
@@ -461,13 +490,20 @@ class autoLC:
             mailtext="""
      *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
-     The most recent lightcurve (%.0f-day binned) is attached.
+     """%(self.emin,self.emax/1000.,src,self.threshold)
+
+            if self.daily:
+                mailtext=mailtext+"The most recent lightcurve (%.0f-day binned in red, and weekly binned in blue) is attached."%(self.tbin/24./60./60.)
+            else:
+                mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
+            
+            mailtext=mailtext+"""
 
      All available data can be found on 'hess-lsw' at
      %s
 
      *Disclaimer*: Be careful, though, that these light curves are not computed using the usual, clean, standard (un)binned likelihood procedure one should normally use for a good quality, publication-ready result. Those reported here only rely on a "quick & dirty" aperture photometric analysis (cf. e.g. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html), which basically assumes that the data set, within 1 degree around the source, is background-free.
-""" %(self.emin,self.emax/1000.,src,self.threshold,self.tbin/24./60./60.,self.workDir)
+""" %(self.workDir)
             # (PS: The 'fermi' account password is the first name of the eponym famous physicist, in lower case ;-) ).
  
             txt = MIMEText(mailtext)
@@ -494,7 +530,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False):
+def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False):
     """
     Process a given source.
     """
@@ -523,8 +559,8 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         auto.exposure(src,fglName,gamma=mygamma)
         auto.createDAT(src)
         auto.createPNG(src,fglName,z)
-        #if mail is True:
-        auto.sendAlert(src,mailall=mail)
+        if mail is True:
+            auto.sendAlert(src,nomailall=test)
     else:
         print "The MULTITHREAD flag is deprecated. Aborting..."
         return False
@@ -566,7 +602,9 @@ Use '-h' to get the help message
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
                       help='generate a long term light curve, using the whole mission time (defaulted to False)')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
-                      help='do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
+                      help='do not send alert mails')
+    parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
+                      help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
 
     (opt, args) = parser.parse_args()
 
@@ -589,6 +627,12 @@ Use '-h' to get the help message
     else:
         MAIL=True
 
+    # If test mode
+    if opt.t:
+        TEST=True
+    else:
+        TEST=False
+
     # If long term
     if opt.l:
         LONGTERM=True
@@ -602,7 +646,7 @@ Use '-h' to get the help message
     
     src=args[0]
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
 
     return True
 

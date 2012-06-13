@@ -94,7 +94,9 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
                       help='generate a long term light curve, using the whole mission time (defaulted to False)')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
-                      help='do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
+                      help='do not send alert mails')
+    parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
+                      help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
     parser.add_option("--dry-run", action="store_true", dest="dryRun", default=False,
                       help='simulate only what the pipeline would do, forcing the use of ATOM sources, without actually processing any Fermi/LAT event. This is useful to see if the master list of sources is up-to-date with the ATOM sources in the current schedule.')
 
@@ -120,6 +122,12 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         USECUSTOMTHRESHOLD=True
     else:
         USECUSTOMTHRESHOLD=False
+
+    # If test mode
+    if opt.t:
+        TEST=True
+    else:
+        TEST=False
 
     # If no mail is sent
     if opt.n:
@@ -177,7 +185,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     if DRYRUN:
         return True
 
-    
+
+    ## OBSOLETE:
     ## Do it the dirty way, invoking os.system
     #for i in range(nbSrc):
     #    cmd='echo "./automaticLightCurve.py "'+str(src[i]+' | batch')
@@ -212,6 +221,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 autoOptions.append("-d")
             if MAIL is False:
                 autoOptions.append("-n")
+            if TEST:
+                autoOptions.append("-t")
             if LONGTERM:
                 autoOptions.append("-l")
 
@@ -225,7 +236,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             # Or directly process everything sequentially
             for i in range(nbSrc):
                 print 'Starting process ',i,' for source ',src[i]
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM)
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
     
     return True
 
