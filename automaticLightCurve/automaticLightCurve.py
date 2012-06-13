@@ -576,7 +576,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
             mygamma=None
         else:
             mygamma=-2.5
-            print 'Your source '+src+' has no 2FGL name in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
+            print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
         auto.photoLC(src)
         auto.exposure(src,fglName,gamma=mygamma)
         auto.createDAT(src)
