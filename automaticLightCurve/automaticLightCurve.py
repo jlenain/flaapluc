@@ -352,7 +352,7 @@ class autoLC:
         
     def createPNG(self,src,fglName,z):
         """
-        Create a PNG figure with the light curve of a given source.
+        Create a PNG figure with the light curve of a given source. Any existing PNG file is overwritten !
         """
 
         # Read the .dat LC file
@@ -406,13 +406,15 @@ class autoLC:
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
         ax.set_xlabel('MJD-'+str(TOFFSET))
         
-        # Plot the light curve
-        errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
 
+        # Plot the light curve
         if self.daily:
             # Also plot the weekly-binned light curve
+            errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
             errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
-            
+        else:
+            errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
+
 
         # Plot a line at the threshold value
         axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
