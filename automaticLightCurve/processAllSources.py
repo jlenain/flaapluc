@@ -61,9 +61,23 @@ def readATOMschedule(infile='/home/fermi/'+datetime.date.today().strftime('%y%m%
                     ).replace('\n','')
                 )
             )
+
+
+    # Now, we check that all the ATOM sources are known to the "master" list of sources
+    FermiSrcInATOMSchedule=[]
+    for i in range(len(ATOMsrcs)):
+        ATOMsrc=ATOMsrcs[i]
+        print 'Searching for the ATOM source '+ATOMsrc+' in the master list of sources...'
+        tmpsrc,tmpra,tmpdec,tmpz,tmpfglName=auto.readSourceList(ATOMsrc)
+        # Check if the ATOM source is in the master list of sources.
+        if tmpsrc is None:
+            print "Your source "+ATOMsrc+" can't be found in the master list of sources, skip it."
+            print
+            continue
+        FermiSrcInATOMSchedule.append(tmpsrc)
     
-    # Return a list of sources observed with ATOM last night
-    return ATOMsrcs
+    # Return a list of sources observed with ATOM last night, which are also known to the "master" list of sources
+    return FermiSrcInATOMSchedule
 
 
 def main(argv=None):
@@ -149,6 +163,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     else:
         auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM)
     
+    # TO BE OBSOLETED IN THE FUTURE
     # If use ATOM schedule
     if opt.a:
         src=[]
@@ -159,21 +174,18 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         ATOMsrcs=readATOMschedule()
         for i in range(len(ATOMsrcs)):
             ATOMsrc=ATOMsrcs[i]
-            print 'Searching for the ATOM source '+ATOMsrc+' in the master list of sources...'
             tmpsrc,tmpra,tmpdec,tmpz,tmpfglName=auto.readSourceList(ATOMsrc)
-            # Check if the ATOM source is in the master list of sources.
-            if tmpsrc is None:
-                print "Your source "+ATOMsrc+" can't be found in the master list of sources, skip it."
-                print
-                continue
             src.append(tmpsrc)
             ra.append(tmpra)
             dec.append(tmpdec)
             z.append(tmpz)
             fglName.append(tmpfglName)
+    # END TO BE OBSOLETED IN THE FUTURE
         
     else:
         src,ra,dec,z,fglName=auto.readSourceList()
+
+    ATOMsrcsInSchedule=readATOMschedule()
 
     # Total number of sources to process
     nbSrc=len(src)
@@ -226,7 +238,10 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             if LONGTERM:
                 autoOptions.append("-l")
 
+            # Loop on sources
             for i in range(nbSrc):
+                if src[i] in ATOMsrcsInSchedule:
+                    autoOptions.append("-i")
                 options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
             cmd="parallel --jobs 8 ::: "+" ".join(options)
             # use --dry-run just to test the parallel command
@@ -234,9 +249,18 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
 
         else:
             # Or directly process everything sequentially
+            # Loop on sources
             for i in range(nbSrc):
                 print 'Starting process ',i,' for source ',src[i]
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
+                if src[i] in ATOMsrcsInSchedule:
+                    # If source is in ATOM schedule:
+                    # - First, process the source with weekly bins, as usual, no mail sent
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,test=TEST)
+                    # - Secondly, process the source with daily bins, mail sent if trigger met
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=True,mail=True,longTerm=LONGTERM,test=TEST)
+                else:
+                    # If the source is not in ATOM schedule, procees as usual
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
     
     return True
 

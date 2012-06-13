@@ -448,6 +448,13 @@ class autoLC:
         if self.daily:
             infile  = self.workDir+'/'+str(src)+'_daily_lc.dat'
             pngFig=self.workDir+'/'+str(src)+'_daily_lc.png'
+
+            # Also take a look in the weekly data
+            infileWeekly=self.workDir+'/'+str(src)+'_lc.dat'
+            dataWeekly=asciidata.open(infileWeekly)
+            fluxWeekly=dataWeekly[2].tonumpy()
+            # Catch the last flux point
+            lastFluxWeekly=fluxWeekly[-1:]
         else:
             infile  = self.workDir+'/'+str(src)+'_lc.dat'
             pngFig=self.workDir+'/'+str(src)+'_lc.png'
@@ -462,9 +469,21 @@ class autoLC:
             print "self.threshold=",self.threshold
             print "lastFlux=",lastFlux
             print
+
+        # Assess whether the trigger condition is met, looking at the last flux point
+        if self.daily:
+            if lastFlux >= self.threshold or lastFluxWeekly >= self.threshold:
+                SENDALERT=True
+            else:
+                SENDALERT=False
+        else:
+            if lastFlux >= self.threshold:
+                SENDALERT=True
+            else:
+                SENDALERT=False
     
-        # If the last flux is above the threshold, we send a mail
-        if lastFlux >= self.threshold:
+        # If trigger condition is met, we send a mail
+        if SENDALERT:
             # Create the container email message.
             msg = MIMEMultipart()
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
@@ -537,16 +556,18 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
 
     if DEBUG:
         print 'src=',mysrc
+
     
-    if(mysrc != None):
-        auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm)
-    else:
+    if mysrc is None:
         print "ERROR Missing input source !"
         sys.exit(1)
 
+    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm)
     src,ra,dec,z,fglName=auto.readSourceList(mysrc)
 
+
     if q==None:
+
         auto.selectSrc(src,ra,dec)
         auto.makeTime(src,ra,dec)
         if fglName is not None:
@@ -561,6 +582,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         auto.createPNG(src,fglName,z)
         if mail is True:
             auto.sendAlert(src,nomailall=test)
+
     else:
         print "The MULTITHREAD flag is deprecated. Aborting..."
         return False
@@ -597,6 +619,8 @@ Use '-h' to get the help message
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
                       help='use daily bins for the light curves (defaulted to weekly)')
+    parser.add_option("-i", "--is-in-atom-schedule", action="store_true", dest="i", default=False,
+                      help='automatic option switched on/off by processAllSources.py. Use it if you want to tell this script that your source is peresent in the current ATOM schedule (by default, you would not want to manually use this option)')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
@@ -638,6 +662,12 @@ Use '-h' to get the help message
         LONGTERM=True
     else:
         LONGTERM=False
+
+    # If source is in ATOM schedule
+    if opt.i:
+        ISINATOMSCHEDULE=True
+    else:
+        ISINATOMSCHEDULE=False
 
     # Check that we provided the mandatory argument: a source to process !
     if len(args) != 1:
