@@ -389,7 +389,8 @@ class autoLC:
         else:
             title=title+' (z='+str(z)+')'
 
-        ax.set_title(title,size='small')
+        #ax.set_title(title,size='small')
+        ax.set_title(title)
 
         
         # Force the y-axis ticks to use 1e-6 as a base exponent
