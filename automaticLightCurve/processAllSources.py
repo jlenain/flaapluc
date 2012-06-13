@@ -108,6 +108,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
                       help='generate a long term light curve, using the whole mission time (defaulted to False)')
+    parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
+                      help='merge the long-term month-by-month light curves together')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send alert mails')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -165,14 +167,21 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         print "ERROR You asked for both the --long-term and --daily options."
         print "      Since this is too CPU intensive, we disabled this combination."
         sys.exit(1)
+
+    # If merge long term light curves
+    if opt.m:
+        MERGELONGTERM=True
+        LONGTERM=True
+    else:
+        MERGELONGTERM=False
         
     
     if(len(args)!=0):
         file=args[0]
         print "Overriding default list of source: using "+file
-        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM)
+        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM)
     else:
-        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM)
+        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM)
 
     ATOMsrcsInSchedule=readATOMschedule()
     
@@ -246,11 +255,13 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 autoOptions.append("-t")
             if LONGTERM:
                 autoOptions.append("-l")
+            if MERGELONGTERM:
+                autoOptions.append("-m")
 
             # Loop on sources
             for i in range(nbSrc):
                 # If source is in ATOM schedule and DAILY is False, force the creation of a daily-binned light curve
-                if src[i] in ATOMsrcsInSchedule and DAILY is False:
+                if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False:
                     # Put the -d option only for this source
                     options.append('\"./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
                 else:
@@ -269,7 +280,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                     tmpDAILY=True
                 else:
                     tmpDAILY=DAILY
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM)
     
     return True
 
