@@ -410,8 +410,9 @@ class autoLC:
         # Plot the light curve
         if self.daily:
             # Also plot the weekly-binned light curve
-            errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
             errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
+            errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
+            # The first plot called is on top of the others in matplotlib. Here, we want the weekly-binned LC on top, for visibility.
         else:
             errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
 
