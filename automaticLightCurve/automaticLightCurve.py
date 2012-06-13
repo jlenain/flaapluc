@@ -12,7 +12,7 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 @version $Id$
 """
 
-import sys, os, asciidata, datetime
+import sys, os, asciidata, datetime, time
 from numpy import *
 import pyfits
 #from multiprocessing import Process, Queue
@@ -42,20 +42,64 @@ BATCH=True  # True in batch mode
 # Global variables
 TOFFSET=54600. # MJD
 
+def met2mjd(met):
+    """
+    Converts Mission Elapsed Time (MET, in seconds) in Modified Julian Day.
+    Cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Data/Time_in_ScienceTools.html
+    to see how the time is handled in the Fermi Science Tools.
+    
+    Input: time in MET (s)
+    Output: time in MJD (fraction of a day)
+    """
+    MJDREFI=51910.0
+    MJDREFF=7.428703703703703e-4
+    return(MJDREFI+MJDREFF+met/24./60./60.)
+
+
+def mjd2met(mjd):
+    """
+    Converts Modified Julian Day in Mission Elapsed Time (MET, in seconds).
+    Cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Data/Time_in_ScienceTools.html
+    to see how the time is handled in the Fermi Science Tools.
+    
+    Input:  time in MJD (fraction of a day)
+    Output: time in MET (s)
+    """
+    MJDREFI=51910.0
+    MJDREFF=7.428703703703703e-4
+    return(24.*60.*60* (mjd - MJDREFI - MJDREFF) )
+
+
+def unixtime2mjd(unixtime):
+    """
+    Converts a UNIX time stamp in Modified Julian Day
+
+    Highly inspired from the function 'mjd_now()' from Marcus Hauser's ADRAS/ATOM pipeline
+
+    Input:  time in UNIX seconds
+    Output: time in MJD (fraction of a day)
+    """
+
+    # unixtime gives seconds passed since "The Epoch": 1.1.1970 00:00
+    # MJD at that time was 40587.0
+
+    result = 40587.0 + unixtime / (24.*60.*60.)
+    return result
+
 
 class autoLC:
     """
     Automatic aperture photometry light curve generation, for a list of sources
     """
 
-    def __init__(self,file="/home/fermi/local/automaticLightCurve/listSources.txt",customThreshold=False,daily=False,longTerm=False):
+    def __init__(self,file="/home/fermi/local/automaticLightCurve/listSources.txt",customThreshold=False,daily=False,longTerm=False,yearmonth=None):
         self.file=file
 
         # Setting file names and directories
         #self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
         if longTerm is True:
             self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
-            self.workDir    = "/home/fermi/data/automaticLightCurveOutput/longTerm_upto_"+datetime.date.today().strftime('%Y%m%d')
+            self.workDir    = "/home/fermi/data/automaticLightCurveOutput/longTerm/"+yearmonth
         else:
             self.allsky     = "/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
             self.workDir    = "/home/fermi/data/automaticLightCurveOutput/"+datetime.date.today().strftime('%Y%m%d')
@@ -87,9 +131,41 @@ class autoLC:
         except:
             print 'Exception: can not open file '+self.allsky
             raise
-        header      = hdu[0].header
-        self.tstart = header['TSTART']
-        self.tstop  = header['TSTOP']
+        header = hdu[0].header
+
+        if longTerm is False:
+            self.tstart = header['TSTART']
+            self.tstop  = header['TSTOP']
+            
+        else:
+            # Need to convert 'yearmonth' in MET
+            # self.tstart is the first day of yearmonth at 00:00:00, or missionStart
+            # self.tstop  is the first day of next month at 00:00:00, or missionStop
+            missionStart = header['TSTART'] # in MET
+            missionStop  = header['TSTOP']  # in MET
+
+            year=yearmonth[:-2]
+            month=yearmonth[-2:]
+
+            # Get date of first day of yearmonth at 00:00:00, in UNIX time (timetuple transform a datetime object in time object ???)
+            #                                              year       month         day  hour  minute  second  microsecond
+            yearmonthStart = time.mktime(datetime.datetime(int(year), int(month),     1,    0,      0,      0,           0).timetuple())
+            yearmonthStop  = time.mktime(datetime.datetime(int(year), int(month)+1,   1,    0,      0,      0,           0).timetuple())
+            
+            # Convert these from UNIX time to MET
+            tmptstart = mjd2met(unixtime2mjd(yearmonthStart))
+            tmptstop  = mjd2met(unixtime2mjd(yearmonthStop))
+
+            # Make sure that start of yearmonth is after the launch of Fermi, and that stop of yearmonth is before the very last data we have from NASA servers !
+            if tmptstart > missionStart:
+                self.tstart = tmptstart
+            else:
+                self.tstart = missionStart
+
+            if tmptstop < missionStop:
+                self.tstop = tmptstop
+            else:
+                self.tstop = missionStop
 
 
     def readSourceList(self,mysrc=None):
@@ -287,18 +363,6 @@ class autoLC:
         os.system(self.fermiDir+'/bin/gtexposure '+options)
 
 
-    def met2mjd(self,time):
-        """
-        Converts Mission Elapsed Time (MET, in seconds) in Modified Julian Day.
-        Cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Data/Time_in_ScienceTools.html
-        to see how the time is handled in the Fermi Science Tools.
-        
-        Input: time in MET (s)
-        Output: time in MJD (fraction of a day)
-        """
-        MJDREFI=51910.0
-        MJDREFF=7.428703703703703e-4
-        return(MJDREFI+MJDREFF+time/24./60./60.)
 
 
     def createDAT(self,src):
@@ -339,7 +403,7 @@ class autoLC:
         flux      = counts/exposure        # approximate flux in ph cm^-2 s^-1
         fluxErr   = countsErr/exposure     # approximate flux error in ph cm^-2 s^-1
 
-        timeMjd=self.met2mjd(time)
+        timeMjd=met2mjd(time)
         # We can do this because t is NOT a list, but a numpy.array
         
         for i in range(len(time)):
@@ -399,7 +463,7 @@ class autoLC:
 
         day=24.*60.*60.
         # OBSOLETE: the times are already read as MJD, cf createDAT function.
-        #time = self.met2mjd(time)  # Conversion MET -> MJD
+        #time = met2mjd(time)  # Conversion MET -> MJD
         # We can do this because t is NOT a list, but a numpy.array
 
         # Make the x-axis ticks shifted by some value
@@ -410,9 +474,9 @@ class autoLC:
         # Plot the light curve
         if self.daily:
             # Also plot the weekly-binned light curve
-            errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
             errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
-            # The first plot called is on top of the others in matplotlib. Here, we want the weekly-binned LC on top, for visibility.
+            errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
+            # The last plot called is on top of the others in matplotlib ??? Here, we want the weekly-binned LC on top, for visibility.
         else:
             errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
 
@@ -553,7 +617,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False):
+def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None):
     """
     Process a given source.
     """
@@ -566,7 +630,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         print "ERROR Missing input source !"
         sys.exit(1)
 
-    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm)
+    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth)
     src,ra,dec,z,fglName=auto.readSourceList(mysrc)
 
 
@@ -610,7 +674,7 @@ def main(argv=None):
     """
 
     # options parser:
-    helpmsg="""%prog [options] <source>
+    helpmsg="""%prog [options] <source> [<optinal yearmonth>]
 
 This is the version $Id$
 
@@ -667,22 +731,32 @@ Use '-h' to get the help message
     # If long term
     if opt.l:
         LONGTERM=True
+        # Check that we provided the mandatory argument: a source to process, and a month for which the long-term data should be produced !
+        if len(args) != 2:
+            print "ERROR Main: wrong number of arguments"
+            print "            With the --long-term option, you should provide:"
+            print "              - a source name"
+            print "              - a yearmonth for which the long term data should be produced"
+            sys.exit(1)
+        yearmonth=args[1]
+
     else:
         LONGTERM=False
-
-    # Check that we provided the mandatory argument: a source to process !
-    if len(args) != 1:
-        print "ERROR Main: wrong number of arguments"
-        sys.exit(1)
+        # Check that we provided the mandatory argument: a source to process !
+        if len(args) != 1:
+            print "ERROR Main: wrong number of arguments"
+            sys.exit(1)
+        yearmonth=None
     
     src=args[0]
+
 
     # If we asked for a daily light curve, first make sure that the weekly-binned data already exsits, otherwise this script will crash, since the daily-binned PNG needs the weekly-binned data to be created. No mail alert is sent at this step.
     # We automatically recreate here any weekly-binned missing data.
     if DAILY:
-        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM)
+        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth)
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth)
 
     return True
 
