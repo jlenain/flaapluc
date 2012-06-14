@@ -302,12 +302,13 @@ class autoLC:
         """
 
         # Create list of GTI files
-        list=open(self.workDir+'/'+src+'_gti.list','w')
+        listname=self.workDir+'/'+src+'_gti.list'
+        list=open(listname,'w')
         for file in glob.glob(self.workDir+'/../20????/'+src+'_gti.fits'):
-            list.write(file)
+            list.write(file+'\n')
         list.close()
         
-        filter['infile']='@'+str(list)
+        filter['infile']='@'+listname
         outfile=self.workDir+'/'+str(src)+'_gti.fits'
         filter['outfile']=outfile
         
@@ -745,6 +746,11 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
 
 
         if longTerm is True and mergelongterm is True:
+
+            # Remove all the old merged file for this source, before reprocessing the merged data
+            for file in glob.glob(auto.workDir+'/'+src+'*'):
+                os.remove(file)
+
 
             # TO BE CHANGED !!!
             startyearmonth = '200808'
