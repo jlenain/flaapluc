@@ -124,8 +124,6 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     # If dry run
     if opt.dryRun:
         DRYRUN=True
-        # Force opt.a to be True
-        opt.a=True
     else:
         DRYRUN=False
         
@@ -208,12 +206,13 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     # Total number of sources to process
     nbSrc=len(src)
 
+    print
     print "I will process ",nbSrc," sources."
     print
     
-    # If dry run, we exit here
-    if DRYRUN:
-        return True
+    ## If dry run, we exit here
+    #if DRYRUN:
+    #    return True
 
 
     ## OBSOLETE:
@@ -268,7 +267,10 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                     options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
             cmd="nice -n 24 parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
             # use --dry-run just to test the parallel command
-            os.system(cmd)
+            if DRYRUN is False:
+                os.system(cmd)
+            else:
+                print cmd
 
         else:
             # Or directly process everything sequentially
@@ -279,10 +281,16 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
                     tmpDAILY=True
                     # We have to make sure that the corresponding weekly-binned data are also created first (needed for daily PNG figure)
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM)
+                    if DRYRUN is False:
+                        processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM)
+                    else:
+                        print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+")"
                 else:
                     tmpDAILY=DAILY
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM)
+                if DRYRUN is False:
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM)
+                else:
+                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+")"
     
     return True
 

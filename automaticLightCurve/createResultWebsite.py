@@ -38,7 +38,7 @@ if not (os.access(PATH_TO_FILES, os.W_OK | os.R_OK) ):
 def createResultWebsite():
     
     # open file for writing
-    f1 = open(PATH_TO_FILES+'/'+'index.html', 'w')
+    f1 = open(PATH_TO_FILES+'index.html', 'w')
 
     f1.write("""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
@@ -110,8 +110,8 @@ include all data points.
     # Retrieving information from the list of sources
     auto=autoLC()
     autoLT=autoLC(longTerm=True,mergelongterm=True)
-    WORKDIR=auto.workDir
-    WORKDIRLT=autoLT.workDir
+    WORKDIR=auto.workDir+'/'
+    WORKDIRLT=autoLT.workDir+'/'
     src,ra,dec,z,fglName=auto.readSourceList()
     
     
@@ -126,22 +126,22 @@ include all data points.
         ltasciiname   = 'lt_'+src[i] + '_lc.dat'
         
         # copy files from WORKDIR to PATH_TO_FILES
-        try:
-            if os.path.isfile(WORKDIR+'/'+dailyplotname):
-                shutil.copyfile( WORKDIR+'/'+dailyplotname,
-                                 PATH_TO_FILES + '/' + dailyplotname)
-            else:
-                shutil.copyfile( WORKDIR+'/'+plotname,
-                                 PATH_TO_FILES + '/' + plotname)
-            shutil.copyfile( WORKDIR+'/'+asciiname,
-                             PATH_TO_FILES + '/' + asciiname)
-            shutil.copyfile( WORKDIRLT+'/'+plotname,
+        if os.path.isfile(WORKDIR+dailyplotname):
+            shutil.copyfile( WORKDIR+dailyplotname,
+                             PATH_TO_FILES + dailyplotname)
+        else:
+            if os.path.isfile(WORKDIR+plotname):
+                shutil.copyfile( WORKDIR+plotname,
+                                 PATH_TO_FILES + plotname)
+        if os.path.isfile(WORKDIR+asciiname):
+            shutil.copyfile( WORKDIR+asciiname,
+                             PATH_TO_FILES + asciiname)
+        if os.path.isfile(WORKDIRLT+plotname):
+            shutil.copyfile( WORKDIRLT+plotname,
                              PATH_TO_FILES + ltplotname)
-            shutil.copyfile( WORKDIRLT+'/'+asciiname,
+        if os.path.isfile(WORKDIRLT+asciiname):
+            shutil.copyfile( WORKDIRLT+asciiname,
                              PATH_TO_FILES + ltasciiname)
-        except IOError:
-            #print "files not found for target %s, skipped !" %(src[i])
-            pass
 
         linkSIMBAD = "http://simbad.u-strasbg.fr/simbad/sim-id?Ident=%s&NbIdent=1&submit=submit" % src[i]
         linkSIMBAD =  linkSIMBAD.replace('+', '%2b') # for URL conversion
@@ -153,7 +153,7 @@ include all data points.
         
         # most recent data
         # link the daily/weekly plot, if we have one (i.e. if the source was observed with ATOM last night)
-        if os.path.isfile(PATH_TO_FILES + '/' + dailyplotname):
+        if os.path.isfile(PATH_TO_FILES + dailyplotname):
             f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (dailyplotname) )
         else:
             f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (dailyplotname) )
