@@ -12,7 +12,7 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 @version $Id$
 """
 
-import sys, os, asciidata, datetime, time
+import sys, os, asciidata, datetime, time, glob
 from numpy import *
 import pyfits
 #from multiprocessing import Process, Queue
@@ -294,6 +294,39 @@ class autoLC:
         maketime.run()
 
 
+    def mergeGTIfiles(self,src,ra,dec):
+        """
+        Merge multiple GTI files when mergelongterm is True.
+        Uses gtselect.
+        Assume the current workDir is longTerm/merged.
+        """
+
+        # Create list of GTI files
+        list=open(self.workDir+'/'+src+'_gti.list','w')
+        for file in glob.glob(self.workDir+'/../20????/'+src+'_gti.fits'):
+            list.write(file)
+        list.close()
+        
+        filter['infile']='@'+list
+        outfile=self.workDir+'/'+str(src)+'_gti.fits'
+        filter['outfile']=outfile
+        
+        # If outfile already exists, we re-create it
+        if os.path.isfile(outfile):
+            os.remove(outfile)
+
+        filter['ra']=ra
+        filter['dec']=dec
+        filter['rad']=self.roi
+        filter['emin']=self.emin
+        filter['emax']=self.emax
+        filter['tmin']=self.tstart
+        filter['tmax']=self.tstop
+        filter['zmax']=self.zmax
+        filter['evclass']=2
+        filter.run()
+
+
     def createXML(self,src):
         """
         Create an XML model file based on the 2FGL catalogue
@@ -434,6 +467,8 @@ class autoLC:
 
     def mergeLTDAT(self,src):
         """
+        OBSOLETE Not used any more
+        
         Merge the data files for the month-by-month long-term light curves
         """
         
@@ -549,7 +584,7 @@ class autoLC:
         # Plot a line at flux=0, for visibility/readibility
         axhline(y=0.,color='k')
 
-        # Add a label for the creation date of this figure (inspired from Marcus Hauser's ADRAS/ATOM pipeline)
+        # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
         # x,y in relative 0-1 coords in figure
         figtext(0.98, 0.05,
                 'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
@@ -736,15 +771,30 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
                     # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
                     if year==int(thisyear) and int(month)==int(thismonth):
                         tmpworkdir="/home/fermi/data/automaticLightCurveOutput/longTerm/"+str(year)+str(month)
-                        import glob
                         for file in glob.glob(tmpworkdir+'/'+src+'*'):
                             os.remove(file)
 
                     processSrc(mysrc=src,useThresh=useThresh,daily=False,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False)
 
                     
-            # Then merge the DAT files together and create the PNG figure. No mail is sent here.
-            auto.mergeLTDAT(src)
+
+            ## OBSOLETE
+            ## Then merge the DAT files together and create the PNG figure. No mail is sent here.
+            #auto.mergeLTDAT(src)
+            #auto.createPNG(src,fglName,z)
+
+
+            # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT and createPNG. No mail is sent here.
+            auto.mergeGTIfiles(src,ra,dec)
+            if fglName is not None:
+                auto.createXML(src)
+                mygamma=None
+            else:
+                mygamma=-2.5
+                print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
+            auto.photoLC(src)
+            auto.exposure(src,fglName,gamma=mygamma)
+            auto.createDAT(src)
             auto.createPNG(src,fglName,z)
             # Exit here
             return True

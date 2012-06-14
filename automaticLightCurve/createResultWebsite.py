@@ -156,7 +156,7 @@ include all data points.
         if os.path.isfile(PATH_TO_FILES + dailyplotname):
             f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (dailyplotname) )
         else:
-            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (dailyplotname) )
+            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (plotname) )
         f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s"> data </a></td>\n' % (asciiname) )
         
         # long-term data
