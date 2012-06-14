@@ -491,10 +491,10 @@ class autoLC:
             outfig=self.workDir+'/'+str(src)+'_lc.png'
 
         data    = asciidata.open(infile)
-        time    = data[1].tonumpy()
+        timelc  = data[1].tonumpy()
         flux    = data[2].tonumpy()
         fluxErr = data[3].tonumpy()
-        duration=time[1]-time[0] # duration of a time bin
+        duration=timelc[1]-timelc[0] # duration of a time bin
 
         if self.daily:
             dataWeekly    = asciidata.open(infileWeekly)
@@ -525,7 +525,7 @@ class autoLC:
 
         day=24.*60.*60.
         # OBSOLETE: the times are already read as MJD, cf createDAT function.
-        #time = met2mjd(time)  # Conversion MET -> MJD
+        #timelc = met2mjd(timelc)  # Conversion MET -> MJD
         # We can do this because t is NOT a list, but a numpy.array
 
         # Make the x-axis ticks shifted by some value
@@ -536,11 +536,11 @@ class autoLC:
         # Plot the light curve
         if self.daily:
             # Also plot the weekly-binned light curve
-            errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
+            errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
             errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
             # The last plot called is on top of the others in matplotlib ??? Here, we want the weekly-binned LC on top, for visibility.
         else:
-            errorbar(x=time, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
+            errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
 
 
         # Plot a line at the threshold value
@@ -550,11 +550,13 @@ class autoLC:
         axhline(y=0.,color='k')
 
         # Add a label for the creation date of this figure (inspired from Marcus Hauser's ADRAS/ATOM pipeline)
-        figtext(0.98, 0.05, # x,y in relative 0-1 coords in figure
-              'plot creation date: %s (UTC)' % time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()) ,
-              horizontalalignment="left",
-              rotation='vertical'
-              )
+        # x,y in relative 0-1 coords in figure
+        figtext(0.98, 0.05,
+                'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
+                horizontalalignment="left",
+                rotation='vertical',
+                size='xx-small'
+                )
         
         
         # Don't show the figure in batch mode
