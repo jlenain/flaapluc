@@ -307,7 +307,7 @@ class autoLC:
             list.write(file)
         list.close()
         
-        filter['infile']='@'+list
+        filter['infile']='@'+str(list)
         outfile=self.workDir+'/'+str(src)+'_gti.fits'
         filter['outfile']=outfile
         
