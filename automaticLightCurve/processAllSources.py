@@ -262,10 +262,10 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 # If source is in ATOM schedule and DAILY is False, force the creation of a daily-binned light curve
                 if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
                     # Put the -d option only for this source
-                    options.append('\"./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
+                    options.append('\"nice -n 24 ./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
                 else:
-                    options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
-            cmd="nice -n 24 parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
+                    options.append('\"nice -n 24 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
+            cmd="parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
             # use --dry-run just to test the parallel command
             if DRYRUN is False:
                 os.system(cmd)

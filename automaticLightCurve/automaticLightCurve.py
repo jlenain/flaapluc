@@ -78,6 +78,9 @@ def unixtime2mjd(unixtime):
 
     Input:  time in UNIX seconds
     Output: time in MJD (fraction of a day)
+
+    @todo Should make sure we use UTC here
+    @todo We do not yet account for leap seconds (2nd order compared to UTC handling !!)
     """
 
     # unixtime gives seconds passed since "The Epoch": 1.1.1970 00:00
@@ -545,6 +548,14 @@ class autoLC:
 
         # Plot a line at flux=0, for visibility/readibility
         axhline(y=0.,color='k')
+
+        # Add a label for the creation date of this figure (inspired from Marcus Hauser's ADRAS/ATOM pipeline)
+        figtext(0.98, 0.05, # x,y in relative 0-1 coords in figure
+              'plot creation date: %s (UTC)' % time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()) ,
+              horizontalalignment="left",
+              rotation='vertical'
+              )
+        
         
         # Don't show the figure in batch mode
         if not BATCH:
@@ -710,7 +721,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
 
 
             # First make sure that all the month-by-month long-term data have been processed
-            
+            #
             # Loop on month from 2008/08 to this month
             for year in range(int(startyear),int(thisyear)+1):
                 for month in range(1,13):
@@ -719,13 +730,24 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
                     tmpyearmonth=str(year)+str(month)
                     if (year==int(startyear) and int(month) < int(startmonth)) or (year==int(thisyear) and int(month) > int(thismonth)):
                         continue
+
+                    # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
+                    if year==int(thisyear) and int(month)==int(thismonth):
+                        tmpworkdir="/home/fermi/data/automaticLightCurveOutput/longTerm/"+str(year)+str(month)
+                        import glob
+                        for file in glob.glob(tmpworkdir+'/'+src+'*'):
+                            os.remove(file)
+
                     processSrc(mysrc=src,useThresh=useThresh,daily=False,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False)
+
                     
             # Then merge the DAT files together and create the PNG figure. No mail is sent here.
             auto.mergeLTDAT(src)
             auto.createPNG(src,fglName,z)
             # Exit here
             return True
+
+
 
         # When mergelongterm is False, we do the following:
         auto.selectSrc(src,ra,dec)

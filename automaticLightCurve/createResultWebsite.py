@@ -177,7 +177,18 @@ include all data points.
   </li>
 
 </ul>
+
+<div style="font-size:xx-small">
 <hr>
+last update:<br>
+  <script type="text/javascript" >
+     document.write(document.lastModified)
+  </script>
+</div>
+
+
+</body>
+</html>
 """)
     
     f1.close()
