@@ -815,6 +815,10 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         # When mergelongterm is False, we do the following:
         auto.selectSrc(src,ra,dec)
         auto.makeTime(src,ra,dec)
+        # If we are in --long-term mode, but in --merge-long-term mode, we can stop here, since the --merge-long-term mode then starts at the mergeGTIfiles level
+        if longTerm is True:
+            return True
+
         if fglName is not None:
             auto.createXML(src)
             mygamma=None
