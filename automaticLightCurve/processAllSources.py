@@ -14,6 +14,7 @@ from optparse import OptionParser
 # Flags
 MULTITHREAD=False
 PARALLEL=True
+MAXCPU=6
 
 # Import custom module
 try:
@@ -260,12 +261,12 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             # Loop on sources
             for i in range(nbSrc):
                 # If source is in ATOM schedule and DAILY is False, force the creation of a daily-binned light curve
-                if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False:
+                if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
                     # Put the -d option only for this source
                     options.append('\"./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
                 else:
                     options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
-            cmd="parallel --jobs 8 ::: "+" ".join(options)
+            cmd="parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
             # use --dry-run just to test the parallel command
             os.system(cmd)
 
@@ -274,9 +275,11 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             # Loop on sources
             for i in range(nbSrc):
                 print 'Starting process ',i,' for source ',src[i]
-                # If source is in the ATOM schedule and DAILY is False, force the creation of a daily-binned light curve. The corresponding weekly-binned data will be automatically recreated, if missing, by automaticLightCurve.py
-                if src[i] in ATOMsrcsInSchedule and DAILY is False:
+                # If source is in the ATOM schedule and DAILY is False, force the creation of a daily-binned light curve.
+                if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
                     tmpDAILY=True
+                    # We have to make sure that the corresponding weekly-binned data are also created first (needed for daily PNG figure)
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM)
                 else:
                     tmpDAILY=DAILY
                 processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM)
