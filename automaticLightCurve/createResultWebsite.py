@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 """
-Fermi/LAT light curve pipeline: create website for presenting results. HTML output goes to stdout 
+Fermi/LAT light curve pipeline: create website for presenting results.
 
 Highly inspired from Marcus Hauser's script 'create-result_website.py' for ATOM ADRAS.
 
@@ -22,7 +22,6 @@ except ImportError:
 
 
 
-
 # where all the graphs and data files are
 PATH_TO_FILES="/home/fermi/tmp/results/"
 
@@ -36,29 +35,12 @@ if not (os.access(PATH_TO_FILES, os.W_OK | os.R_OK) ):
     sys.exit(1)
 
 
+def createResultWebsite():
+    
+    # open file for writing
+    f1 = open(PATH_TO_FILES+'/'+'index.html', 'w')
 
-helpmsg="""create Fermi/LAT light curve result webpage.
-
-Note: due to different reasons, the PATHNAME for all created files is FIXED to %s !
-""" % PATH_TO_FILES
-
-parser = OptionParser(version="%prog:  $Id$",
-                      usage=helpmsg)
-
-
-(opt, args) = parser.parse_args()
-
-
-
-
-
-# open file for writing
-f1 = open(PATH_TO_FILES+'/'+'index.html', 'w')
-
-
-
-
-f1.write("""
+    f1.write("""
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
           "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -70,38 +52,23 @@ f1.write("""
 <body>
 
 
-
-
 <div id="main">
 
 <h1>The Fermi/LAT light curve result page at the Landessternwarte</h1>
 
-
-
-
-<h2> Processing status, news</h2>
+<h2> Processing status</h2>
 
 <p>
 <strong style="color:green">system running</strong>, last data update was done at %s (UTC).
 </p>
 
 
-
 <h2> Results</h2>
-
-
-
 
 Light curves:
 <ul>
   <li>Horizontal red dotted lines in the lightcurves show the thresholds fixed for each source. By default, this is set to 1.e-6 ph cm^-2 s^-1.
 </ul>
-
-
-
-
-
-
 
 All data products are available from two sources: 
 
@@ -117,13 +84,11 @@ include all data points.
 </p>
 
 """ % (datetime.datetime.utcnow()) )
-
-
-
-### print table header
-f1.write( """
+    
+    
+    ### print table header
+    f1.write( """
 <hr>
-
 <table border="1" style="font-size:70%">
 <tr>
 	<th rowspan="2">object name<br>(link to SIMBAD)</th>
@@ -140,77 +105,108 @@ f1.write( """
 	<th>ASCII data</th>
 </tr>
 """)
-
-
-# Retrieving information from the list of sources
-auto=autoLC()
-autoLT=autoLC(longTerm=True,mergelongterm=True)
-WORKDIR=auto.workDir
-WORKDIRLT=autoLT.workDir
-src,ra,dec,z,fglName=auto.readSourceList()
-
-
-########################################################################
-# create main table:
-
-
-
-for i in range(len(src)):
-    plotname  = ( src[i] + '_lc.png' )
-    asciiname = ( src[i] + '_lc.dat' )
-    ltplotname  = ( 'lt_'+src[i] + '_lc.png' )
-    ltasciiname = ( 'lt_'+src[i] + '_lc.dat' )
-
-    # copy files from WORKDIR to PATH_TO_FILES
-    try:
-        shutil.copyfile( WORKDIR+'/'+plotname,
-                         PATH_TO_FILES + '/' + plotname)
-        shutil.copyfile( WORKDIR+'/'+asciiname,
-                         PATH_TO_FILES + '/' + asciiname)
-        shutil.copyfile( WORKDIRLT+'/'+plotname,
-                         PATH_TO_FILES + ltplotname)
-        shutil.copyfile( WORKDIRLT+'/'+asciiname,
-                         PATH_TO_FILES + ltasciiname)
-    except IOError:
-        print "files not found for target %s, skipped !" %(src[i])
-        pass
-
-    linkSIMBAD = "http://simbad.u-strasbg.fr/simbad/sim-id?Ident=%s&NbIdent=1&submit=submit" % src[i]
-    linkSIMBAD =  linkSIMBAD.replace('+', '%2b') # for URL conversion
-
-    ### create one row for the HTML output table
-    f1.write( '<tr> <!-- %s -->\n' % (src[i]) )
-    f1.write( '    <td><a href="%s">%s</a></td>\n' % (linkSIMBAD, src[i]) )
-    f1.write( '    <td style="font-size:smaller">%s %s</td>\n' %( ra[i], dec[i] ) )
-
-    # most recent data
-    f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (plotname) )
-    f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s"> data </a></td>\n' % (asciiname) )
-
-    # long-term data
-    f1.write( '    <td> <a href="%s">PNG</a></td>\n' % (ltplotname) )
-    f1.write( '    <td> <a href="%s"> data </a></td>\n' % (ltasciiname) )
-    f1.write( '</tr>\n\n' )
     
+    
+    # Retrieving information from the list of sources
+    auto=autoLC()
+    autoLT=autoLC(longTerm=True,mergelongterm=True)
+    WORKDIR=auto.workDir
+    WORKDIRLT=autoLT.workDir
+    src,ra,dec,z,fglName=auto.readSourceList()
+    
+    
+    ########################################################################
+    # create main table:
+    
+    for i in range(len(src)):
+        plotname      = src[i] + '_lc.png'
+        dailyplotname = src[i] + '_daily_lc.png'
+        asciiname     = src[i] + '_lc.dat'
+        ltplotname    = 'lt_'+src[i] + '_lc.png'
+        ltasciiname   = 'lt_'+src[i] + '_lc.dat'
+        
+        # copy files from WORKDIR to PATH_TO_FILES
+        try:
+            if os.path.isfile(WORKDIR+'/'+dailyplotname):
+                shutil.copyfile( WORKDIR+'/'+dailyplotname,
+                                 PATH_TO_FILES + '/' + dailyplotname)
+            else:
+                shutil.copyfile( WORKDIR+'/'+plotname,
+                                 PATH_TO_FILES + '/' + plotname)
+            shutil.copyfile( WORKDIR+'/'+asciiname,
+                             PATH_TO_FILES + '/' + asciiname)
+            shutil.copyfile( WORKDIRLT+'/'+plotname,
+                             PATH_TO_FILES + ltplotname)
+            shutil.copyfile( WORKDIRLT+'/'+asciiname,
+                             PATH_TO_FILES + ltasciiname)
+        except IOError:
+            #print "files not found for target %s, skipped !" %(src[i])
+            pass
 
-
-### static stuff at the end
-f1.write( """
+        linkSIMBAD = "http://simbad.u-strasbg.fr/simbad/sim-id?Ident=%s&NbIdent=1&submit=submit" % src[i]
+        linkSIMBAD =  linkSIMBAD.replace('+', '%2b') # for URL conversion
+        
+        ### create one row for the HTML output table
+        f1.write( '<tr> <!-- %s -->\n' % (src[i]) )
+        f1.write( '    <td><a href="%s">%s</a></td>\n' % (linkSIMBAD, src[i]) )
+        f1.write( '    <td style="font-size:smaller">%s %s</td>\n' %( ra[i], dec[i] ) )
+        
+        # most recent data
+        # link the daily/weekly plot, if we have one (i.e. if the source was observed with ATOM last night)
+        if os.path.isfile(PATH_TO_FILES + '/' + dailyplotname):
+            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (dailyplotname) )
+        else:
+            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (dailyplotname) )
+        f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s"> data </a></td>\n' % (asciiname) )
+        
+        # long-term data
+        f1.write( '    <td> <a href="%s">PNG</a></td>\n' % (ltplotname) )
+        f1.write( '    <td> <a href="%s"> data </a></td>\n' % (ltasciiname) )
+        f1.write( '</tr>\n\n' )
+        
+    
+    ### static stuff at the end
+    f1.write( """
 </table>
-
 
 <h3>Notes:</h3>
 <ul>
-
   <li>This webpage is updated daily.</li>
 
   <li>If you need more information, please send a mail to: <a href="mailto:jp.lenain@lsw.uni-heidelberg.de">jp.lenain@lsw.uni-heidelberg.de</a>
   </li>
 
 </ul>
-
-
 <hr>
 """)
+    
+    f1.close()
+    return True
 
-f1.close()
+
+def main(argv=None):
+    """
+    Main procedure
+    """
+
+    helpmsg="""create Fermi/LAT light curve result webpage.
+
+Note: due to different reasons, the PATHNAME for all created files is FIXED to %s !
+""" % PATH_TO_FILES
+    
+    parser = OptionParser(version="%prog:  $Id$",
+                      usage=helpmsg)
+
+    (opt, args) = parser.parse_args()
+
+    createResultWebsite()
+
+    return True
+
+
+if __name__ == '__main__':
+    """
+    Execute main()
+    """
+
+    main()
