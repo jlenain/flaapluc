@@ -279,3 +279,24 @@ H2356-309		359.783050	-30.628031	0.1651	_2FGLJ2359.0-3037	0
 ## End TeV sources, from TeVCat
 ##
 #########################################################################################
+##
+## Interesting "southern" 2FGL sources, filtered from the 2FGL catalogue using the
+##   following criteria, which are not listed above:
+##
+##   - DEJ2000 < +20 degrees
+##   - Signif_Avg > 20 sigmas
+##   - Flux_Density > 1.e-12 ph cm^-2 MeV^-1 s^-1
+##   - PowerLaw_Index < 2.0
+##
+2FGLJ0334.3-3728	053.5848	-37.4685	None	_2FGLJ0334.3-3728	0
+2FGLJ0633.9+1746	098.4785	+17.7739	None	_2FGLJ0633.9+1746	0
+2FGLJ0835.3-4510	128.839		-45.1792	None	_2FGLJ0835.3-4510	0
+2FGLJ1231.2-1411	187.815		-14.1868	None	_2FGLJ1231.2-1411	0
+2FGLJ1304.3-4353	196.096		-43.8959	None	_2FGLJ1304.3-4353	0
+2FGLJ1625.2-0020	246.303		-0.334621	None	_2FGLJ1625.2-0020	0
+2FGLJ2017.3+0603	304.35		6.05396		None	_2FGLJ2017.3+0603	0
+2FGLJ2124.6-3357	321.16		-33.9654	None	_2FGLJ2124.6-3357	0
+##
+## End Interesting "southern" 2FGL sources
+##
+#########################################################################################
