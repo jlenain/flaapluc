@@ -375,7 +375,8 @@ class autoLC:
             options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target='+target+' rad='+rad
         else:
             options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl="none" specin='+str(gamma)+' rad='+rad
-        os.system(self.fermiDir+'/bin/gtexposure '+options)
+        cmd='time -p '+self.fermiDir+'/bin/gtexposure '+options
+        os.system(cmd)
 
 
 
@@ -695,7 +696,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
     if q==None:
 
 
-        if longTerm and mergelongterm:
+        if longTerm is True and mergelongterm is True:
 
             # TO BE CHANGED !!!
             startyearmonth = '200808'
@@ -707,8 +708,9 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
             startyear      = startyearmonth[:-2]
             startmonth     = startyearmonth[-2:]
 
-            # First make sure that all the month-by-month long-term data have been processed
 
+            # First make sure that all the month-by-month long-term data have been processed
+            
             # Loop on month from 2008/08 to this month
             for year in range(int(startyear),int(thisyear)+1):
                 for month in range(1,13):
@@ -717,14 +719,15 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
                     tmpyearmonth=str(year)+str(month)
                     if (year==int(startyear) and int(month) < int(startmonth)) or (year==int(thisyear) and int(month) > int(thismonth)):
                         continue
-                    auto=autoLC(customThreshold=useThresh,daily=False,longTerm=True,yearmonth=tmpyearmonth,mergelongterm=False)
                     processSrc(mysrc=src,useThresh=useThresh,daily=False,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False)
-
+                    
+            # Then merge the DAT files together and create the PNG figure. No mail is sent here.
             auto.mergeLTDAT(src)
             auto.createPNG(src,fglName,z)
             # Exit here
             return True
 
+        # When mergelongterm is False, we do the following:
         auto.selectSrc(src,ra,dec)
         auto.makeTime(src,ra,dec)
         if fglName is not None:
@@ -764,9 +767,11 @@ def main(argv=None):
     """
 
     # options parser:
-    helpmsg="""%prog [options] <source> [<optinal yearmonth>]
+    helpmsg="""%prog [options] <source> [<optinal YYYYMM>]
 
 This is the version $Id$
+
+If you call %prog using the -l option, you need to provide a year and a month in input, in the format YYYYMM.
 
 Use '-h' to get the help message
 
@@ -844,6 +849,9 @@ Use '-h' to get the help message
     if opt.m:
         MERGELONGTERM=True
         LONGTERM=True
+        DAILY=False
+        MAIL=False
+        TEST=False
     else:
         MERGELONGTERM=False
 
