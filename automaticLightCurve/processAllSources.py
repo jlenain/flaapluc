@@ -266,7 +266,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                     options.append('\"./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
                 else:
                     options.append('\"./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
-            cmd="parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
+            cmd="nice -n 24 parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
             # use --dry-run just to test the parallel command
             os.system(cmd)
 
