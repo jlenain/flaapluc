@@ -303,10 +303,15 @@ class autoLC:
 
         # Create list of GTI files
         listname=self.workDir+'/'+src+'_gti.list'
-        list=open(listname,'w')
+        filelist=open(listname,'w')
+        list=[]
         for file in glob.glob(self.workDir+'/../20????/'+src+'_gti.fits'):
-            list.write(file+'\n')
-        list.close()
+            list.append(file)
+        # Sort the list of GTI files
+        list=sorted(list)
+        for item in list:
+            filelist.write(item+'\n')
+        filelist.close()
         
         filter['infile']='@'+listname
         outfile=self.workDir+'/'+str(src)+'_gti.fits'
