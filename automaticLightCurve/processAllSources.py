@@ -171,7 +171,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     if opt.m:
         MERGELONGTERM=True
         # Force the script to process only one source at a time
-        PARALLEL=False
+        MAXCPU=1
     else:
         MERGELONGTERM=False
         
@@ -289,6 +289,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                         print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+")"
                 else:
                     tmpDAILY=DAILY
+
                 if DRYRUN is False:
                     processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM)
                 else:
