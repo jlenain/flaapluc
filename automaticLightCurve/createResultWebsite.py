@@ -23,7 +23,7 @@ except ImportError:
 
 
 # where all the graphs and data files are
-PATH_TO_FILES="/home/fermi/tmp/results/"
+PATH_TO_FILES="/var/www/html/results/"
 
 # create the directory if does not exist
 if not os.path.isdir(PATH_TO_FILES):
