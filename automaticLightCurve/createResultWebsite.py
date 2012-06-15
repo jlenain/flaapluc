@@ -47,7 +47,7 @@ def createResultWebsite():
 <head>
 <title>Fermi/LAT light curve results</title>
   <meta name="ROBOTS" content="NOINDEX, NOFOLLOW">
-  <link rel="stylesheet" href="../sty.css" type="text/css">
+  <!-- <link rel="stylesheet" href="../sty.css" type="text/css"> -->
 </head>
 <body>
 
@@ -73,11 +73,14 @@ Light curves:
 All data products are available from two sources: 
 
 <ul> 
-<li>First, the most recent results for the last 70 days of Fermi/LAT data.</li>
+<li>the most recent results for the last 70 days of Fermi/LAT data, with weekly-binned light curves.</li>
 
-<li>Secondly, the long-term light curve for the whole Fermi mission, for each source.</li>
+<li>a weekly-binned long-term light curve for the whole Fermi mission.</li>
 </ul>
 
+<p>
+Moreover, if a source was observed with ATOM last night, the most recent light curve will show both a weekly-binned light curve (blue data points) and a daily-binned light curve (red data points).
+</p>
 <p>
 The ASCII data files
 include all data points.
