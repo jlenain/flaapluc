@@ -170,6 +170,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     # If merge long term light curves
     if opt.m:
         MERGELONGTERM=True
+        # Force the script to process only one source at a time
+        PARALLEL=False
     else:
         MERGELONGTERM=False
         
