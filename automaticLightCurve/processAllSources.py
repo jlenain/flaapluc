@@ -14,7 +14,6 @@ from optparse import OptionParser
 # Flags
 MULTITHREAD=False
 PARALLEL=True
-MAXCPU=6
 
 # Import custom module
 try:
@@ -174,6 +173,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         MAXCPU=1
     else:
         MERGELONGTERM=False
+        # Otherwise we use 6 CPU, and let 2 CPU free for other processes
+        MAXCPU=6
         
     
     if(len(args)!=0):
