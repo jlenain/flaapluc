@@ -157,7 +157,7 @@ include all data points.
         # most recent data
         # link the daily/weekly plot, if we have one (i.e. if the source was observed with ATOM last night)
         if os.path.isfile(PATH_TO_FILES + dailyplotname):
-            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (dailyplotname) )
+            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a>(daily+weekly)</td>\n' % (dailyplotname) )
         else:
             f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (plotname) )
         f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s"> data </a></td>\n' % (asciiname) )
