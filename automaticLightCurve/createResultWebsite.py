@@ -34,6 +34,12 @@ if not (os.access(PATH_TO_FILES, os.W_OK | os.R_OK) ):
     sys.stderr.write("ERROR: path >%s< not read/writable!\n" % PATH_TO_FILES)
     sys.exit(1)
 
+# Remove everything from PATH_TO_FILES, for a fresh start
+for thisfile in os.listdir(PATH_TO_FILES):
+    thisfilepath = os.path.join(PATH_TO_FILES,thisfile)
+    os.remove(thisfilepath)
+
+
 
 def createResultWebsite():
     
@@ -122,6 +128,7 @@ include all data points.
     # create main table:
     
     for i in range(len(src)):
+
         plotname      = src[i] + '_lc.png'
         dailyplotname = src[i] + '_daily_lc.png'
         asciiname     = src[i] + '_lc.dat'
