@@ -85,7 +85,7 @@ All data products are available from two sources:
 </ul>
 
 <p>
-Moreover, if a source was observed with ATOM last night, the most recent light curve will show both a weekly-binned light curve (blue data points) and a daily-binned light curve (red data points).
+Moreover, if a source was on the ATOM schedule for last night, the most recent light curve will show both a weekly-binned light curve (blue data points) and a daily-binned light curve (red data points). If ATOM did not operate last night, the Fermi/LAT pipeline looks for ATOM schedule files up to 10 days in the past, in order to present here Fermi/LAT daily-binned light curves for the most recently observed ATOM sources.
 </p>
 <p>
 The ASCII data files
