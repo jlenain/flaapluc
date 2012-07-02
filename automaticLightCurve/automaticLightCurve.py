@@ -112,6 +112,7 @@ class autoLC:
             photonLock="/data/fermi/archive/photon.lock"
             spacecraftLock="/data/fermi/archive/spacecraft.lock"
             if os.path.isfile(photonLock) or os.path.isfile(spacecraftLock):
+                self.sendErrorMail(mailall=True)
                 sys.exit(10)
 
             self.allsky     = "/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
@@ -731,6 +732,64 @@ class autoLC:
             s.quit()
 
             print "Alert sent for %s"%src
+
+        return True
+
+
+
+    def sendErrorMail(self,mailall=False):
+
+        # Import modules
+        try:
+            # Import smtplib to send mails
+            import smtplib
+
+            # Here are the email package modules we'll need
+            from email.MIMEImage import MIMEImage
+            from email.MIMEMultipart import MIMEMultipart
+            from email.MIMEText import MIMEText
+
+        except:
+            print "ERROR sendAlert: Can't import mail modules."
+            sys.exit(1)
+
+
+
+        # Create the container email message.
+        msg = MIMEMultipart()
+        msg['Subject'] = 'Fermi/LAT automatic light curve ERROR'
+        sender = 'Fermi automatic light curve robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
+            
+        if mailall is True:
+            recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
+                         'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
+                         'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
+                         'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
+                         'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
+                         'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
+        else:
+            recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
+            
+        msg['From'] = sender
+        COMMASPACE = ', '
+        msg['To'] =COMMASPACE.join( recipient )
+        msg.preamble = 'You will not see this in a MIME-aware mail reader.\n'
+        # Guarantees the message ends in a newline
+        msg.epilogue = ''
+            
+        mailtext="""
+        The Fermi automatic light curve pipeline has been automatically aborted, because new Fermi data could not be properly downloaded. Maybe the NASA servers are down.
+"""
+ 
+        txt = MIMEText(mailtext)
+        msg.attach(txt)
+            
+        # Send the email via our own SMTP server.
+        s = smtplib.SMTP()
+        s.set_debuglevel(0)
+        s.connect()
+        s.sendmail(sender, recipient, msg.as_string())
+        s.quit()
 
         return True
 
