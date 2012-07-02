@@ -98,8 +98,9 @@ class autoLC:
     def __init__(self,file="/home/fermi/local/automaticLightCurve/listSources.txt",customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False):
         self.file=file
 
+        today=datetime.date.today().strftime('%Y%m%d')
+
         # Setting file names and directories
-        #self.allsky     = "/data/fermi/allsky/allsky_lastMonth_30MeV_300GeV_diffuse_filtered.fits"
         if longTerm is True:
             self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
             if mergelongterm is False:
@@ -107,8 +108,14 @@ class autoLC:
             else:
                 self.workDir    = "/home/fermi/data/automaticLightCurveOutput/longTerm/merged"
         else:
+            # If lock files exist in the archive directory (e.g. if NASA servers are down), we do not do anything and exit
+            photonLock="/data/fermi/archive/photon.lock"
+            spacecraftLock="/data/fermi/archive/spacecraft.lock"
+            if os.path.isfile(photonLock) or os.path.isfile(spacecraftLock):
+                sys.exit(10)
+
             self.allsky     = "/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
-            self.workDir    = "/home/fermi/data/automaticLightCurveOutput/"+datetime.date.today().strftime('%Y%m%d')
+            self.workDir    = "/home/fermi/data/automaticLightCurveOutput/"+today
 
         self.spacecraft = "/data/fermi/allsky/allsky_SC00.fits"
         if not os.path.isdir(self.workDir):
