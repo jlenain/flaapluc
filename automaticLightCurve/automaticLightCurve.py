@@ -102,7 +102,7 @@ class autoLC:
 
         # Setting file names and directories
         if longTerm is True:
-            self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered.fits"
+            self.allsky     = "/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered_gti.fits"
             if mergelongterm is False:
                 self.workDir    = "/home/fermi/data/automaticLightCurveOutput/longTerm/"+yearmonth
             else:
