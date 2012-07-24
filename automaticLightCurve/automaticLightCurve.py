@@ -940,11 +940,11 @@ Use '-h' to get the help message
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
-                      help='generate a long term light curve, month by month, using the whole mission time (defaulted to False)')
+                      help='generate a long term light curve, for one given month (defaulted to False). With this option, one should provide a source name as usual, but also a month for zhich the data should be processed, in the format YYYYMM.')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
-                      help='merge the long-term month-by-month light curves together')
+                      help='merge the month-by-month long-term light curves together. If those do not exist, they will be created on the fly.')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
-                      help='do not send alert mails')
+                      help='do not send mail alerts')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
 
