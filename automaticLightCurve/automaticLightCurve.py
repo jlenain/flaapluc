@@ -687,7 +687,8 @@ class autoLC:
                              'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
             else:
                 recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
-            
+          #      recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>']
+
             msg['From'] = sender
             COMMASPACE = ', '
             msg['To'] =COMMASPACE.join( recipient )
@@ -769,7 +770,8 @@ class autoLC:
                          'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
         else:
             recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
-            
+            #recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>']
+
         msg['From'] = sender
         COMMASPACE = ', '
         msg['To'] =COMMASPACE.join( recipient )
