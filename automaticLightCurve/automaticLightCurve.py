@@ -233,15 +233,19 @@ class autoLC:
 
                     # Redefine the class threshold if we provided a custom threshold
                     if self.customThreshold is True and myThreshold[i] != 0.:
-                        self.threshold=myThreshold[i]
-                        
+                        try:
+                            float(myThreshold[i])
+                            self.threshold=myThreshold[i]
+                        except ValueError:
+                            print "WARNING The threshold of the source "+str(mysrc)+" is not a float. Please, check the list of sources !"
+                            sys.exit(2)
                     return src[i],ra[i],dec[i],z[i],fglName[i]
             
             # If we end up without any found source, print an error and exits
             print "WARNING Can't find your source "+str(mysrc)+" in the list of sources !"
             return None,None,None,None,None
             #sys.exit(1)
-  
+        
         # Otherwise, return the whole list of parameters for all the sources
         else:
             return src,ra,dec,z,fglName

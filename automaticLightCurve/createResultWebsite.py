@@ -160,6 +160,7 @@ include all data points.
         f1.write( '<tr> <!-- %s -->\n' % (src[i]) )
         f1.write( '    <td><a href="%s">%s</a></td>\n' % (linkSIMBAD, src[i]) )
         f1.write( '    <td style="font-size:smaller">%s %s</td>\n' %( ra[i], dec[i] ) )
+
         
         # most recent data
         # link the daily/weekly plot, if we have one (i.e. if the source was observed with ATOM last night)
