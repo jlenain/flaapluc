@@ -685,12 +685,12 @@ class autoLC:
             if nomailall is False:
                 recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
                              'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
-                             'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
+                             'Jean-Philippe Lenain <jlenain@lpnhe.in2p3.fr>',
                              'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
                              'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
                              'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
             else:
-                recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
+                recipient = ['Jean-Philippe Lenain <jlenain@lpnhe.in2p3.fr>']
           #      recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>']
 
             msg['From'] = sender
@@ -768,12 +768,12 @@ class autoLC:
         if mailall is True:
             recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
                          'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
-                         'Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>',
+                         'Jean-Philippe Lenain <jlenain@lpnhe.in2p3.fr>',
                          'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
                          'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
                          'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
         else:
-            recipient = ['Jean-Philippe Lenain <jp.lenain@lsw.uni-heidelberg.de>']
+            recipient = ['Jean-Philippe Lenain <jlenain@lpnhe.in2p3.fr>']
             #recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>']
 
         msg['From'] = sender
