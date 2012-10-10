@@ -681,17 +681,20 @@ class autoLC:
             msg = MIMEMultipart()
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
             sender = 'Fermi automatic light curve robot <fermi@hess-lsw.lsw.uni-heidelberg.de>'
+            #sender = '<atom@lsw.uni-heidelberg.de>'
             
             if nomailall is False:
                 recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
                              'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
-                             'Jean-Philippe Lenain <jlenain@lpnhe.in2p3.fr>',
+                             #'Jean-Philippe Lenain <jlenain@in2p3.fr>',
+                             'Jean-Philippe Lenain <jplenain@lsw.uni-heidelberg.de>',
                              'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
                              'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
                              'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
             else:
-                recipient = ['Jean-Philippe Lenain <jlenain@lpnhe.in2p3.fr>']
-          #      recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>']
+                recipient = ['Jean-Philippe Lenain <jplenain@lsw.uni-heidelberg.de>']
+                #recipient = ['Jean-Philippe Lenain <jlenain@in2p3.fr>']
+                #recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>']
 
             msg['From'] = sender
             COMMASPACE = ', '
@@ -731,8 +734,13 @@ class autoLC:
 
             # Send the email via our own SMTP server.
             s = smtplib.SMTP()
+            #s = smtplib.SMTP('smtp.lsw.uni-heidelberg.de',465)
             s.set_debuglevel(0)
             s.connect()
+            #s.ehlo()
+            #s.starttls()
+            #s.ehlo()
+            #s.login('atom@lsw.uni-heidelberg.de','goellschau')
             s.sendmail(sender, recipient, msg.as_string())
             s.quit()
 
@@ -768,12 +776,14 @@ class autoLC:
         if mailall is True:
             recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>',
                          'Sarah Kaufmann <s.kaufmann@lsw.uni-heidelberg.de>',
-                         'Jean-Philippe Lenain <jlenain@lpnhe.in2p3.fr>',
+                         #'Jean-Philippe Lenain <jlenain@in2p3.fr>',
+                         'Jean-Philippe Lenain <jplenain@lsw.uni-heidelberg.de>',
                          'Mahmoud Mohamed <m.mohamed@lsw.uni-heidelberg.de>',
                          'Stephanie Schwemmer <s.schwemmer@lsw.uni-heidelberg.de>',
                          'Stefan Wagner <s.wagner@lsw.uni-heidelberg.de>']
         else:
-            recipient = ['Jean-Philippe Lenain <jlenain@lpnhe.in2p3.fr>']
+            #recipient = ['Jean-Philippe Lenain <jlenain@in2p3.fr>']
+            recipient = ['Jean-Philippe Lenain <jplenain@lsw.uni-heidelberg.de>']
             #recipient = ['Gabriele Cologna <g.cologna@lsw.uni-heidelberg.de>']
 
         msg['From'] = sender
