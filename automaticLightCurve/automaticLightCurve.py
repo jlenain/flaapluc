@@ -118,13 +118,12 @@ class autoLC:
         self.templatesDir     = self.config.get('InputDirs','TemplatesDir')
         self.ATOMSchedulesDir = self.config.get('InputDirs','ATOMSchedulesDir')
         self.catalogFile      = self.config.get('InputFiles','CatalogFile')
-        self.baseOutDir       = self.config.get('OutputDirs','OutputResultsDir')
         self.file             = self.config.get('InputFiles','SourceList')
+        self.baseOutDir       = self.config.get('OutputDirs','OutputResultsDir')
         self.allskyFile       = self.allskyDir+"/"+self.config.get('InputFiles','WholeAllskyFile')
         self.lastAllskyFile   = self.allskyDir+"/"+self.config.get('InputFiles','LastAllskyFile')
         self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
         self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
-        
 
         today=datetime.date.today().strftime('%Y%m%d')
 
