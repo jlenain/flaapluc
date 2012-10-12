@@ -28,7 +28,7 @@ def createResultWebsite():
     autoLT=autoLC(longTerm=True,mergelongterm=True)
 
     # where all the graphs and data files are
-    PATH_TO_FILES=auto.webpageDir
+    PATH_TO_FILES=auto.webpageDir+'/'
 
     WORKDIR=auto.workDir+'/'
     WORKDIRLT=autoLT.workDir+'/'
