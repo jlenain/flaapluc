@@ -1,4 +1,4 @@
-Welcome to the Fermi/LAT flare alert pipeline at the Landessternwarte !
+Welcome to the Fermi/LAT flare alert pipeline !
 
 This pipeline can be used to quickly generate short- or long-term Fermi/LAT light curves. It relies on the Fermi/LAT aperture photometric analysis (cf. e.g. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html), which basically assumes that the data set, within 1 degree around the source, is background-free.
 
