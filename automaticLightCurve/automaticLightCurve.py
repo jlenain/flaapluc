@@ -8,8 +8,8 @@ No likelihood fit is performed, the results solely rely on the 2FGL spectral fit
 More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
-@date $Date: 2012-10-10 16:46:12 +0200 (Wed, 10 Oct 2012) $
-@version $Id: automaticLightCurve.py 149 2012-10-10 14:46:12Z fermi $
+@date $Date$
+@version $Id$
 """
 
 import sys, os, asciidata, datetime, time, glob
@@ -979,7 +979,7 @@ def main(argv=None):
     # options parser:
     helpmsg="""%prog [options] <source> [<optinal YYYYMM>]
 
-This is the version $Id: automaticLightCurve.py 149 2012-10-10 14:46:12Z fermi $
+This is the version $Id$
 
 If you call %prog using the -l option, you need to provide a year and a month in input, in the format YYYYMM.
 
@@ -987,7 +987,7 @@ Use '-h' to get the help message
 
 """
 
-    parser = OptionParser(version="$Id: automaticLightCurve.py 149 2012-10-10 14:46:12Z fermi $",
+    parser = OptionParser(version="$Id$",
                           usage=helpmsg)
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,

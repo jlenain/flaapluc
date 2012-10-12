@@ -4,8 +4,8 @@
 Process all sources for automatic aperture photometry of interesting 2FGL sources, with parametric batch jobs.
 
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
-@date $Date: 2012-06-16 17:22:00 +0200 (Sat, 16 Jun 2012) $
-@version $Id: processAllSources.py 134 2012-06-16 15:22:00Z fermi $
+@date $Date$
+@version $Id$
 """
 
 import sys, os, datetime
@@ -89,7 +89,7 @@ def main(argv=None):
     # options parser:
     helpmsg="""%prog [options] <optional list of sources>
 
-This is the version $Id: processAllSources.py 134 2012-06-16 15:22:00Z fermi $
+This is the version $Id$
 
 Use '-h' to get the help message
 
@@ -97,7 +97,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
 
 """
 
-    parser = OptionParser(version="$Id: processAllSources.py 134 2012-06-16 15:22:00Z fermi $",
+    parser = OptionParser(version="$Id$",
                           usage=helpmsg)
 
     parser.add_option("-a", "--atom", action="store_true", dest="a", default=False,

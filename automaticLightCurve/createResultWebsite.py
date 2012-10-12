@@ -6,8 +6,8 @@ Fermi/LAT light curve pipeline: create website for presenting results.
 Highly inspired from Marcus Hauser's script 'create-result_website.py' for ATOM ADRAS.
 
 @author Jean-Philippe Lenain
-@version $Id: createResultWebsite.py 147 2012-09-07 07:38:53Z fermi $
-@date $Date: 2012-09-07 09:38:53 +0200 (Fri, 07 Sep 2012) $
+@version $Id$
+@date $Date$
 """
 
 from optparse import OptionParser
@@ -217,7 +217,7 @@ def main(argv=None):
     helpmsg="""create Fermi/LAT light curve result webpage.
 """
     
-    parser = OptionParser(version="%prog:  $Id: createResultWebsite.py 147 2012-09-07 07:38:53Z fermi $",
+    parser = OptionParser(version="%prog:  $Id$",
                       usage=helpmsg)
 
     (opt, args) = parser.parse_args()
