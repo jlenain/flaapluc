@@ -235,10 +235,11 @@ class autoLC:
         #                       'Michael Punch <punch@in2p3.fr>',
         #                       'Catherine Boisson <catherine.boisson@obspm.fr>'
         #                       ]
-        self.usualRecipients= getConfigList(self.config.get('MailRecipients','UsualRecipients'))
+        self.usualRecipients= getConfigList(self.config.get('MailConfig','UsualRecipients'))
         
         #self.testRecipients = ['Jean-Philippe Lenain <jlenain@in2p3.fr>']
-        self.testRecipients = getConfigList(self.config.get('MailRecipients','TestRecipients'))
+        self.testRecipients = getConfigList(self.config.get('MailConfig','TestRecipients'))
+        self.mailSender     = self.config.get('MailConfig','MailSender')
     
 
     def readSourceList(self,mysrc=None):
@@ -730,7 +731,7 @@ class autoLC:
             # Create the container email message.
             msg = MIMEMultipart()
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
-            sender = 'Fermi automatic aperture photometry light curve robot <fermi-robot@n1n40.in2p3.fr>'
+            sender = self.mailSender
             
             # To whom the mail should be sent (cf. class constructor)
             if nomailall is False:
@@ -812,7 +813,7 @@ class autoLC:
         # Create the container email message.
         msg = MIMEMultipart()
         msg['Subject'] = 'Fermi/LAT automatic light curve ERROR'
-        sender = 'Fermi automatic aperture photometry light curve robot <fermi-robot@n1n40.in2p3.fr>'
+        sender = self.mailSender
             
         if mailall is True:
             recipient = self.usualRecipients
