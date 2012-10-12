@@ -21,28 +21,37 @@ except ImportError:
     sys.exit(1)
 
 
-
-# where all the graphs and data files are
-PATH_TO_FILES="/home/jlenain/data/fermi/data/webpage/"
-
-# create the directory if does not exist
-if not os.path.isdir(PATH_TO_FILES):
-    os.makedirs(PATH_TO_FILES)
-
-# are we able to read and write there?
-if not (os.access(PATH_TO_FILES, os.W_OK | os.R_OK) ):
-    sys.stderr.write("ERROR: path >%s< not read/writable!\n" % PATH_TO_FILES)
-    sys.exit(1)
-
-# Remove everything from PATH_TO_FILES, for a fresh start
-for thisfile in os.listdir(PATH_TO_FILES):
-    thisfilepath = os.path.join(PATH_TO_FILES,thisfile)
-    os.remove(thisfilepath)
-
-
-
 def createResultWebsite():
     
+    # Retrieving information from the list of sources and from the configuration cfg file.
+    auto=autoLC()
+    autoLT=autoLC(longTerm=True,mergelongterm=True)
+
+    # where all the graphs and data files are
+    PATH_TO_FILES=auto.webpageDir
+
+    WORKDIR=auto.workDir+'/'
+    WORKDIRLT=autoLT.workDir+'/'
+    src,ra,dec,z,fglName=auto.readSourceList()
+
+    # create the directory if does not exist
+    if not os.path.isdir(PATH_TO_FILES):
+        os.makedirs(PATH_TO_FILES)
+
+    # are we able to read and write there?
+    if not (os.access(PATH_TO_FILES, os.W_OK | os.R_OK) ):
+        sys.stderr.write("ERROR: path >%s< not read/writable!\n" % PATH_TO_FILES)
+        sys.exit(1)
+
+    # Remove everything from PATH_TO_FILES, for a fresh start
+    for thisfile in os.listdir(PATH_TO_FILES):
+        # we just keep the .htaccess file
+        if thisfile is not '.htaccess':
+            thisfilepath = os.path.join(PATH_TO_FILES,thisfile)
+            os.remove(thisfilepath)
+
+
+
     # open file for writing
     f1 = open(PATH_TO_FILES+'index.html', 'w')
 
@@ -116,12 +125,6 @@ include all data points.
 """)
     
     
-    # Retrieving information from the list of sources
-    auto=autoLC()
-    autoLT=autoLC(longTerm=True,mergelongterm=True)
-    WORKDIR=auto.workDir+'/'
-    WORKDIRLT=autoLT.workDir+'/'
-    src,ra,dec,z,fglName=auto.readSourceList()
     
     
     ########################################################################
@@ -212,9 +215,7 @@ def main(argv=None):
     """
 
     helpmsg="""create Fermi/LAT light curve result webpage.
-
-Note: due to different reasons, the PATHNAME for all created files is FIXED to %s !
-""" % PATH_TO_FILES
+"""
     
     parser = OptionParser(version="%prog:  $Id: createResultWebsite.py 147 2012-09-07 07:38:53Z fermi $",
                       usage=helpmsg)

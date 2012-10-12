@@ -123,6 +123,7 @@ class autoLC:
         self.allskyFile       = self.allskyDir+"/"+self.config.get('InputFiles','WholeAllskyFile')
         self.lastAllskyFile   = self.allskyDir+"/"+self.config.get('InputFiles','LastAllskyFile')
         self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
+        self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
         
 
         today=datetime.date.today().strftime('%Y%m%d')
