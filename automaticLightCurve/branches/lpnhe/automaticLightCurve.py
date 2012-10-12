@@ -381,7 +381,7 @@ class autoLC:
             print "ERROR Can't import make2FGLxml."
             sys.exit(1)
         
-        mymodel=make2FGLxml.srcList('../../common/gll_psc_v07.fit',evfile,modelfile)
+        mymodel=make2FGLxml.srcList('./common/gll_psc_v07.fit',evfile,modelfile)
         mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source','/home/jlenain/data/fermi/2FGL/Templates')
 
 
