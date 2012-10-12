@@ -729,7 +729,7 @@ class autoLC:
 
       Cheers,
       The Fermi/LAT robot for automatic aperture photometry light curve.
-""" %('http://lpnhess.in2p3.fr/~jlenain/protected/fermi/photolc/index.html')
+""" %('http://lpnhess.in2p3.fr/~jlenain/protected/hess/fermi/photolc/index.html')
  
             txt = MIMEText(mailtext)
             msg.attach(txt)
