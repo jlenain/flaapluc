@@ -17,6 +17,7 @@ from numpy import *
 import pyfits
 #from multiprocessing import Process, Queue
 from optparse import OptionParser
+from ConfigParser import ConfigParser
 
 # Import some matplotlib modules
 try:
@@ -93,35 +94,66 @@ def unixtime2mjd(unixtime):
     return result
 
 
+def getConfigList(option,sep=','):
+    return [ stuff for stuff in option.split(sep) ]
+
+
 class autoLC:
     """
     Automatic aperture photometry light curve generation, for a list of sources
     """
 
-    def __init__(self,file="/home/jlenain/data/fermi/local/automaticLightCurve/common/listSources.txt",customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False):
-        self.file=file
+    def getConfig(self,configfile='./default.cfg'):
+        self.config = ConfigParser()
+        self.config.readfp(open(configfile))
+        return self.config
+
+
+    def __init__(self,file="/home/jlenain/data/fermi/local/automaticLightCurve/common/listSources.txt",customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,configfile='./default.cfg'):
+        
+        self.config           = self.getConfig(configfile=configfile)
+        #self.file=file
+        self.allskyDir        = self.config.get('InputDirs','AllskyDir')
+        self.archiveDir       = self.config.get('InputDirs','ArchiveDir')
+        self.templatesDir     = self.config.get('InputDirs','TemplatesDir')
+        self.ATOMSchedulesDir = self.config.get('InputDirs','ATOMSchedulesDir')
+        self.catalogFile      = self.config.get('InputFiles','CatalogFile')
+        self.baseOutDir       = self.config.get('OutputDirs','OutputResultsDir')
+        self.file             = self.config.get('InputFiles','SourceList')
+        self.allskyFile       = self.allskyDir+"/"+self.config.get('InputFiles','WholeAllskyFile')
+        self.lastAllskyFile   = self.allskyDir+"/"+self.config.get('InputFiles','LastAllskyFile')
+        self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
+        
 
         today=datetime.date.today().strftime('%Y%m%d')
 
         # Setting file names and directories
         if longTerm is True:
-            self.allsky     = "/home/jlenain/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered_gti.fits"
+            #self.allsky     = "/home/jlenain/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered_gti.fits"
+            self.allsky = self.allskyFile
             if mergelongterm is False:
-                self.workDir    = "/home/jlenain/data/fermi/data/automaticLightCurveOutput/longTerm/"+yearmonth
+                #self.workDir    = "/home/jlenain/data/fermi/data/automaticLightCurveOutput/longTerm/"+yearmonth
+                self.workDir    = self.baseOutDir+"/longTerm/"+yearmonth
             else:
-                self.workDir    = "/home/jlenain/data/fermi/data/automaticLightCurveOutput/longTerm/merged"
+                #self.workDir    = "/home/jlenain/data/fermi/data/automaticLightCurveOutput/longTerm/merged"
+                self.workDir    = self.baseOutDir+"/longTerm/merged"
         else:
             # If lock files exist in the archive directory (e.g. if NASA servers are down), we do not do anything and exit
-            photonLock="home/jlenain/fermi/archive/photon.lock"
-            spacecraftLock="/home/jlenain/fermi/archive/spacecraft.lock"
+            #photonLock="home/jlenain/fermi/archive/photon.lock"
+            photonLock=self.archiveDir+"/photon.lock"
+            #spacecraftLock="/home/jlenain/fermi/archive/spacecraft.lock"
+            spacecraftLock=self.archiveDir+"/spacecraft.lock"
             if os.path.isfile(photonLock) or os.path.isfile(spacecraftLock):
                 self.sendErrorMail(mailall=True)
                 sys.exit(10)
 
-            self.allsky     = "/home/jlenain/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
-            self.workDir    = "/home/jlenain/data/fermi/data/automaticLightCurveOutput/"+today
+            #self.allsky     = "/home/jlenain/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
+            self.allsky     = self.lastAllskyFile
+            #self.workDir    = "/home/jlenain/data/fermi/data/automaticLightCurveOutput/"+today
+            self.workDir    = self.baseOutDir+"/"+today
 
-        self.spacecraft = "/home/jlenain/data/fermi/allsky/allsky_SC00.fits"
+        #self.spacecraft = "/home/jlenain/data/fermi/allsky/allsky_SC00.fits"
+        self.spacecraft = self.spacecraftFile
         if not os.path.isdir(self.workDir):
             os.makedirs(self.workDir)
 
@@ -197,14 +229,16 @@ class autoLC:
                 self.tstop  = missionStop
 
         # Mail recipients
-        self.usualRecipients= ['Jean-Philippe Lenain <jlenain@in2p3.fr>',
-                               'Santiago Pita <pita@apc.univ-paris7.fr>',
-                               'Julien Lefaucheur <julien.lefaucheur@apc.univ-paris7.fr>',
-                               'Michael Punch <punch@in2p3.fr>',
-                               'Catherine Boisson <catherine.boisson@obspm.fr>'
-                               ]
+        #self.usualRecipients= ['Jean-Philippe Lenain <jlenain@in2p3.fr>',
+        #                       'Santiago Pita <pita@apc.univ-paris7.fr>',
+        #                       'Julien Lefaucheur <julien.lefaucheur@apc.univ-paris7.fr>',
+        #                       'Michael Punch <punch@in2p3.fr>',
+        #                       'Catherine Boisson <catherine.boisson@obspm.fr>'
+        #                       ]
+        self.usualRecipients= getConfigList(self.config.get('MailRecipients','UsualRecipients'))
         
-        self.testRecipients = ['Jean-Philippe Lenain <jlenain@in2p3.fr>']
+        #self.testRecipients = ['Jean-Philippe Lenain <jlenain@in2p3.fr>']
+        self.testRecipients = getConfigList(self.config.get('MailRecipients','TestRecipients'))
     
 
     def readSourceList(self,mysrc=None):
@@ -381,8 +415,10 @@ class autoLC:
             print "ERROR Can't import make2FGLxml."
             sys.exit(1)
         
-        mymodel=make2FGLxml.srcList('./common/gll_psc_v07.fit',evfile,modelfile)
-        mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source','/home/jlenain/data/fermi/2FGL/Templates')
+        #mymodel=make2FGLxml.srcList('./common/gll_psc_v07.fit',evfile,modelfile)
+        mymodel=make2FGLxml.srcList(self.catalogFile,evfile,modelfile)
+        #mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source',self.templatesDir'/home/jlenain/data/fermi/2FGL/Templates')
+        mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source',self.templatesDir)
 
 
     def photoLC(self,src):
@@ -525,7 +561,8 @@ class autoLC:
                 tmpyearmonth=str(year)+str(month)
                 if (year==int(startyear) and int(month) < int(startmonth)) or (year==int(thisyear) and int(month) > int(thismonth)):
                     continue
-                tmpworkdir="/home/jlenain/data/fermi/data/automaticLightCurveOutput/longTerm/"+str(year)+str(month)
+                #tmpworkdir="/home/jlenain/data/fermi/data/automaticLightCurveOutput/longTerm/"+str(year)+str(month)
+                tmpworkdir=self.baseOutDir+"/longTerm/"+str(year)+str(month)
                 tmpfile=tmpworkdir+'/'+str(src)+'_lc.dat'
                 try:
                     f=open(tmpfile)
