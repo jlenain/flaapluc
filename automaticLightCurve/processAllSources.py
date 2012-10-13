@@ -30,12 +30,15 @@ def getConfig(configfile='./default.cfg'):
     return config
 
 
-def readATOMschedule(config=None):
+def readATOMschedule(configfile='default.cfg'):
     """
     Read the ATOM schedule file for observations of tonight, automatically put on hess-lsw@lsw.uni-heidelberg.de by "copy_schedule_to_attel.sh" in ATOM pipeline.
 
     By default, it takes as argument the schedule file of today.
     """
+
+    # Read configuration file
+    config = getConfig(configfile=CONFIGFILE)
 
     ATOMSchedulesDir = config.get('InputDirs','ATOMSchedulesDir')
     ATOMScheduleFile = datetime.date.today().strftime('%y%m%d')+'.sched'
@@ -199,10 +202,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     else:
         auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
 
-    # Read configuration file
-    config = getConfig(configfile=CONFIGFILE)
-
-    ATOMsrcsInSchedule=readATOMschedule(config=config)
+    ATOMsrcsInSchedule=readATOMschedule(configfile=CONFIGFILE)
     
     # If process only sources which are in ATOM schedule
     if opt.a:
