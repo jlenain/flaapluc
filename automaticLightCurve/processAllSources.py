@@ -10,6 +10,7 @@ Process all sources for automatic aperture photometry of interesting 2FGL source
 
 import sys, os, datetime
 from optparse import OptionParser
+from ConfigParser import ConfigParser
 
 # Flags
 MULTITHREAD=False
@@ -22,8 +23,18 @@ except ImportError:
     print "ERROR Can't import automaticLightCurve"
     sys.exit(1)
 
+def getConfig(configfile='./default.cfg'):
+    config = ConfigParser()
+    config.readfp(open(configfile))
+    return config
 
-def readATOMschedule(infile='/home/jlenain/data/fermi/data/ATOM_Schedules/'+datetime.date.today().strftime('%y%m%d')+'.sched'):
+
+configfile='default.cfg'
+config = getConfig(configfile=configfile)
+ATOMSchedulesDir = config.get('InputDirs','ATOMSchedulesDir')
+
+
+def readATOMschedule(infile=ATOMSchedulesDir+'/'+datetime.date.today().strftime('%y%m%d')+'.sched'):
     """
     Read the ATOM schedule file for observations of tonight, automatically put on hess-lsw@lsw.uni-heidelberg.de by "copy_schedule_to_attel.sh" in ATOM pipeline.
 
@@ -36,7 +47,7 @@ def readATOMschedule(infile='/home/jlenain/data/fermi/data/ATOM_Schedules/'+date
     
         found=False
         for i in range(1,10):
-            infile='/home/jlenain/data/fermi/data/ATOM_Schedules/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
+            infile=ATOMSchedulesDir+'/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
             if os.path.isfile(infile):
                 found=True
                 print 'I found one ! I will use the file: '+infile
