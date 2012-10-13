@@ -30,14 +30,17 @@ def getConfig(configfile='./default.cfg'):
     return config
 
 
-def readATOMschedule(file='today.sched',dir='.'):
+def readATOMschedule(config=None):
     """
     Read the ATOM schedule file for observations of tonight, automatically put on hess-lsw@lsw.uni-heidelberg.de by "copy_schedule_to_attel.sh" in ATOM pipeline.
 
     By default, it takes as argument the schedule file of today.
     """
 
-    infile=dir+'/'+datetime.date.today().strftime('%y%m%d')+'.sched'
+    ATOMSchedulesDir = config.get('InputDirs','ATOMSchedulesDir')
+    ATOMScheduleFile = datetime.date.today().strftime('%y%m%d')+'.sched'
+
+    infile=ATOMSchedulesDir+'/'+ATOMScheduleFile
 
     print 'First, we look for the ATOM schedule for today:'+infile
     if not os.path.isfile(infile):
@@ -45,7 +48,7 @@ def readATOMschedule(file='today.sched',dir='.'):
     
         found=False
         for i in range(1,10):
-            infile=dir+'/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
+            infile=ATOMSchedulesDir+'/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
             if os.path.isfile(infile):
                 found=True
                 print 'I found one ! I will use the file: '+infile
@@ -74,7 +77,7 @@ def readATOMschedule(file='today.sched',dir='.'):
 
     # Now, we check that all the ATOM sources are known to the "master" list of sources
     FermiSrcInATOMSchedule=[]
-    auto=autoLC()
+    auto=autoLC(configfile=configfile)
     for i in range(len(ATOMsrcs)):
         ATOMsrc=ATOMsrcs[i]
         print 'Searching for the ATOM source '+ATOMsrc+' in the master list of sources...'
@@ -192,16 +195,14 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     if(len(args)!=0):
         file=args[0]
         print "Overriding default list of source: using "+file
-        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM)
+        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
     else:
-        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM)
+        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
 
     # Read configuration file
     config = getConfig(configfile=CONFIGFILE)
-    ATOMSchedulesDir = config.get('InputDirs','ATOMSchedulesDir')
-    ATOMScheduleFile = datetime.date.today().strftime('%y%m%d')+'.sched'
 
-    ATOMsrcsInSchedule=readATOMschedule(file=ATOMScheduleFile,dir=ATOMSchedulesDir)
+    ATOMsrcsInSchedule=readATOMschedule(config=config)
     
     # If process only sources which are in ATOM schedule
     if opt.a:

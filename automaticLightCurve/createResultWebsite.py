@@ -21,11 +21,11 @@ except ImportError:
     sys.exit(1)
 
 
-def createResultWebsite():
+def createResultWebsite(configfile='default.cfg'):
     
     # Retrieving information from the list of sources and from the configuration cfg file.
-    auto=autoLC()
-    autoLT=autoLC(longTerm=True,mergelongterm=True)
+    auto=autoLC(configfile=configfile)
+    autoLT=autoLC(longTerm=True,mergelongterm=True,configfile=configfile)
 
     # where all the graphs and data files are
     PATH_TO_FILES=auto.webpageDir+'/'
@@ -219,10 +219,13 @@ def main(argv=None):
     
     parser = OptionParser(version="%prog:  $Id$",
                       usage=helpmsg)
-
+    parser.add_option("--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
+                                    help="provide a configuration file. Using '%default' by default.")
     (opt, args) = parser.parse_args()
 
-    createResultWebsite()
+    CONFIGFILE=opt.CONFIGFILE
+
+    createResultWebsite(configfile=CONFIGFILE)
 
     return True
 
