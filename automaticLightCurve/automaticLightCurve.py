@@ -109,7 +109,7 @@ class autoLC:
         return self.config
 
 
-    def __init__(self,file="/home/jlenain/data/fermi/local/automaticLightCurve/common/listSources.txt",customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,configfile='./default.cfg'):
+    def __init__(self,file='listSources.txt',customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,configfile='default.cfg'):
         
         self.config           = self.getConfig(configfile=configfile)
         #self.file=file
@@ -862,7 +862,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False):
+def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,configfile='default.cfg'):
     """
     Process a given source.
     """
@@ -875,7 +875,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         print "ERROR Missing input source !"
         sys.exit(1)
 
-    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm)
+    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,configfile=configfile)
     src,ra,dec,z,fglName=auto.readSourceList(mysrc)
 
 
@@ -917,7 +917,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
                         for file in glob.glob(tmpworkdir+'/'+src+'*'):
                             os.remove(file)
 
-                    processSrc(mysrc=src,useThresh=useThresh,daily=False,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False)
+                    processSrc(mysrc=src,useThresh=useThresh,daily=False,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,configfile=configfile)
 
                     
 
@@ -1013,9 +1013,12 @@ Use '-h' to get the help message
                       help='do not send mail alerts')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
+    parser.add_option("--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
+                      help="provide a configuration file. Using '%default' by default.")
 
     (opt, args) = parser.parse_args()
 
+    CONFIGFILE=opt.CONFIGFILE
 
     # If daily bins
     if opt.d:
@@ -1045,7 +1048,7 @@ Use '-h' to get the help message
         print "ERROR You asked for both the --test and --no-mail options."
         print "      These are mutually exclusive options."
         sys.exit(1)
-
+    
     # If long term
     if opt.l:
         LONGTERM=True
@@ -1075,7 +1078,7 @@ Use '-h' to get the help message
         TEST=False
     else:
         MERGELONGTERM=False
-
+    
     
     src=args[0]
 
@@ -1083,9 +1086,9 @@ Use '-h' to get the help message
     # If we asked for a daily light curve, first make sure that the weekly-binned data already exsits, otherwise this script will crash, since the daily-binned PNG needs the weekly-binned data to be created. No mail alert is sent at this step.
     # We automatically recreate here any weekly-binned missing data.
     if DAILY:
-        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM)
+        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
 
     return True
 

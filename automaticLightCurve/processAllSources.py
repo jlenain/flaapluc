@@ -23,23 +23,21 @@ except ImportError:
     print "ERROR Can't import automaticLightCurve"
     sys.exit(1)
 
+
 def getConfig(configfile='./default.cfg'):
     config = ConfigParser()
     config.readfp(open(configfile))
     return config
 
 
-configfile='default.cfg'
-config = getConfig(configfile=configfile)
-ATOMSchedulesDir = config.get('InputDirs','ATOMSchedulesDir')
-
-
-def readATOMschedule(infile=ATOMSchedulesDir+'/'+datetime.date.today().strftime('%y%m%d')+'.sched'):
+def readATOMschedule(file='today.sched',dir='.'):
     """
     Read the ATOM schedule file for observations of tonight, automatically put on hess-lsw@lsw.uni-heidelberg.de by "copy_schedule_to_attel.sh" in ATOM pipeline.
 
     By default, it takes as argument the schedule file of today.
     """
+
+    infile=dir+'/'+datetime.date.today().strftime('%y%m%d')+'.sched'
 
     print 'First, we look for the ATOM schedule for today:'+infile
     if not os.path.isfile(infile):
@@ -47,7 +45,7 @@ def readATOMschedule(infile=ATOMSchedulesDir+'/'+datetime.date.today().strftime(
     
         found=False
         for i in range(1,10):
-            infile=ATOMSchedulesDir+'/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
+            infile=dir+'/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
             if os.path.isfile(infile):
                 found=True
                 print 'I found one ! I will use the file: '+infile
@@ -127,9 +125,12 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
     parser.add_option("--dry-run", action="store_true", dest="dryRun", default=False,
                       help='simulate only what the pipeline would do, forcing the use of ATOM sources, without actually processing any Fermi/LAT event. This is useful to see if the master list of sources is up-to-date with the ATOM sources in the current schedule.')
+    parser.add_option("--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
+                      help="provide a configuration file. Using '%default' by default.")
 
     (opt, args) = parser.parse_args()
 
+    CONFIGFILE=opt.CONFIGFILE
 
     # If dry run
     if opt.dryRun:
@@ -186,8 +187,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         MERGELONGTERM=False
         # Otherwise we use 6 CPU, and let 2 CPU free for other processes
         MAXCPU=6
-        
-    
+
+
     if(len(args)!=0):
         file=args[0]
         print "Overriding default list of source: using "+file
@@ -195,7 +196,12 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     else:
         auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM)
 
-    ATOMsrcsInSchedule=readATOMschedule()
+    # Read configuration file
+    config = getConfig(configfile=CONFIGFILE)
+    ATOMSchedulesDir = config.get('InputDirs','ATOMSchedulesDir')
+    ATOMScheduleFile = datetime.date.today().strftime('%y%m%d')+'.sched'
+
+    ATOMsrcsInSchedule=readATOMschedule(file=ATOMScheduleFile,dir=ATOMSchedulesDir)
     
     # If process only sources which are in ATOM schedule
     if opt.a:
@@ -224,17 +230,6 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     print "I will process ",nbSrc," sources."
     print
     
-    ## If dry run, we exit here
-    #if DRYRUN:
-    #    return True
-
-
-    ## OBSOLETE:
-    ## Do it the dirty way, invoking os.system
-    #for i in range(nbSrc):
-    #    cmd='echo "./automaticLightCurve.py "'+str(src[i]+' | batch')
-    #    os.system(cmd)
-    
 
 
     if MULTITHREAD:
@@ -258,6 +253,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             
             # Set the options for automaticLightCurve
             autoOptions=[]
+            autoOptions.append("--config-file="+CONFIGFILE)
             if USECUSTOMTHRESHOLD:
                 autoOptions.append("-c")
             if DAILY:
@@ -287,25 +283,25 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 print cmd
 
         else:
-            # Or directly process everything sequentially
+            # Or directly process everything sequentially, using only 1 CPU
             # Loop on sources
             for i in range(nbSrc):
                 print 'Starting process ',i,' for source ',src[i]
                 # If source is in the ATOM schedule and DAILY is False, force the creation of a daily-binned light curve.
                 if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
                     tmpDAILY=True
-                    # We have to make sure that the corresponding weekly-binned data are also created first (needed for daily PNG figure)
+                    # We have to make sure that the corresponding weekly-binned data are created first (needed for daily PNG figure)
                     if DRYRUN is False:
-                        processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM)
+                        processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
                     else:
-                        print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+")"
+                        print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",configfile="+str(CONFIGFILE)+")"
                 else:
                     tmpDAILY=DAILY
 
                 if DRYRUN is False:
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM)
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
                 else:
-                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+")"
+                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",configfile="+str(CONFIGFILE)+")"
     
     return True
 
