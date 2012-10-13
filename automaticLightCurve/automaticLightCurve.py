@@ -124,6 +124,8 @@ class autoLC:
         self.lastAllskyFile   = self.allskyDir+"/"+self.config.get('InputFiles','LastAllskyFile')
         self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
         self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
+        self.maxz             = float(self.config.get('AlertTrigger','MaxZ'))
+        self.maxDec           = float(self.config.get('AlertTrigger','MaxDec'))
 
         today=datetime.date.today().strftime('%Y%m%d')
 
@@ -198,12 +200,12 @@ class autoLC:
                 month=yearmonth[-2:]
 
                 # Get date of first day of yearmonth at 00:00:00, in UNIX time (timetuple transform a datetime object in time object ???)
-                #                                              year       month         day  hour  minute  second  microsecond
-                yearmonthStart = time.mktime(datetime.datetime(int(year), int(month),     1,    0,      0,      0,           0).timetuple())
+                #                                                      year         month    day  hour   minute  second  microsecond
+                yearmonthStart     = time.mktime(datetime.datetime(int(year),   int(month),   1,     0,       0,      0,           0).timetuple())
                 if int(month)<12:
-                    yearmonthStop  = time.mktime(datetime.datetime(int(year), int(month)+1,   1,    0,      0,      0,           0).timetuple())
+                    yearmonthStop  = time.mktime(datetime.datetime(int(year), int(month)+1,   1,     0,       0,      0,           0).timetuple())
                 else:
-                    yearmonthStop  = time.mktime(datetime.datetime(int(year)+1,           1,   1,    0,      0,      0,           0).timetuple())
+                    yearmonthStop  = time.mktime(datetime.datetime(int(year)+1,          1,   1,     0,       0,      0,           0).timetuple())
             
                 # Convert these from UNIX time to MET
                 tmptstart = mjd2met(unixtime2mjd(yearmonthStart))
@@ -524,7 +526,7 @@ class autoLC:
         fluxErr   = countsErr/exposure     # approximate flux error in ph cm^-2 s^-1
 
         timeMjd=met2mjd(time)
-        # We can do this because t is NOT a list, but a numpy.array
+        # We can do this because time is NOT a list, but a numpy.array
         
         for i in range(len(time)):
             if exposure[i] != 0.:
@@ -670,7 +672,7 @@ class autoLC:
         fig.savefig(outfig)
 
 
-    def sendAlert(self,src,nomailall=False):
+    def sendAlert(self,src,dec,z,nomailall=False):
 
         # Import modules
         try:
@@ -708,6 +710,9 @@ class autoLC:
         # Catch the last flux point
         lastFlux=flux[-1:]
 
+        # Trigger condition on redshift and declination
+        CUTS = dec > self.maxDec or z > self.maxz
+
         if DEBUG:
             print
             print "self.threshold=",self.threshold
@@ -716,7 +721,7 @@ class autoLC:
 
         # Assess whether the trigger condition is met, looking at the last flux point
         if self.daily:
-            if lastFlux >= self.threshold or lastFluxWeekly >= self.threshold:
+            if (lastFlux >= self.threshold or lastFluxWeekly >= self.threshold):
                 SENDALERT=True
             else:
                 SENDALERT=False
@@ -725,7 +730,13 @@ class autoLC:
                 SENDALERT=True
             else:
                 SENDALERT=False
+
+        if SENDALERT and CUTS:
+            SENDALERT=False
     
+        if DEBUG:
+            print str(src),dec,z,self.maxDec,self.maxz,CUTS,SENDALERT
+
         # If trigger condition is met, we send a mail
         if SENDALERT:
             # Create the container email message.
@@ -951,7 +962,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         auto.createDAT(src)
         auto.createPNG(src,fglName,z)
         if mail is True:
-            auto.sendAlert(src,nomailall=test)
+            auto.sendAlert(src,dec,z,nomailall=test)
 
 
     else:
@@ -965,7 +976,7 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         #        auto.exposure(src,fglName),
         #        auto.createDAT(src),
         #        auto.createPNG(src,fglName,z),
-        #        auto.sendAlert(src)
+        #        auto.sendAlert(src,dec,z)
         #        ])
     
     return True
