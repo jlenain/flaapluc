@@ -38,7 +38,7 @@ def readATOMschedule(configfile='default.cfg'):
     """
 
     # Read configuration file
-    config = getConfig(configfile=CONFIGFILE)
+    config = getConfig(configfile=configfile)
 
     ATOMSchedulesDir = config.get('InputDirs','ATOMSchedulesDir')
     ATOMScheduleFile = datetime.date.today().strftime('%y%m%d')+'.sched'
