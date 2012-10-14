@@ -45,10 +45,8 @@ def createResultWebsite(configfile='default.cfg'):
 
     # Remove everything from PATH_TO_FILES, for a fresh start
     for thisfile in os.listdir(PATH_TO_FILES):
-        # we just keep the .htaccess file
-        if thisfile is not '.htaccess':
-            thisfilepath = os.path.join(PATH_TO_FILES,thisfile)
-            os.remove(thisfilepath)
+        thisfilepath = os.path.join(PATH_TO_FILES,thisfile)
+        os.remove(thisfilepath)
 
 
 
@@ -69,7 +67,7 @@ def createResultWebsite(configfile='default.cfg'):
 
 <div id="main">
 
-<h1>The Fermi/LAT light curve result page at LPNHE</h1>
+<h1>The Fermi/LAT automatic aperture photometry light curve result page</h1>
 
 <h2> Processing status</h2>
 
