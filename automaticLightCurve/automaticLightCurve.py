@@ -15,7 +15,6 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 import sys, os, asciidata, datetime, time, glob
 from numpy import *
 import pyfits
-#from multiprocessing import Process, Queue
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 
@@ -132,30 +131,22 @@ class autoLC:
 
         # Setting file names and directories
         if longTerm is True:
-            #self.allsky     = "/home/jlenain/data/fermi/allsky/allsky_30MeV_300GeV_diffuse_filtered_gti.fits"
             self.allsky = self.allskyFile
             if mergelongterm is False:
-                #self.workDir    = "/home/jlenain/data/fermi/data/automaticLightCurveOutput/longTerm/"+yearmonth
                 self.workDir    = self.baseOutDir+"/longTerm/"+yearmonth
             else:
-                #self.workDir    = "/home/jlenain/data/fermi/data/automaticLightCurveOutput/longTerm/merged"
                 self.workDir    = self.baseOutDir+"/longTerm/merged"
         else:
             # If lock files exist in the archive directory (e.g. if NASA servers are down), we do not do anything and exit
-            #photonLock="home/jlenain/fermi/archive/photon.lock"
             photonLock=self.archiveDir+"/photon.lock"
-            #spacecraftLock="/home/jlenain/fermi/archive/spacecraft.lock"
             spacecraftLock=self.archiveDir+"/spacecraft.lock"
             if os.path.isfile(photonLock) or os.path.isfile(spacecraftLock):
                 self.sendErrorMail(mailall=True)
                 sys.exit(10)
 
-            #self.allsky     = "/home/jlenain/data/fermi/allsky/allsky_last70days_30MeV_300GeV_diffuse_filtered.fits"
             self.allsky     = self.lastAllskyFile
-            #self.workDir    = "/home/jlenain/data/fermi/data/automaticLightCurveOutput/"+today
             self.workDir    = self.baseOutDir+"/"+today
 
-        #self.spacecraft = "/home/jlenain/data/fermi/allsky/allsky_SC00.fits"
         self.spacecraft = self.spacecraftFile
         if not os.path.isdir(self.workDir):
             os.makedirs(self.workDir)
@@ -169,10 +160,10 @@ class autoLC:
         self.zmax = 100. # degrees
         self.daily=daily
 
-        if not daily:
-            self.tbin = 7.*24.*60.*60. # seconds, weekly bins
+        if daily:
+            self.tbin =    24.*60.*60. # seconds, daily bins
         else:
-            self.tbin = 24.*60.*60. # seconds, daily bins
+            self.tbin = 7.*24.*60.*60. # seconds, weekly bins
 
         self.threshold = 1.e-6 # ph cm^-2 s^-1
         self.customThreshold=customThreshold
@@ -201,12 +192,12 @@ class autoLC:
                 month=yearmonth[-2:]
 
                 # Get date of first day of yearmonth at 00:00:00, in UNIX time (timetuple transform a datetime object in time object ???)
-                #                                                      year         month    day  hour   minute  second  microsecond
-                yearmonthStart     = time.mktime(datetime.datetime(int(year),   int(month),   1,     0,       0,      0,           0).timetuple())
+                #                                                        year         month   day   hour   minute  second  microsecond
+                yearmonthStart     = time.mktime(datetime.datetime(  int(year),   int(month),   1,     0,       0,      0,           0).timetuple())
                 if int(month)<12:
-                    yearmonthStop  = time.mktime(datetime.datetime(int(year), int(month)+1,   1,     0,       0,      0,           0).timetuple())
+                    yearmonthStop  = time.mktime(datetime.datetime(  int(year), int(month)+1,   1,     0,       0,      0,           0).timetuple())
                 else:
-                    yearmonthStop  = time.mktime(datetime.datetime(int(year)+1,          1,   1,     0,       0,      0,           0).timetuple())
+                    yearmonthStop  = time.mktime(datetime.datetime(int(year)+1,            1,   1,     0,       0,      0,           0).timetuple())
             
                 # Convert these from UNIX time to MET
                 tmptstart = mjd2met(unixtime2mjd(yearmonthStart))
@@ -232,12 +223,6 @@ class autoLC:
                 self.tstop  = missionStop
 
         # Mail recipients
-        #self.usualRecipients= ['Jean-Philippe Lenain <jlenain@in2p3.fr>',
-        #                       'Santiago Pita <pita@apc.univ-paris7.fr>',
-        #                       'Julien Lefaucheur <julien.lefaucheur@apc.univ-paris7.fr>',
-        #                       'Michael Punch <punch@in2p3.fr>',
-        #                       'Catherine Boisson <catherine.boisson@obspm.fr>'
-        #                       ]
         self.usualRecipients= getConfigList(self.config.get('MailConfig','UsualRecipients'))
         
         #self.testRecipients = ['Jean-Philippe Lenain <jlenain@in2p3.fr>']
@@ -292,10 +277,9 @@ class autoLC:
                             sys.exit(2)
                     return src[i],ra[i],dec[i],z[i],fglName[i]
             
-            # If we end up without any found source, print an error and exits
+            # If we end up without any found source, print out a WARNING
             print "WARNING Can't find your source "+str(mysrc)+" in the list of sources !"
             return None,None,None,None,None
-            #sys.exit(1)
         
         # Otherwise, return the whole list of parameters for all the sources
         else:
@@ -316,7 +300,6 @@ class autoLC:
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
-            #os.remove(outfile)
 
         filter['ra']=ra
         filter['dec']=dec
@@ -347,7 +330,6 @@ class autoLC:
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
-            #os.remove(outfile)
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
         maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.)"
@@ -360,7 +342,7 @@ class autoLC:
     def mergeGTIfiles(self,src,ra,dec):
         """
         Merge multiple GTI files when mergelongterm is True.
-        Uses gtselect.
+        Use gtselect.
         Assume the current workDir is longTerm/merged.
         """
 
@@ -384,15 +366,15 @@ class autoLC:
         if os.path.isfile(outfile):
             os.remove(outfile)
 
-        filter['ra']=ra
-        filter['dec']=dec
-        filter['rad']=self.roi
-        filter['emin']=self.emin
-        filter['emax']=self.emax
-        filter['tmin']=self.tstart
-        filter['tmax']=self.tstop
-        filter['zmax']=self.zmax
-        filter['evclass']=2
+        filter['ra']      = ra
+        filter['dec']     = dec
+        filter['rad']     = self.roi
+        filter['emin']    = self.emin
+        filter['emax']    = self.emax
+        filter['tmin']    = self.tstart
+        filter['tmax']    = self.tstop
+        filter['zmax']    = self.zmax
+        filter['evclass'] = 2
         filter.run()
 
 
@@ -411,7 +393,6 @@ class autoLC:
         # If modelfile already exists, we don't do anything
         if os.path.isfile(modelfile):
             return True
-            #os.remove(modelfile)
 
         try:
             import make2FGLxml
@@ -419,9 +400,7 @@ class autoLC:
             print "ERROR Can't import make2FGLxml."
             sys.exit(1)
         
-        #mymodel=make2FGLxml.srcList('./common/gll_psc_v07.fit',evfile,modelfile)
         mymodel=make2FGLxml.srcList(self.catalogFile,evfile,modelfile)
-        #mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source',self.templatesDir'/home/jlenain/data/fermi/2FGL/Templates')
         mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source',self.templatesDir)
 
 
@@ -440,15 +419,14 @@ class autoLC:
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
-            #os.remove(outfile)
 
-        evtbin['outfile']=outfile
-        evtbin['scfile']=self.spacecraft
-        evtbin['algorithm']='LC'
-        evtbin['tbinalg']='LIN'
-        evtbin['tstart']=self.tstart
-        evtbin['tstop']=self.tstop
-        evtbin['dtime']=self.tbin
+        evtbin['outfile']   = outfile
+        evtbin['scfile']    = self.spacecraft
+        evtbin['algorithm'] = 'LC'
+        evtbin['tbinalg']   = 'LIN'
+        evtbin['tstart']    = self.tstart
+        evtbin['tstop']     = self.tstop
+        evtbin['dtime']     = self.tbin
         evtbin.run()
 
 
@@ -456,7 +434,7 @@ class autoLC:
         """
         Compute exposure on source src, to add a flux column for the photometric light curve.
 
-        Warning: the input file is modified in place !
+        Warning: the input file is modified in place, with an additional exposure column added to the file !
         """
 
         if self.daily:
@@ -470,8 +448,7 @@ class autoLC:
         hdu=pyfits.open(infile)
         if hdu[1].header.get('TTYPE5')=='EXPOSURE':
             return True
-            #os.remove(outfile)
-
+ 
 
         scfile=self.spacecraft
         irfs='P7SOURCE_V6'
@@ -504,7 +481,6 @@ class autoLC:
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
-            #os.remove(outfile)
 
         import pyfits
         try:
@@ -513,8 +489,6 @@ class autoLC:
             print 'Exception: can not open file '+infile
             raise
         data=hdu[1].data
-        #NOT USED ANYWHERE:
-        #duration=data.field('TIMEDEL')[0]/3600./24. # sec -> days
 
 
         file=open(outfile,'w')
@@ -536,51 +510,6 @@ class autoLC:
         file.close()
 
 
-    def mergeLTDAT(self,src):
-        """
-        OBSOLETE Not used any more
-        
-        Merge the data files for the month-by-month long-term light curves
-        """
-        
-        # TO BE CHANGED !!!
-        startyearmonth = '200808'
-        # Hardcoded !!! Beurk, not good, ugly, bad !!!
-
-        thisyearmonth  = datetime.date.today().strftime('%Y%m')
-        thisyear       = thisyearmonth[:-2]
-        thismonth      = thisyearmonth[-2:]
-        startyear      = startyearmonth[:-2]
-        startmonth     = startyearmonth[-2:]
-
-        finalfile=open(self.workDir+'/'+str(src)+'_lc.dat','w')
-        # Write header
-        finalfile.write("# Time[MET]\tTime[MJD]\tFlux[ph.cm^-2.s^-1]\tFluxError[ph.cm^-2.s^-1]\n")
-
-        # Loop on month from 2008/08 to this month
-        for year in range(int(startyear),int(thisyear)+1):
-            for month in range(1,13):
-                # To retrieve the correct results directories, 'month' should be made of 2 digits
-                month='%02d'%month
-                tmpyearmonth=str(year)+str(month)
-                if (year==int(startyear) and int(month) < int(startmonth)) or (year==int(thisyear) and int(month) > int(thismonth)):
-                    continue
-                #tmpworkdir="/home/jlenain/data/fermi/data/automaticLightCurveOutput/longTerm/"+str(year)+str(month)
-                tmpworkdir=self.baseOutDir+"/longTerm/"+str(year)+str(month)
-                tmpfile=tmpworkdir+'/'+str(src)+'_lc.dat'
-                try:
-                    f=open(tmpfile)
-                    # Skip header of each individual file
-                    f.next()
-                    for line in f:
-                        finalfile.write(line)
-                except IOError:
-                    pass
-        finalfile.close()
-
-        return True
-        
-        
 
         
     def createPNG(self,src,fglName,z):
@@ -598,6 +527,7 @@ class autoLC:
             outfig=self.workDir+'/'+str(src)+'_lc.png'
 
         data    = asciidata.open(infile)
+        # the times are already read as MJD, cf createDAT function.
         timelc  = data[1].tonumpy()
         flux    = data[2].tonumpy()
         fluxErr = data[3].tonumpy()
@@ -605,6 +535,7 @@ class autoLC:
 
         if self.daily:
             dataWeekly    = asciidata.open(infileWeekly)
+            # the times are already read as MJD, cf createDAT function.
             timeWeekly    = dataWeekly[1].tonumpy()
             fluxWeekly    = dataWeekly[2].tonumpy()
             fluxErrWeekly = dataWeekly[3].tonumpy()
@@ -622,7 +553,6 @@ class autoLC:
         else:
             title=title+' (z='+str(z)+')'
 
-        #ax.set_title(title,size='small')
         ax.set_title(title)
 
         
@@ -631,9 +561,6 @@ class autoLC:
         ax.set_ylabel('F (%.0f MeV-%.0f GeV) (x 10^-6 ph cm^-2 s^-1)'%(self.emin,self.emax/1000.))
 
         day=24.*60.*60.
-        # OBSOLETE: the times are already read as MJD, cf createDAT function.
-        #timelc = met2mjd(timelc)  # Conversion MET -> MJD
-        # We can do this because t is NOT a list, but a numpy.array
 
         # Make the x-axis ticks shifted by some value
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
@@ -669,7 +596,7 @@ class autoLC:
         # Don't show the figure in batch mode
         if not BATCH:
             show()
-        ## Save the figure
+        # Save the figure
         fig.savefig(outfig)
 
 
@@ -745,7 +672,7 @@ class autoLC:
             msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
             sender = self.mailSender
             
-            # To whom the mail should be sent (cf. class constructor)
+            # To whom the mail should be sent (cf. __init__ function of the class)
             if nomailall is False:
                 recipient = self.usualRecipients
             else:
@@ -784,8 +711,7 @@ class autoLC:
             txt = MIMEText(mailtext)
             msg.attach(txt)
             
-            # Open the files in binary mode.  Let the MIMEImage class automatically
-            # guess the specific image type.
+            # Open the files in binary mode.  Let the MIMEImage class automatically guess the specific image type.
             fp = open(pngFig, 'rb')
             img = MIMEImage(fp.read())
             fp.close()
@@ -863,7 +789,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,configfile='default.cfg'):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,configfile='default.cfg'):
     """
     Process a given source.
     """
@@ -880,78 +806,47 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
     src,ra,dec,z,fglName=auto.readSourceList(mysrc)
 
 
-    if q==None:
+    if longTerm is True and mergelongterm is True:
+
+        # Remove all the old merged file for this source, before reprocessing the merged data
+        for file in glob.glob(auto.workDir+'/'+src+'*'):
+            os.remove(file)
 
 
-        if longTerm is True and mergelongterm is True:
+        # TO BE CHANGED !!!
+        startyearmonth = '200808'
+        # Hardcoded !!! Beurk, not good, ugly, bad !!!
 
-            # Remove all the old merged file for this source, before reprocessing the merged data
-            for file in glob.glob(auto.workDir+'/'+src+'*'):
-                os.remove(file)
-
-
-            # TO BE CHANGED !!!
-            startyearmonth = '200808'
-            # Hardcoded !!! Beurk, not good, ugly, bad !!!
-
-            thisyearmonth  = datetime.date.today().strftime('%Y%m')
-            thisyear       = thisyearmonth[:-2]
-            thismonth      = thisyearmonth[-2:]
-            startyear      = startyearmonth[:-2]
-            startmonth     = startyearmonth[-2:]
+        thisyearmonth  = datetime.date.today().strftime('%Y%m')
+        thisyear       = thisyearmonth[:-2]
+        thismonth      = thisyearmonth[-2:]
+        startyear      = startyearmonth[:-2]
+        startmonth     = startyearmonth[-2:]
 
 
-            # First make sure that all the month-by-month long-term data have been processed
-            #
-            # Loop on month from 2008/08 to this month
-            for year in range(int(startyear),int(thisyear)+1):
-                for month in range(1,13):
-                    # To retrieve the correct results directories, 'month' should be made of 2 digits
-                    month='%02d'%month
-                    tmpyearmonth=str(year)+str(month)
-                    if (year==int(startyear) and int(month) < int(startmonth)) or (year==int(thisyear) and int(month) > int(thismonth)):
-                        continue
+        # First make sure that all the month-by-month long-term data have been processed
+        #
+        # Loop on month from 2008/08 to this month
+        for year in range(int(startyear),int(thisyear)+1):
+            for month in range(1,13):
+                # To retrieve the correct results directories, 'month' should be made of 2 digits
+                month='%02d'%month
+                tmpyearmonth=str(year)+str(month)
+                if (year==int(startyear) and int(month) < int(startmonth)) or (year==int(thisyear) and int(month) > int(thismonth)):
+                    continue
 
-                    # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
-                    if year==int(thisyear) and int(month)==int(thismonth):
-                        tmpworkdir="/home/fermi/data/automaticLightCurveOutput/longTerm/"+str(year)+str(month)
-                        for file in glob.glob(tmpworkdir+'/'+src+'*'):
-                            os.remove(file)
+                # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
+                if year==int(thisyear) and int(month)==int(thismonth):
+                    tmpworkdir="/home/fermi/data/automaticLightCurveOutput/longTerm/"+str(year)+str(month)
+                    for file in glob.glob(tmpworkdir+'/'+src+'*'):
+                        os.remove(file)
 
-                    processSrc(mysrc=src,useThresh=useThresh,daily=False,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,configfile=configfile)
+                processSrc(mysrc=src,useThresh=useThresh,daily=False,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,configfile=configfile)
 
-                    
+                
 
-            ## OBSOLETE
-            ## Then merge the DAT files together and create the PNG figure. No mail is sent here.
-            #auto.mergeLTDAT(src)
-            #auto.createPNG(src,fglName,z)
-
-
-            # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT and createPNG. No mail is sent here.
-            auto.mergeGTIfiles(src,ra,dec)
-            if fglName is not None:
-                auto.createXML(src)
-                mygamma=None
-            else:
-                mygamma=-2.5
-                print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
-            auto.photoLC(src)
-            auto.exposure(src,fglName,gamma=mygamma)
-            auto.createDAT(src)
-            auto.createPNG(src,fglName,z)
-            # Exit here
-            return True
-
-
-
-        # When mergelongterm is False, we do the following:
-        auto.selectSrc(src,ra,dec)
-        auto.makeTime(src,ra,dec)
-        # If we are in --long-term mode, but in --merge-long-term mode, we can stop here, since the --merge-long-term mode then starts at the mergeGTIfiles level
-        if longTerm is True:
-            return True
-
+        # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT and createPNG. No mail is sent here.
+        auto.mergeGTIfiles(src,ra,dec)
         if fglName is not None:
             auto.createXML(src)
             mygamma=None
@@ -962,23 +857,31 @@ def processSrc(mysrc=None,q=None,useThresh=False,daily=False,mail=True,longTerm=
         auto.exposure(src,fglName,gamma=mygamma)
         auto.createDAT(src)
         auto.createPNG(src,fglName,z)
-        if mail is True:
-            auto.sendAlert(src,dec,z,nomailall=test)
+        # Exit here
+        return True
 
 
+
+    # When mergelongterm is False, we do the following:
+    auto.selectSrc(src,ra,dec)
+    auto.makeTime(src,ra,dec)
+    # If we are in --long-term mode, but not in --merge-long-term mode, we can stop here, since the --merge-long-term mode then starts at the mergeGTIfiles level
+    if longTerm is True:
+        return True
+
+    if fglName is not None:
+        auto.createXML(src)
+        mygamma=None
     else:
-        print "The MULTITHREAD flag is deprecated. Aborting..."
-        return False
-        #q.put([
-        #        auto.selectSrc(src,ra,dec),
-        #        auto.makeTime(src,ra,dec),
-        #        auto.createXML(src),
-        #        auto.photoLC(src),
-        #        auto.exposure(src,fglName),
-        #        auto.createDAT(src),
-        #        auto.createPNG(src,fglName,z),
-        #        auto.sendAlert(src,dec,z)
-        #        ])
+        mygamma=-2.5
+        print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
+    auto.photoLC(src)
+    auto.exposure(src,fglName,gamma=mygamma)
+    auto.createDAT(src)
+    auto.createPNG(src,fglName,z)
+    if mail is True:
+        auto.sendAlert(src,dec,z,nomailall=test)
+
     
     return True
 
@@ -989,7 +892,7 @@ def main(argv=None):
     """
 
     # options parser:
-    helpmsg="""%prog [options] <source> [<optinal YYYYMM>]
+    helpmsg="""%prog [options] <source> [<optional YYYYMM>]
 
 This is the version $Id$
 

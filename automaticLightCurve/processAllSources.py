@@ -13,7 +13,6 @@ from optparse import OptionParser
 from ConfigParser import ConfigParser
 
 # Flags
-MULTITHREAD=False
 PARALLEL=True
 
 # Import custom module
@@ -233,76 +232,61 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     
 
 
-    if MULTITHREAD:
-        print "The MULTITHREAD flag is deprecated. Aborting..."
-        return False
+    # Use the shell command "parallel"
+    if PARALLEL:
+        options=[]
+        
+        # Set the options for automaticLightCurve
+        autoOptions=[]
+        autoOptions.append("--config-file="+CONFIGFILE)
+        if USECUSTOMTHRESHOLD:
+            autoOptions.append("-c")
+        if DAILY:
+            autoOptions.append("-d")
+        if MAIL is False:
+            autoOptions.append("-n")
+        if TEST:
+            autoOptions.append("-t")
+        if LONGTERM:
+            autoOptions.append("-l")
+        if MERGELONGTERM:
+            autoOptions.append("-m")
 
-        ## Use the multiprocessing Python module
-        #from multiprocessing import Process, Queue
-        #q=Queue()
-        #proc=[]
-        #for i in range(nbSrc):
-        #    print 'Starting proc ',i,' for source ',src[i]
-        #    proc.append(Process(target=processSrc, args=(src[i],q)))
-        #    proc[i].start()
+        # Loop on sources
+        for i in range(nbSrc):
+            # If source is in ATOM schedule and DAILY is False, force the creation of a daily-binned light curve
+            if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
+                # Put the -d option only for this source
+                options.append('\"nice -n 24 ./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
+            else:
+                options.append('\"nice -n 24 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
+        cmd="parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
+        # use --dry-run just to test the parallel command
+        if DRYRUN is False:
+            os.system(cmd)
+        else:
+            print cmd
 
     else:
-
-        # Or use the shell command "parallel"
-        if PARALLEL:
-            options=[]
-            
-            # Set the options for automaticLightCurve
-            autoOptions=[]
-            autoOptions.append("--config-file="+CONFIGFILE)
-            if USECUSTOMTHRESHOLD:
-                autoOptions.append("-c")
-            if DAILY:
-                autoOptions.append("-d")
-            if MAIL is False:
-                autoOptions.append("-n")
-            if TEST:
-                autoOptions.append("-t")
-            if LONGTERM:
-                autoOptions.append("-l")
-            if MERGELONGTERM:
-                autoOptions.append("-m")
-
-            # Loop on sources
-            for i in range(nbSrc):
-                # If source is in ATOM schedule and DAILY is False, force the creation of a daily-binned light curve
-                if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
-                    # Put the -d option only for this source
-                    options.append('\"nice -n 24 ./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
-                else:
-                    options.append('\"nice -n 24 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
-            cmd="parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
-            # use --dry-run just to test the parallel command
-            if DRYRUN is False:
-                os.system(cmd)
-            else:
-                print cmd
-
-        else:
-            # Or directly process everything sequentially, using only 1 CPU
-            # Loop on sources
-            for i in range(nbSrc):
-                print 'Starting process ',i,' for source ',src[i]
-                # If source is in the ATOM schedule and DAILY is False, force the creation of a daily-binned light curve.
-                if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
-                    tmpDAILY=True
-                    # We have to make sure that the corresponding weekly-binned data are created first (needed for daily PNG figure)
-                    if DRYRUN is False:
-                        processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
-                    else:
-                        print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",configfile="+str(CONFIGFILE)+")"
-                else:
-                    tmpDAILY=DAILY
-
+        # Or directly process everything sequentially, using only 1 CPU
+        # Loop on sources
+        for i in range(nbSrc):
+            print 'Starting process ',i,' for source ',src[i]
+            # If source is in the ATOM schedule and DAILY is False, force the creation of a daily-binned light curve.
+            if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
+                tmpDAILY=True
+                # We have to make sure that the corresponding weekly-binned data are created first (needed for daily PNG figure)
                 if DRYRUN is False:
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
                 else:
-                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",configfile="+str(CONFIGFILE)+")"
+                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",configfile="+str(CONFIGFILE)+")"
+            else:
+                tmpDAILY=DAILY
+
+            if DRYRUN is False:
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
+            else:
+                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",configfile="+str(CONFIGFILE)+")"
     
     return True
 
