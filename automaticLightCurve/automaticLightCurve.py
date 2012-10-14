@@ -124,6 +124,7 @@ class autoLC:
         self.lastAllskyFile   = self.allskyDir+"/"+self.config.get('InputFiles','LastAllskyFile')
         self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
         self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
+        self.url              = self.config.get('OutputDirs','URL')
         self.maxz             = float(self.config.get('AlertTrigger','MaxZ'))
         self.maxDec           = float(self.config.get('AlertTrigger','MaxDec'))
 
@@ -778,7 +779,7 @@ class autoLC:
 
       Cheers,
       The Fermi/LAT robot for automatic aperture photometry light curve.
-""" %('http://lpnhess.in2p3.fr/~jlenain/protected/hess/fermi/photolc/index.html')
+""" %(self.url)
  
             txt = MIMEText(mailtext)
             msg.attach(txt)
