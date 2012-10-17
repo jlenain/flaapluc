@@ -116,12 +116,6 @@ class autoLC:
     Main class, for a given of source.
     """
 
-    def getConfig(self,configfile='./default.cfg'):
-        self.config = ConfigParser()
-        self.config.readfp(open(configfile))
-        return self.config
-
-
     def __init__(self,file='listSources.txt',customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,configfile='default.cfg'):
         
         self.config           = self.getConfig(configfile=configfile)
@@ -242,6 +236,15 @@ class autoLC:
         self.testRecipients = getConfigList(self.config.get('MailConfig','TestRecipients'))
         self.mailSender     = self.config.get('MailConfig','MailSender')
     
+
+
+    def getConfig(self,configfile='./default.cfg'):
+        """Get configuration from a configuration file."""
+        self.config = ConfigParser()
+        self.config.readfp(open(configfile))
+        return self.config
+
+
 
     def readSourceList(self,mysrc=None):
         """
@@ -891,7 +894,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         #
         # Loop on month from 2008/08 to this month
         for year in range(int(startyear),int(thisyear)+1):
-            for month in range(1,13):
+            for month in range(1,12+1):
                 # To retrieve the correct results directories, 'month' should be made of 2 digits
                 month='%02d'%month
                 tmpyearmonth=str(year)+str(month)
@@ -900,7 +903,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
 
                 # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
                 if year==int(thisyear) and int(month)==int(thismonth):
-                    tmpworkdir=self.baseOutDir+"/longTerm/"+str(year)+str(month)
+                    tmpworkdir=auto.baseOutDir+"/longTerm/"+str(year)+str(month)
                     for file in glob.glob(tmpworkdir+'/'+src+'*'):
                         os.remove(file)
 

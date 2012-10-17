@@ -130,6 +130,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
     parser.add_option("--dry-run", action="store_true", dest="dryRun", default=False,
                       help='simulate only what the pipeline would do, forcing the use of ATOM sources, without actually processing any Fermi/LAT event. This is useful to see if the master list of sources is up-to-date with the ATOM sources in the current schedule.')
+    parser.add_option("--max-cpu", default=1, dest="MAXCPU", metavar="<MAXCPU>",
+                      help="in conjonction with --merge-long-term, defines the number of CPU to use for merging long-term data. Using '%default' by default.")
     parser.add_option("--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
 
@@ -186,8 +188,11 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     # If merge long term light curves
     if opt.m:
         MERGELONGTERM=True
-        # Force the script to process only one source at a time
-        MAXCPU=1
+        if int(opt.MAXCPU) != 1:
+            MAXCPU=int(opt.MAXCPU)
+        else:
+            # Force the script to process only one source at a time
+            MAXCPU=1
     else:
         MERGELONGTERM=False
         # Otherwise we use 6 CPU, and let 2 CPU free for other processes
