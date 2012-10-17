@@ -1,6 +1,8 @@
 #! /usr/bin/python
 
 """
+FLaapLUC: Fermi/LAT automatic aperture photometry Light CUrve
+
 Fermi/LAT light curve pipeline: create website for presenting results.
 
 Highly inspired from Marcus Hauser's script 'create-result_website.py' for ATOM ADRAS.
@@ -58,7 +60,7 @@ def createResultWebsite(configfile='default.cfg'):
           "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-<title>Fermi/LAT light curve results</title>
+<title>FLaapLUC results</title>
   <meta name="ROBOTS" content="NOINDEX, NOFOLLOW">
   <!-- <link rel="stylesheet" href="../sty.css" type="text/css"> -->
 </head>
@@ -67,7 +69,7 @@ def createResultWebsite(configfile='default.cfg'):
 
 <div id="main">
 
-<h1>The Fermi/LAT automatic aperture photometry light curve result page</h1>
+<h1>The FLaapLUC (Fermi/LAT automatic aperture photometry Light CUrve) result page</h1>
 
 <h2> Processing status</h2>
 
@@ -80,7 +82,7 @@ def createResultWebsite(configfile='default.cfg'):
 
 Light curves:
 <ul>
-  <li>Horizontal red dotted lines in the lightcurves show the thresholds fixed for each source. By default, this is set to 1.e-6 ph cm^-2 s^-1.
+  <li>Horizontal red dotted lines in the lightcurves show the thresholds fixed for each source. By default, this is set to 10<sup>-6</sup> ph cm<sup>-2</sup> s<sup>-1</sup>.
 </ul>
 
 All data products are available from two sources: 
@@ -212,7 +214,7 @@ def main(argv=None):
     Main procedure
     """
 
-    helpmsg="""create Fermi/LAT light curve result webpage.
+    helpmsg="""create FLaapLUC result webpage.
 """
     
     parser = OptionParser(version="%prog:  $Id$",

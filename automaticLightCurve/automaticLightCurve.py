@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 """
+FLaapLUC (Fermi/LAT automatic aperture photometry Light CUrve)
+
 Automatic generation of aperture photometric light curves of Fermi sources, for a given source.
 
 No likelihood fit is performed, the results solely rely on the 2FGL spectral fits.
@@ -93,13 +95,25 @@ def unixtime2mjd(unixtime):
     return result
 
 
+def zaAtCulmination(dec):
+    """
+    Returns the zenith angle of a source at culmination, for the H.E.S.S. site.
+    """
+    siteLat = -23.27167 # latitude of H.E.S.S. site in degree
+    return abs(dec-siteLat)
+
+
+
 def getConfigList(option,sep=','):
     return [ stuff for stuff in option.split(sep) ]
 
 
 class autoLC:
     """
-    Automatic aperture photometry light curve generation, for a list of sources
+    FLaapLUC
+
+    Automatic aperture photometry light curve generation.
+    Main class, for a given of source.
     """
 
     def getConfig(self,configfile='./default.cfg'):
@@ -124,8 +138,9 @@ class autoLC:
         self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
         self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
         self.url              = self.config.get('OutputDirs','URL')
-        self.maxz             = float(self.config.get('AlertTrigger','MaxZ'))
-        self.maxDec           = float(self.config.get('AlertTrigger','MaxDec'))
+        # Read maxz and maxZA as lists
+        self.maxz             = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZ'  ))]
+        self.maxZA            = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZA'))]
 
         today=datetime.date.today().strftime('%Y%m%d')
 
@@ -222,10 +237,8 @@ class autoLC:
                 self.tstart = missionStart
                 self.tstop  = missionStop
 
-        # Mail recipients
+        # Mail sender and recipients
         self.usualRecipients= getConfigList(self.config.get('MailConfig','UsualRecipients'))
-        
-        #self.testRecipients = ['Jean-Philippe Lenain <jlenain@in2p3.fr>']
         self.testRecipients = getConfigList(self.config.get('MailConfig','TestRecipients'))
         self.mailSender     = self.config.get('MailConfig','MailSender')
     
@@ -504,8 +517,8 @@ class autoLC:
         # We can do this because time is NOT a list, but a numpy.array
         
         for i in range(len(time)):
+            # Exposure can be 0 if longTerm=True and TSTOP in photon file > TSTOP in spacecraft file.
             if exposure[i] != 0.:
-                # Exposure can be 0 if longTerm=True and TSTOP in photon file > TSTOP in spacecraft file.
                 file.write(str(time[i])+"\t"+str(timeMjd[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
 
@@ -600,7 +613,56 @@ class autoLC:
         fig.savefig(outfig)
 
 
-    def sendAlert(self,src,dec,z,nomailall=False):
+    def killTrigger(self,ra,dec,z):
+        """
+        Defines cuts on (Ra,Dec,z) before assessing whether a mail alert shoudl be sent for a source which flux is above the trigger threshold.
+        We cut on a combination (z, ZenithAngle), using a bit mask.
+
+        @todo: Introduce an additional cut on Gal latitude ?
+        """
+
+        # Numpy array
+        # combination of acceptable
+        #                        z         ZA@culmination
+        grid = array(zip(self.maxz,self.maxZA))
+    
+        try:
+            # import Kapteyn module for WCS
+            from kapteyn import wcs
+        except:
+            print "ERROR cutsTrigger: Can't import kapteyn.wcs module."
+            sys.exit(1)
+
+
+        # Equatorial coordinates -> Galactic coordinates transformation
+        equat2gal = wcs.Transformation((wcs.equatorial, wcs.fk5,'J2000.0'),wcs.galactic)
+    
+        # WCS module needs a numpy matrix for coord transformation
+        srcradec=matrix(([ra],[dec]))
+        srcGalCoord=equat2gal(srcradec)
+        # Retrieve the Galactic latitude
+        srcGalLat=srcGalCoord[(1,0)]
+        
+        zaAtCulmin=zaAtCulmination(dec)
+    
+
+        # Mask on both (z, ZA at culmin)
+        #         z column              ZA column
+        msk = (z<grid[:,0])&(zaAtCulmin<grid[:,1])
+    
+        # the 'return' below is a bit counter-intuitive. It answers the question 'Should we kill an imminent mail alert ?', i.e. if a source has the last flux point above the flux threshold, does it also fulfill the requirements on both z (not too far away) and zenith angle (not too low in the sky) ? So if an alert should definitely be sent, this function returns 'False' !
+
+        # if the mask has at least one 'True' element, we should send an alert
+        if True in msk:
+            # print 'An alert should be triggered !'
+            return False
+        else:
+            # print 'No alert triggered'
+            return True
+        
+
+
+    def sendAlert(self,src,ra,dec,z,nomailall=False):
 
         # Import modules
         try:
@@ -638,32 +700,31 @@ class autoLC:
         # Catch the last flux point
         lastFlux=flux[-1:]
 
-        # Trigger condition on redshift and declination
-        CUTS = dec > self.maxDec or z > self.maxz
-
         if DEBUG:
             print
             print "self.threshold=",self.threshold
             print "lastFlux=",lastFlux
             print
 
-        # Assess whether the trigger condition is met, looking at the last flux point
-        if self.daily:
-            if (lastFlux >= self.threshold or lastFluxWeekly >= self.threshold):
-                SENDALERT=True
-            else:
-                SENDALERT=False
-        else:
-            if lastFlux >= self.threshold:
-                SENDALERT=True
-            else:
-                SENDALERT=False
+        KILLTRIGGER = self.killTrigger(ra,dec,z)
 
-        if SENDALERT and CUTS:
+        if not KILLTRIGGER:
+            # Assess whether the trigger condition is met, looking at the last flux point
+            if self.daily:
+                if (lastFlux >= self.threshold or lastFluxWeekly >= self.threshold):
+                    SENDALERT=True
+                else:
+                    SENDALERT=False
+            else:
+                if lastFlux >= self.threshold:
+                    SENDALERT=True
+                else:
+                    SENDALERT=False
+        else:
             SENDALERT=False
-    
+
         if DEBUG:
-            print str(src),dec,z,self.maxDec,self.maxz,CUTS,SENDALERT
+            print str(src),dec,z,self.maxZA,self.maxz,KILLTRIGGER,SENDALERT
 
         # If trigger condition is met, we send a mail
         if SENDALERT:
@@ -686,6 +747,8 @@ class autoLC:
             msg.epilogue = ''
             
             mailtext="""
+     FLaapLUC (Fermi/LAT automatic aperture photometry Light CUrve) report
+
      *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
      """%(self.emin,self.emax/1000.,src,self.threshold)
@@ -705,7 +768,7 @@ class autoLC:
       For more information, please contact J.-P. Lenain <jlenain@in2p3.fr>.
 
       Cheers,
-      The Fermi/LAT robot for automatic aperture photometry light curve.
+      FLaapLUC.
 """ %(self.url)
  
             txt = MIMEText(mailtext)
@@ -771,7 +834,7 @@ class autoLC:
         For more information, please contact J.-P. Lenain <jlenain@in2p3.fr>.
 
         Cheers,
-        The Fermi/LAT robot for automatic aperture photometry light curve.
+        FLaapLUC.
 """
  
         txt = MIMEText(mailtext)
@@ -837,7 +900,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
 
                 # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
                 if year==int(thisyear) and int(month)==int(thismonth):
-                    tmpworkdir="/home/fermi/data/automaticLightCurveOutput/longTerm/"+str(year)+str(month)
+                    tmpworkdir=self.baseOutDir+"/longTerm/"+str(year)+str(month)
                     for file in glob.glob(tmpworkdir+'/'+src+'*'):
                         os.remove(file)
 
@@ -880,7 +943,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.createDAT(src)
     auto.createPNG(src,fglName,z)
     if mail is True:
-        auto.sendAlert(src,dec,z,nomailall=test)
+        auto.sendAlert(src,ra,dec,z,nomailall=test)
 
     
     return True
