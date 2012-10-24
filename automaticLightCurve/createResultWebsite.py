@@ -111,13 +111,14 @@ include all data points.
 <tr>
 	<th rowspan="2">object name<br>(link to SIMBAD)</th>
 	<th rowspan="2">RA / Dec (degrees)</th>
-	<th colspan="2" style='background-color:#e7e5bc;'>most recent data</th>
+	<th colspan="3" style='background-color:#e7e5bc;'>most recent data</th>
 
 	<th colspan="2">long-term data</th>
 </tr>
 <tr>
 	<th style='background-color:#e7e5bc;'>LC</th>
 	<th style='background-color:#e7e5bc;'>ASCII data</th>
+	<th style='background-color:#e7e5bc;'>(daily ASCII data)</th>
 
 	<th>LC</th>
 	<th>ASCII data</th>
@@ -132,11 +133,12 @@ include all data points.
     
     for i in range(len(src)):
 
-        plotname      = src[i] + '_lc.png'
-        dailyplotname = src[i] + '_daily_lc.png'
-        asciiname     = src[i] + '_lc.dat'
-        ltplotname    = 'lt_'+src[i] + '_lc.png'
-        ltasciiname   = 'lt_'+src[i] + '_lc.dat'
+        plotname       = src[i] + '_lc.png'
+        dailyplotname  = src[i] + '_daily_lc.png'
+        asciiname      = src[i] + '_lc.dat'
+        dailyasciiname = src[i] + '_daily_lc.dat'
+        ltplotname     = 'lt_'+src[i] + '_lc.png'
+        ltasciiname    = 'lt_'+src[i] + '_lc.dat'
         
         # copy files from WORKDIR to PATH_TO_FILES
         if os.path.isfile(WORKDIR+dailyplotname):
@@ -149,6 +151,9 @@ include all data points.
         if os.path.isfile(WORKDIR+asciiname):
             shutil.copyfile( WORKDIR+asciiname,
                              PATH_TO_FILES + asciiname)
+        if os.path.isfile(WORKDIR+dailyasciiname):
+            shutil.copyfile( WORKDIR+dailyasciiname,
+                             PATH_TO_FILES + dailyasciiname)
         if os.path.isfile(WORKDIRLT+plotname):
             shutil.copyfile( WORKDIRLT+plotname,
                              PATH_TO_FILES + ltplotname)
@@ -172,6 +177,12 @@ include all data points.
         else:
             f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (plotname) )
         f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s"> data </a></td>\n' % (asciiname) )
+
+        if os.path.isfile(PATH_TO_FILES + dailyasciiname):
+            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">data</a>(daily)</td>\n' % (dailyasciiname) )
+        else:
+            f1.write( '    <td style="background-color:#e7e5bc;"></td>\n')
+            
         
         # long-term data
         f1.write( '    <td> <a href="%s">PNG</a></td>\n' % (ltplotname) )
