@@ -165,8 +165,8 @@ class autoLC:
         # Setting default parameters
         self.roi  = 1.   # degrees (http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html: "For aperture photometry we select a very small aperture (rad=1 degree), because we are not fitting the background.")
         self.emin = 1.e2 # E min
-        self.emax = 1.e5 # E max
-        self.zmax = 105. # degrees
+        self.emax = 3.e5 # E max
+        self.zmax = 100. # degrees
         self.daily=daily
 
         if daily:
