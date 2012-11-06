@@ -733,7 +733,7 @@ class autoLC:
         if SENDALERT:
             # Create the container email message.
             msg = MIMEMultipart()
-            msg['Subject'] = 'Fermi/LAT flare alert on %s' % src
+            msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s' % src
             sender = self.mailSender
             
             # To whom the mail should be sent (cf. __init__ function of the class)
@@ -816,7 +816,7 @@ class autoLC:
 
         # Create the container email message.
         msg = MIMEMultipart()
-        msg['Subject'] = 'Fermi/LAT automatic light curve ERROR'
+        msg['Subject'] = '[FLaapLUC] ERROR Fermi/LAT automatic light curve'
         sender = self.mailSender
             
         if mailall is True:
