@@ -1,2 +1,5 @@
-- *DONE* Put the output in a directory YEAR-MONTH-DAY, to keep the results for more than 1 day. 
-- *DONE* Keep a long-term LC for each object, updating it with the new generated LC, each day. Try to merge the 2 FITS files and avoid any duplication of entries.
+- Add a flagging system for sources which already triggered alerts the last days, to avoid having almost same alerts for a few days in a row.
+- Implement Franceschini et al's EBL model to have nice evolutive cuts on the alerts based on tau(z) ? I personally don't really like the idea, this would make the pipeline model-dependent...
+
+Author: J.-P. Lenain <mailto:jlenain@in2p3.fr>
+Last modification: $Id$
