@@ -977,7 +977,7 @@ Use '-h' to get the help message
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
-                      help='generate a long term light curve, for one given month (defaulted to False). With this option, one should provide a source name as usual, but also a month for zhich the data should be processed, in the format YYYYMM.')
+                      help='generate a long term light curve, for one given month (defaulted to False). With this option, one should provide a source name as usual, but also a month for which the data should be processed, in the format YYYYMM.')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
                       help='merge the month-by-month long-term light curves together. If those do not exist, they will be created on the fly.')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
