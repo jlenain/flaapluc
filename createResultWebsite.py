@@ -111,14 +111,14 @@ include all data points.
 <tr>
 	<th rowspan="2">object name<br>(link to SIMBAD)</th>
 	<th rowspan="2">RA / Dec (degrees)</th>
-	<th colspan="3" style='background-color:#e7e5bc;'>most recent data</th>
+	<th colspan="3" style='background-color:#ccccff;'>most recent data</th>
 
 	<th colspan="2">long-term data</th>
 </tr>
 <tr>
-	<th style='background-color:#e7e5bc;'>LC</th>
-	<th style='background-color:#e7e5bc;'>ASCII data</th>
-	<th style='background-color:#e7e5bc;'>(daily ASCII data)</th>
+	<th style='background-color:#ccccff;'>LC</th>
+	<th style='background-color:#ccccff;'>ASCII data</th>
+	<th style='background-color:#ccccff;'>(daily ASCII data)</th>
 
 	<th>LC</th>
 	<th>ASCII data</th>
@@ -173,15 +173,15 @@ include all data points.
         # most recent data
         # link the daily/weekly plot, if we have one (i.e. if the source was observed with ATOM last night)
         if os.path.isfile(PATH_TO_FILES + dailyplotname):
-            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a>(daily+weekly)</td>\n' % (dailyplotname) )
+            f1.write( '    <td style="background-color:#ccccff;"> <a href="%s">PNG</a>(daily+weekly)</td>\n' % (dailyplotname) )
         else:
-            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">PNG</a></td>\n' % (plotname) )
-        f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s"> data </a></td>\n' % (asciiname) )
+            f1.write( '    <td style="background-color:#ccccff;"> <a href="%s">PNG</a></td>\n' % (plotname) )
+        f1.write( '    <td style="background-color:#ccccff;"> <a href="%s"> data </a></td>\n' % (asciiname) )
 
         if os.path.isfile(PATH_TO_FILES + dailyasciiname):
-            f1.write( '    <td style="background-color:#e7e5bc;"> <a href="%s">data</a>(daily)</td>\n' % (dailyasciiname) )
+            f1.write( '    <td style="background-color:#ccccff;"> <a href="%s">data</a>(daily)</td>\n' % (dailyasciiname) )
         else:
-            f1.write( '    <td style="background-color:#e7e5bc;"></td>\n')
+            f1.write( '    <td style="background-color:#ccccff;"></td>\n')
             
         
         # long-term data
