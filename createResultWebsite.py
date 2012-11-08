@@ -191,7 +191,23 @@ include all data points.
         
     
     ### static stuff at the end
+    ### print table header
     f1.write( """
+<tr>
+	<th rowspan="2">object name<br>(link to SIMBAD)</th>
+	<th rowspan="2">RA / Dec (degrees)</th>
+
+	<th style='background-color:#ccccff;'>LC</th>
+	<th style='background-color:#ccccff;'>ASCII data</th>
+	<th style='background-color:#ccccff;'>(daily ASCII data)</th>
+
+	<th>LC</th>
+	<th>ASCII data</th>
+</tr>
+<tr>
+	<th colspan="3" style='background-color:#ccccff;'>most recent data</th>
+	<th colspan="2">long-term data</th>
+</tr>
 </table>
 
 <h3>Notes:</h3>
