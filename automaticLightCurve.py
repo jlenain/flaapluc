@@ -283,7 +283,7 @@ class autoLC:
                 if src[i]==mysrc:
                     found=True
 
-                    # Redefine the class threshold if we provided a custom threshold
+                    # Redefine the threshold if we provided a custom threshold
                     if self.customThreshold is True and myThreshold[i] != 0.:
                         try:
                             float(myThreshold[i])
@@ -650,8 +650,8 @@ class autoLC:
     
 
         # Mask on both (z, ZA at culmin)
-        #         z column              ZA column
-        msk = (z<grid[:,0])&(zaAtCulmin<grid[:,1])
+        #          z column               ZA column
+        msk = (z<=grid[:,0])&(zaAtCulmin<=grid[:,1])
     
         # the 'return' below is a bit counter-intuitive. It answers the question 'Should we kill an imminent mail alert ?', i.e. if a source has the last flux point above the flux threshold, does it also fulfill the requirements on both z (not too far away) and zenith angle (not too low in the sky) ? So if an alert should definitely be sent, this function returns 'False' !
 
@@ -703,6 +703,7 @@ class autoLC:
         # Catch the last flux point
         lastFlux=flux[-1:]
 
+        print 'DEBUG: ',src,self.threshold
         if DEBUG:
             print
             print "self.threshold=",self.threshold
