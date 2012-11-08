@@ -703,8 +703,8 @@ class autoLC:
         # Catch the last flux point
         lastFlux=flux[-1:]
 
-        print 'DEBUG: ',src,self.threshold
         if DEBUG:
+            print 'DEBUG: ',src,self.threshold
             print
             print "self.threshold=",self.threshold
             print "lastFlux=",lastFlux
