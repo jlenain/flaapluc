@@ -62,7 +62,7 @@ The pipeline depends on the Fermi Science Tools, and it is assumed that you have
 The pipeline depends on a few (big) files, which are automatically re-created every day on our local server:
 
 - allsky_30MeV_300GeV_diffuse_filtered.fits	   	      event file for the whole sky, for the whole mission (kept up-to-date from the NASA servers every day).
-- allsky_last70days_30MeV_300GeV_diffuse_filtered.fits	      event file for the whole sky, for the last 70 days. Useful to speed up the light curve generation process for the last data. 
+- allsky_last70days_30MeV_300GeV_diffuse_filtered_gti.fits    event file for the whole sky, for the last 70 days. Useful to speed up the light curve generation process for the last data. 
 - allsky_SC00.fits					      most recent "spacecraft" file, which includes the telemetry of the Fermi spacecraft (kept up-to-date from the NASA servers every day).
 
 
