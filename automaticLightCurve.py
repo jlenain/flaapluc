@@ -908,7 +908,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                     for file in glob.glob(tmpworkdir+'/'+src+'*'):
                         os.remove(file)
 
-                processSrc(mysrc=src,useThresh=useThresh,daily=False,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,configfile=configfile)
+                processSrc(mysrc=src,useThresh=useThresh,daily=daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,configfile=configfile)
 
                 
 
