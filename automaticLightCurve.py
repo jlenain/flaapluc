@@ -1044,7 +1044,7 @@ Use '-h' to get the help message
     if opt.m:
         MERGELONGTERM=True
         LONGTERM=True
-        DAILY=False
+        #DAILY=False
         MAIL=False
         TEST=False
     else:
@@ -1055,7 +1055,7 @@ Use '-h' to get the help message
 
 
     # If we asked for a daily light curve, first make sure that the weekly-binned data already exsits, otherwise this script will crash, since the daily-binned PNG needs the weekly-binned data to be created. No mail alert is sent at this step.
-    # We automatically recreate here any weekly-binned missing data.
+    # We automatically recreate here any missing weekly-binned data.
     if DAILY:
         processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
 
