@@ -355,7 +355,7 @@ class autoLC:
         maketime.run()
 
 
-    def mergeGTIfiles(self,src,ra,dec):
+    def mergeGTIfiles(self,src,ra,dec,daily=False):
         """
         Merge multiple GTI files when mergelongterm is True.
         Use gtselect.
@@ -363,11 +363,18 @@ class autoLC:
         """
 
         # Create list of GTI files
-        listname=self.workDir+'/'+src+'_gti.list'
+        if not daily:
+            listname=self.workDir+'/'+src+'_gti.list'
+        else:
+            listname=self.workDir+'/'+src+'_daily_gti.list'
         filelist=open(listname,'w')
         list=[]
-        for file in glob.glob(self.workDir+'/../20????/'+src+'_gti.fits'):
-            list.append(file)
+        if not daily:
+            for file in glob.glob(self.workDir+'/../20????/'+src+'_gti.fits'):
+                list.append(file)
+        else:
+            for file in glob.glob(self.workDir+'/../20????/'+src+'_daily_gti.fits'):
+                list.append(file)
         # Sort the list of GTI files
         list=sorted(list)
         for item in list:
@@ -375,7 +382,10 @@ class autoLC:
         filelist.close()
         
         filter['infile']='@'+listname
-        outfile=self.workDir+'/'+str(src)+'_gti.fits'
+        if not daily:
+            outfile=self.workDir+'/'+str(src)+'_gti.fits'
+        else:
+            outfile=self.workDir+'/'+str(src)+'_daily_gti.fits'
         filter['outfile']=outfile
         
         # If outfile already exists, we re-create it
@@ -876,8 +886,12 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     if longTerm is True and mergelongterm is True:
 
         # Remove all the old merged file for this source, before reprocessing the merged data
-        for file in glob.glob(auto.workDir+'/'+src+'*'):
-            os.remove(file)
+        if not daily:
+            for file in glob.glob(auto.workDir+'/'+src+'*'):
+                os.remove(file)
+        if daily:
+            for file in glob.glob(auto.workDir+'/'+src+'*daily*'):
+                os.remove(file)
 
 
         # TO BE CHANGED !!!
@@ -905,15 +919,19 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                 # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
                 if year==int(thisyear) and int(month)==int(thismonth):
                     tmpworkdir=auto.baseOutDir+"/longTerm/"+str(year)+str(month)
-                    for file in glob.glob(tmpworkdir+'/'+src+'*'):
-                        os.remove(file)
+                    if not daily:
+                        for file in glob.glob(tmpworkdir+'/'+src+'*'):
+                            os.remove(file)
+                    if daily:
+                        for file in glob.glob(tmpworkdir+'/'+src+'*daily*'):
+                            os.remove(file)
 
                 processSrc(mysrc=src,useThresh=useThresh,daily=daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,configfile=configfile)
 
                 
 
         # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT and createPNG. No mail is sent here.
-        auto.mergeGTIfiles(src,ra,dec)
+        auto.mergeGTIfiles(src,ra,dec,daily=daily)
         if fglName is not None:
             auto.createXML(src)
             mygamma=None
