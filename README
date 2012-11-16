@@ -47,7 +47,7 @@ The pipeline includes:
 - processAllSources.py		to process a bunch of sources, which actually calls the script 'automaticLightCurve.py' for each individual source.
 - createResultWebsite.py	to generate a result web page for all sources (a la ATOM ADRAS).
 - listSources.txt		the master list of sources, including ATOM sources, TeVCat sources (mainly AGN only, for the moment), and others.
-- default.cfg			a configuration file where the user enters the file paths for inputs and outputs.
+- dummy.cfg			a configuration file where the user enters the file paths for inputs and outputs. You can of course have use several configuration files in one site.
 - TODO				a list of things to be done.
 - README			this file.
 
