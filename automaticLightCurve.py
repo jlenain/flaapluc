@@ -706,17 +706,25 @@ class autoLC:
             # Also take a look in the weekly data
             infileWeekly=self.workDir+'/'+str(src)+'_lc.dat'
             dataWeekly=asciidata.open(infileWeekly)
+            timeWeekly=dataWeekly[0].tonumpy()
             fluxWeekly=dataWeekly[2].tonumpy()
+            fluxErrWeekly=dataWeekly[3].tonumpy()
             # Catch the last flux point
+            lastTimeWeekly=timeWeekly[-1:]
             lastFluxWeekly=fluxWeekly[-1:]
+            lastFluxErrWeekly=fluxErrWeekly[-1:]
         else:
             infile  = self.workDir+'/'+str(src)+'_lc.dat'
             pngFig=self.workDir+'/'+str(src)+'_lc.png'
         data    = asciidata.open(infile)
+        time    = data[0].tonumpy()
         flux    = data[2].tonumpy()
+        fluxErr = data[3].tonumpy()
 
         # Catch the last flux point
-        lastFlux=flux[-1:]
+        lastTime    = time[-1:]
+        lastFlux    = flux[-1:]
+        lastFluxErr = fluxErr[-1:]
 
         if DEBUG:
             print 'DEBUG: ',src,self.threshold
@@ -773,8 +781,19 @@ class autoLC:
      """%(self.emin,self.emax/1000.,src,self.threshold)
 
             if self.daily:
+                mailtext=mailtext+"""
+
+     The last daily-binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f
+     and the last weekly-binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f
+
+"""%(lastFlux,lastFluxErr,lastTime,lastFluxWeekly,lastFluxErrWeekly,lastTimeWeekly)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned in red, and weekly binned in blue) is attached."%(self.tbin/24./60./60.)
             else:
+                mailtext=mailtext+"""
+
+     The last weekly-binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f
+
+"""%(lastFlux,lastFluxErr,lastTime)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
             
             mailtext=mailtext+"""
