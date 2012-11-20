@@ -133,33 +133,33 @@ include all data points.
     
     for i in range(len(src)):
 
-        plotname       = src[i] + '_lc.png'
-        dailyplotname  = src[i] + '_daily_lc.png'
-        asciiname      = src[i] + '_lc.dat'
-        dailyasciiname = src[i] + '_daily_lc.dat'
-        ltplotname     = 'lt_'+src[i] + '_lc.png'
-        ltasciiname    = 'lt_'+src[i] + '_lc.dat'
+        plotname         = src[i] + '_lc.png'
+        dailyplotname    = src[i] + '_daily_lc.png'
+        asciiname        = src[i] + '_lc.dat'
+        dailyasciiname   = src[i] + '_daily_lc.dat'
+        ltplotname       = 'lt_' + src[i] + '_lc.png'
+        ltasciiname      = 'lt_' + src[i] + '_lc.dat'
         
         # copy files from WORKDIR to PATH_TO_FILES
         if os.path.isfile(WORKDIR+dailyplotname):
-            shutil.copyfile( WORKDIR+dailyplotname,
-                             PATH_TO_FILES + dailyplotname)
+            shutil.copyfile(WORKDIR+dailyplotname,
+                            PATH_TO_FILES + dailyplotname)
         else:
             if os.path.isfile(WORKDIR+plotname):
-                shutil.copyfile( WORKDIR+plotname,
-                                 PATH_TO_FILES + plotname)
+                shutil.copyfile(WORKDIR+plotname,
+                                PATH_TO_FILES + plotname)
         if os.path.isfile(WORKDIR+asciiname):
-            shutil.copyfile( WORKDIR+asciiname,
-                             PATH_TO_FILES + asciiname)
+            shutil.copyfile(WORKDIR+asciiname,
+                            PATH_TO_FILES + asciiname)
         if os.path.isfile(WORKDIR+dailyasciiname):
-            shutil.copyfile( WORKDIR+dailyasciiname,
-                             PATH_TO_FILES + dailyasciiname)
+            shutil.copyfile(WORKDIR+dailyasciiname,
+                            PATH_TO_FILES + dailyasciiname)
         if os.path.isfile(WORKDIRLT+plotname):
-            shutil.copyfile( WORKDIRLT+plotname,
-                             PATH_TO_FILES + ltplotname)
+            shutil.copyfile(WORKDIRLT+plotname,
+                            PATH_TO_FILES + ltplotname)
         if os.path.isfile(WORKDIRLT+asciiname):
-            shutil.copyfile( WORKDIRLT+asciiname,
-                             PATH_TO_FILES + ltasciiname)
+            shutil.copyfile(WORKDIRLT+asciiname,
+                            PATH_TO_FILES + ltasciiname)
 
         linkSIMBAD = "http://simbad.u-strasbg.fr/simbad/sim-id?Ident=%s&NbIdent=1&submit=submit" % src[i]
         linkSIMBAD =  linkSIMBAD.replace('+', '%2b') # for URL conversion

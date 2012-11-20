@@ -602,12 +602,6 @@ class autoLC:
             errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
 
 
-        NEEDTOZOOMIN=False
-        for i in range(len(flux)):
-            if fluxErr[i] > 5.*flux[i]:
-                NEEDTOZOOMIN=True
-        if NEEDTOZOOMIN:
-            ylim(ymin=-1.e-7,ymax=1.5*max(flux))
 
 
         # Plot a line at the threshold value
@@ -625,6 +619,17 @@ class autoLC:
                 size='xx-small'
                 )
         
+        # Need to zoom in or not, at the very end, after any call to other matplotlib functions
+        NEEDTOZOOMIN=False
+        for i in range(len(flux)):
+            if fluxErr[i] > 5.*flux[i]:
+                NEEDTOZOOMIN=True
+        if NEEDTOZOOMIN:
+            maxy=1.5*max(flux)
+            if maxy>self.threshold:
+                ylim(ymin=-1.e-7,ymax=maxy)
+            else:
+                ylim(ymin=-1.e-7,ymax=self.threshold)
         
         # Don't show the figure in batch mode
         if not BATCH:
