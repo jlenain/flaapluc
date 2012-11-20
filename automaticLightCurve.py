@@ -594,18 +594,20 @@ class autoLC:
         
         # Plot the light curve
         if self.daily:
-            NEEDTOZOOMIN=False
-            for i in range(len(flux)):
-                if fluxErr[i] > 10.*flux[i]:
-                    NEEDTOZOOMIN=True
             # Also plot the weekly-binned light curve
             errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
             errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
             # The last plot called is on top of the others in matplotlib (are you sure ???). Here, we want the weekly-binned LC on top, for visibility.
-            if NEEDTOZOOMIN:
-                ylim(ymin=-1.e-7,ymax=1.5*max(flux))
         else:
             errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
+
+
+        NEEDTOZOOMIN=False
+        for i in range(len(flux)):
+            if fluxErr[i] > 5.*flux[i]:
+                NEEDTOZOOMIN=True
+        if NEEDTOZOOMIN:
+            ylim(ymin=-1.e-7,ymax=1.5*max(flux))
 
 
         # Plot a line at the threshold value
