@@ -132,9 +132,11 @@ class autoLC:
         self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
         self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
         self.url              = self.config.get('OutputDirs','URL')
-        # Read maxz and maxZA as lists
+        # Read maxz and maxZA as lists, not as single floats
         self.maxz             = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZ'  ))]
         self.maxZA            = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZA'))]
+
+        self.daily            = daily
 
         today=datetime.date.today().strftime('%Y%m%d')
 
@@ -163,11 +165,11 @@ class autoLC:
         self.fermiDir   = os.getenv('FERMI_DIR')
 
         # Setting default parameters
-        self.roi  = 1.   # degrees (http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html: "For aperture photometry we select a very small aperture (rad=1 degree), because we are not fitting the background.")
-        self.emin = 1.e2 # E min
-        self.emax = 3.e5 # E max
-        self.zmax = 100. # degrees
-        self.daily=daily
+        self.roi       = 1.   # degrees (http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html: "For aperture photometry we select a very small aperture (rad=1 degree), because we are not fitting the background.")
+        self.emin      = 1.e2 # E min
+        self.emax      = 3.e5 # E max
+        self.zmax      = 100. # degrees
+        self.rockangle = 52. # maximal allowed rocking angle
 
         if daily:
             self.tbin =    24.*60.*60. # seconds, daily bins
@@ -348,7 +350,8 @@ class autoLC:
             return True
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
-        maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.) && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
+        #maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.) && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
+        maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<"+str(self.rockangle)+" && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
         maketime['roicut']='no'
         maketime['tstart']=self.tstart
         maketime['tstop']=self.tstop
