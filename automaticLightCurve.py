@@ -551,16 +551,17 @@ class autoLC:
             infile=self.workDir+'/'+str(src)+'_daily_lc.dat'
             outfig=self.workDir+'/'+str(src)+'_daily_lc.png'
             infileWeekly=self.workDir+'/'+str(src)+'_lc.dat'
+            duration = 1.*24.*3600. # duration of a time bin
         else:
             infile=self.workDir+'/'+str(src)+'_lc.dat'
             outfig=self.workDir+'/'+str(src)+'_lc.png'
+            duration = 7.*24.*3600. # duration of a time bin
 
         data    = asciidata.open(infile)
         # the times are already read as MJD, cf createDAT function.
         timelc  = data[1].tonumpy()
         flux    = data[2].tonumpy()
         fluxErr = data[3].tonumpy()
-        duration=timelc[1]-timelc[0] # duration of a time bin
 
         if self.daily:
             dataWeekly    = asciidata.open(infileWeekly)
@@ -568,7 +569,7 @@ class autoLC:
             timeWeekly    = dataWeekly[1].tonumpy()
             fluxWeekly    = dataWeekly[2].tonumpy()
             fluxErrWeekly = dataWeekly[3].tonumpy()
-            durationWeekly=timeWeekly[1]-timeWeekly[0] # duration of a time bin
+            durationWeekly= 7.*24.*3600. # duration of a time bin
 
 
         fig=figure()
