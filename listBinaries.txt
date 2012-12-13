@@ -1,4 +1,4 @@
-# $Id:$
+# $Id$
 #
 # Cf. Pol Borads' mail, 13/12/2012 16:18
 #
