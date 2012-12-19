@@ -49,6 +49,7 @@ def readATOMschedule(configfile='default.cfg'):
         print "WARNING readATOMschedule: ",infile," does not exist. I will try to see if there is any ATOM schedule file for the last 10 days."
     
         found=False
+        # scan of ATOM schedues over the last 10 days
         for i in range(1,10):
             infile=ATOMSchedulesDir+'/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
             if os.path.isfile(infile):
@@ -124,6 +125,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='generate a long term light curve, using the whole mission time (defaulted to False)')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
                       help='merge the long-term month-by-month light curves together')
+    parser.add_option("--with-history", action="store_true", dest="history", default=False,
+                      help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold done by default.')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send alert mails')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -198,13 +201,19 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         # Otherwise we use 6 CPU, and let 2 CPU free for other processes
         MAXCPU=6
 
+    # If dynamical flux trigger threshold based on source history
+    if opt.history:
+        WITHHISTORY=True
+    else:
+        WITHHISTORY=False
+
 
     if(len(args)!=0):
         file=args[0]
         print "Overriding default list of source: using "+file
-        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
+        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
     else:
-        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
+        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
 
     ATOMsrcsInSchedule=readATOMschedule(configfile=CONFIGFILE)
     
@@ -256,6 +265,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             autoOptions.append("-l")
         if MERGELONGTERM:
             autoOptions.append("-m")
+        if WITHHISTORY:
+            autoOptions.append("--with-history")
 
         # Loop on sources
         for i in range(nbSrc):
@@ -282,16 +293,16 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 tmpDAILY=True
                 # We have to make sure that the corresponding weekly-binned data are created first (needed for daily PNG figure)
                 if DRYRUN is False:
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
                 else:
-                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",configfile="+str(CONFIGFILE)+")"
+                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",configfile="+str(CONFIGFILE)+")"
             else:
                 tmpDAILY=DAILY
 
             if DRYRUN is False:
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
             else:
-                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",configfile="+str(CONFIGFILE)+")"
+                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",configfile="+str(CONFIGFILE)+")"
     
     return True
 

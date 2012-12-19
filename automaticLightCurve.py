@@ -116,7 +116,7 @@ class autoLC:
     Main class, for a given of source.
     """
 
-    def __init__(self,file='listSources.txt',customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,configfile='default.cfg'):
+    def __init__(self,file='listSources.txt',customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,withhistory=False,configfile='default.cfg'):
         
         self.config           = self.getConfig(configfile=configfile)
         #self.file=file
@@ -137,6 +137,7 @@ class autoLC:
         self.maxZA            = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZA'))]
 
         self.daily            = daily
+        self.withhistory      = withhistory
 
         today=datetime.date.today().strftime('%Y%m%d')
 
@@ -178,7 +179,7 @@ class autoLC:
 
         self.threshold = 1.e-6 # ph cm^-2 s^-1
         self.customThreshold=customThreshold
-
+        
         # Open allsky file to get the start and stop dates
         try:
             hdu=pyfits.open(self.allsky)
@@ -572,6 +573,11 @@ class autoLC:
             durationWeekly= 7. # duration of a time bin, in days
 
 
+        # Redefine the trigger threshold if withhistory=True
+        if self.withhistory is True:
+            (fluxAverage,fluxRMS) = self.dynamicalTrigger(src)
+
+
         fig=figure()
         ax = fig.add_subplot(111)
         if fglName is not None:
@@ -610,6 +616,10 @@ class autoLC:
 
         # Plot a line at the threshold value
         axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
+        if self.withhistory is True:
+            axhline(y=fluxAverage,linewidth=1,linestyle='-',color='b')
+            axhline(y=fluxAverage+fluxRMS,linewidth=1,linestyle='--',color='b')
+            axhline(y=fluxAverage-fluxRMS,linewidth=1,linestyle='--',color='b')
 
         # Plot a line at flux=0, for visibility/readibility
         axhline(y=0.,color='k')
@@ -688,10 +698,48 @@ class autoLC:
         else:
             # print 'No alert triggered'
             return True
+
+
+    def dynamicalTrigger(self,src):
+        '''
+        If long-term data are available for a source, dynamically computes a flux trigger threshold based on the flux history of the source. Otherwise, fall back with default fixed trigger threshold.
+
+        @param src Soure name
+        '''
+        
+        # Read the longterm .dat LC file
+        infile = self.baseOutDir+'/longTerm/merged/'+str(src)+'_lc.dat'
+        try:
+            data    = asciidata.open(infile)
+        except IOError:
+            print 'Long term data file unavailable for source %s' % src
+            # Falling back to default fixed trigger threshold
+            self.withhistory=False
+            return (False,False)
+
+        flux    = data[2].tonumpy()
+        fluxErr = data[3].tonumpy()
+
+        # weighted average of the historical fluxes, weighted by their errors
+        fluxAverage = average(flux, weights=1./fluxErr)
+        fluxRMS     = std(flux, dtype=np.float64)
+
+        self.threshold = fluxAverage + 3.0*fluxRMS
+        return (fluxAverage,fluxRMS)
         
 
 
     def sendAlert(self,src,ra,dec,z,nomailall=False):
+        '''
+        Send a mail alert in case a source fulfills the trigger conditions.
+
+        @param src Source name
+        @param ra Source right ascension
+        @param dec Source declination
+        @param z Source redshift
+        @param nomailall Boolean, should the mail be sent to a restricted list of recipients ?
+        '''
+
 
         # Import modules
         try:
@@ -843,6 +891,11 @@ class autoLC:
 
 
     def sendErrorMail(self,mailall=False):
+        '''
+        Send an error mail message.
+
+        @param mailall: boolean, should the mail be sent to UsualRecipients or TestRecipients ?
+        '''
 
         # Import modules
         try:
@@ -901,7 +954,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,configfile='default.cfg'):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,configfile='default.cfg'):
     """
     Process a given source.
     """
@@ -914,7 +967,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         print "ERROR Missing input source !"
         sys.exit(1)
 
-    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,configfile=configfile)
+    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile)
     src,ra,dec,z,fglName=auto.readSourceList(mysrc)
 
 
@@ -1031,6 +1084,8 @@ Use '-h' to get the help message
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
                       help='generate a long term light curve, for one given month (defaulted to False). With this option, one should provide a source name as usual, but also a month for which the data should be processed, in the format YYYYMM.')
+    parser.add_option("--with-history", action="store_true", dest="history", default=False,
+                      help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold done by default.')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
                       help='merge the month-by-month long-term light curves together. If those do not exist, they will be created on the fly.')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
@@ -1103,6 +1158,11 @@ Use '-h' to get the help message
     else:
         MERGELONGTERM=False
     
+    # If dynamical flux trigger threshold based on source history
+    if opt.history:
+        WITHHISTORY=True
+    else:
+        WITHHISTORY=False
     
     src=args[0]
 
@@ -1110,9 +1170,9 @@ Use '-h' to get the help message
     # If we asked for a daily light curve, first make sure that the weekly-binned data already exsits, otherwise this script will crash, since the daily-binned PNG needs the weekly-binned data to be created. No mail alert is sent at this step.
     # We automatically recreate here any missing weekly-binned data.
     if DAILY:
-        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
+        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,configfile=CONFIGFILE)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
 
     return True
 
