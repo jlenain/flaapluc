@@ -882,14 +882,15 @@ class autoLC:
         if SENDALERT:
             # Create the container email message.
             msg = MIMEMultipart()
-            msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s' % src
             sender = self.mailSender
             
             # To whom the mail should be sent (cf. __init__ function of the class)
             if nomailall is False:
                 recipient = self.usualRecipients
+                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s' % src
             else:
                 recipient = self.testRecipients
+                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s' % src
 
             msg['From'] = sender
             COMMASPACE = ', '
