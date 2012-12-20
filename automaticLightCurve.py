@@ -539,7 +539,7 @@ class autoLC:
                 file.write(str(time[i])+"\t"+str(timeMjd[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
 
-    def getBAT(src):
+    def getBAT(self,src):
         import urllib2
 
         # daily fits example url:
@@ -657,7 +657,7 @@ class autoLC:
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
         ax.set_xlabel('MJD-'+str(TOFFSET))
         
-        # Plot the light curve
+        # Plot the Fermi/LAT light curve
         if self.daily:
             # Also plot the weekly-binned light curve
             ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
@@ -683,10 +683,12 @@ class autoLC:
 
         # Plot Swift/BAT lightcurve
         if xray:
-            axbat.errorbar(batlc['TIME']+0.5-TOFFSET,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
-            axbat.set_ylim(bottom=0.)
+            #axbat.errorbar(batlc['TIME']+0.5-TOFFSET,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
+            axbat.errorbar(batlc['TIME'],batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
             axbat.set_xlabel('MJD-'+str(TOFFSET))
             axbat.set_ylabel('F (15-150 keV) (count cm^-2 s^-1)')
+            axbat.set_xlim(xmin=timelc[0]-1,xmax=timelc[-1:]+1)
+            axbat.set_ylim(ymin=0.)
 
         # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
         # x,y in relative 0-1 coords in figure
@@ -705,9 +707,9 @@ class autoLC:
         if NEEDTOZOOMIN:
             maxy=1.5*max(flux)
             if maxy>self.threshold:
-                ax.set_ylim(bottom=-1.e-7,top=maxy)
+                ax.set_ylim(ymin=-1.e-7,ymax=maxy)
             else:
-                ax.set_ylim(bottom=-1.e-7,top=self.threshold)
+                ax.set_ylim(ymin=-1.e-7,ymax=self.threshold)
         
         # Don't show the figure in batch mode
         if not BATCH:
