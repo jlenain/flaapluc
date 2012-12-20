@@ -539,6 +539,52 @@ class autoLC:
                 file.write(str(time[i])+"\t"+str(timeMjd[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
 
+    def getBAT(src):
+        import urllib2
+
+        # daily fits example url:
+        # http://swift.gsfc.nasa.gov/docs/swift/results/transients/CygX-3.lc.fits
+
+        # Some sources need replacement names to match the BAT names
+        urls={
+                '4U1907+09':'H1907+097',
+                '1FGLJ1018.6-5856':'0FGLJ1018.2-5858',
+                'H1743-322': 'IGRJ17464-3213',
+                'V4641Sgr':'SAXJ1819.3-2525',
+                '1E1841-04.5':'Kes73',
+            }
+
+        # Remove '+', add file ending
+        if urls.has_key(src):
+            file=urls[src].replace('+','p')+".lc.fits"
+        else:
+            file=src.replace('+','p')+".lc.fits"
+        urlprefix="http://swift.gsfc.nasa.gov/docs/swift/results/transients/"
+
+        # lc files can be in a weak/ subdir for weak sources, we try both
+        try:
+            baturl=urlprefix+file
+            webfile=urllib2.urlopen(baturl)
+        except urllib2.HTTPError:
+            try:
+                baturl=urlprefix+'weak/'+file
+                webfile=urllib2.urlopen(baturl)
+            except urllib2.HTTPError:
+                return False,None
+
+        # save lc to local file
+        localfile=open(file,'w')
+        localfile.write(webfile.read())
+        webfile.close()
+        localfile.close()
+        # read local file with pyfits into batlc
+        batfits=pyfits.open(file)
+        batlc=np.array(batfits[1].data)
+        batfits.close()
+        # delete local file
+        os.unlink(file)
+
+        return True,batlc
 
 
         
@@ -572,6 +618,9 @@ class autoLC:
             fluxErrWeekly = dataWeekly[3].tonumpy()
             durationWeekly= 7. # duration of a time bin, in days
 
+        # Download Swift/BAT data if available
+        # xray is boolean flag indicating that X-ray BAT data is available
+        xray,batlc=self.getBAT(src)
 
         # Redefine the trigger threshold if withhistory=True
         if self.withhistory is True:
@@ -579,7 +628,13 @@ class autoLC:
 
 
         fig=figure()
-        ax = fig.add_subplot(111)
+
+        if xray:
+            ax    = fig.add_subplot(211)
+            axbat = fig.add_subplot(212,sharex=ax)
+        else:
+            ax = fig.add_subplot(111)
+
         if fglName is not None:
             title=str(src)+', '+str(fglName).replace('_2FGLJ','2FGL J')
         else:
@@ -605,24 +660,33 @@ class autoLC:
         # Plot the light curve
         if self.daily:
             # Also plot the weekly-binned light curve
-            errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
-            errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
+            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
+            ax.errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
             # The last plot called is on top of the others in matplotlib (are you sure ???). Here, we want the weekly-binned LC on top, for visibility.
         else:
-            errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
+            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
 
-
-
+        # TODO if threshold is dynamic and it is computed using the last flux
+        # measurement uncertainty, threshold will not be a given horizontal
+        # line, but depend on each point. In that case, indicate in different
+        # color those flux measurements that trigger
 
         # Plot a line at the threshold value
-        axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
+        ax.axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
         if self.withhistory is True:
-            axhline(y=fluxAverage,linewidth=1,linestyle='-',color='b')
-            axhline(y=fluxAverage+fluxRMS,linewidth=1,linestyle='--',color='b')
-            axhline(y=fluxAverage-fluxRMS,linewidth=1,linestyle='--',color='b')
+            ax.axhline(y=fluxAverage,linewidth=1,linestyle='-',color='b')
+            ax.axhline(y=fluxAverage+fluxRMS,linewidth=1,linestyle='--',color='b')
+            ax.axhline(y=fluxAverage-fluxRMS,linewidth=1,linestyle='--',color='b')
 
         # Plot a line at flux=0, for visibility/readibility
-        axhline(y=0.,color='k')
+        ax.axhline(y=0.,color='k')
+
+        # Plot Swift/BAT lightcurve
+        if xray:
+            axbat.errorbar(batlc['TIME']+0.5-TOFFSET,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
+            axbat.set_ylim(bottom=0.)
+            axbat.set_xlabel('MJD-'+str(TOFFSET))
+            axbat.set_ylabel('F (15-150 keV) (count cm^-2 s^-1)')
 
         # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
         # x,y in relative 0-1 coords in figure
@@ -641,9 +705,9 @@ class autoLC:
         if NEEDTOZOOMIN:
             maxy=1.5*max(flux)
             if maxy>self.threshold:
-                ylim(ymin=-1.e-7,ymax=maxy)
+                ax.set_ylim(bottom=-1.e-7,top=maxy)
             else:
-                ylim(ymin=-1.e-7,ymax=self.threshold)
+                ax.set_ylim(bottom=-1.e-7,top=self.threshold)
         
         # Don't show the figure in batch mode
         if not BATCH:
