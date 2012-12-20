@@ -1,5 +1,3 @@
+- Victor: if threshold is dynamic and it is computed using the last flux measurement uncertainty, threshold will not be a given horizontal line, but depend on each point. In that case, indicate in different color those flux measurements that trigger.
 - Add a flagging system for sources which already triggered alerts the last days, to avoid having almost same alerts for a few days in a row.
 - Implement Franceschini et al's EBL model to have nice evolutive cuts on the alerts based on tau(z) ? I personally don't really like the idea, this would make the pipeline model-dependent...
-
-Author: J.-P. Lenain <mailto:jlenain@in2p3.fr>
-Last modification: $Id$
