@@ -684,10 +684,10 @@ class autoLC:
         # Plot Swift/BAT lightcurve
         if xray:
             #axbat.errorbar(batlc['TIME']+0.5-TOFFSET,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
-            axbat.errorbar(batlc['TIME'],batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
+            axbat.errorbar(batlc['TIME']+0.5,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
             axbat.set_xlabel('MJD-'+str(TOFFSET))
             axbat.set_ylabel('F (15-150 keV) (count cm^-2 s^-1)')
-            axbat.set_xlim(xmin=timelc[0]-1,xmax=timelc[-1:]+1)
+            axbat.set_xlim(xmin=timelc[0]-duration/2.-1.,xmax=timelc[-1:]+duration/2.+1.)
             axbat.set_ylim(ymin=0.)
 
         # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
