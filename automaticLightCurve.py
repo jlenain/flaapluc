@@ -132,8 +132,13 @@ class autoLC:
         self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
         self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
         self.url              = self.config.get('OutputDirs','URL')
+        try:
+            self.longtimebin  = float(self.config.get('AlertTrigger','LongTimeBin'))
+        except:
+            # Take 7 days by default
+            self.longtimebin  = 7.
         # Read maxz and maxZA as lists, not as single floats
-        self.maxz             = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZ'  ))]
+        self.maxz             = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZ' ))]
         self.maxZA            = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZA'))]
 
         self.daily            = daily
@@ -170,12 +175,12 @@ class autoLC:
         self.emin      = 1.e2 # E min
         self.emax      = 3.e5 # E max
         self.zmax      = 100. # degrees
-        self.rockangle = 52. # maximal allowed rocking angle
+        self.rockangle = 52.  # maximal allowed rocking angle
 
         if daily:
-            self.tbin =    24.*60.*60. # seconds, daily bins
+            self.tbin =                  24.*60.*60. # seconds, daily bins
         else:
-            self.tbin = 7.*24.*60.*60. # seconds, weekly bins
+            self.tbin = self.longtimebin*24.*60.*60. # seconds, weekly bins by defaults, or longtimebin days
 
         self.threshold = 1.e-6 # ph cm^-2 s^-1
         self.customThreshold=customThreshold
@@ -320,15 +325,15 @@ class autoLC:
         if os.path.isfile(outfile):
             return True
 
-        filter['ra']=ra
-        filter['dec']=dec
-        filter['rad']=self.roi
-        filter['emin']=self.emin
-        filter['emax']=self.emax
-        filter['tmin']=self.tstart
-        filter['tmax']=self.tstop
-        filter['zmax']=self.zmax
-        filter['evclass']=2
+        filter['ra']      = ra
+        filter['dec']     = dec
+        filter['rad']     = self.roi
+        filter['emin']    = self.emin
+        filter['emax']    = self.emax
+        filter['tmin']    = self.tstart
+        filter['tmax']    = self.tstop
+        filter['zmax']    = self.zmax
+        filter['evclass'] = 2
         filter.run()
 
 
@@ -352,10 +357,10 @@ class autoLC:
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
         #maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.) && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
-        maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<"+str(self.rockangle)+" && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
-        maketime['roicut']='no'
-        maketime['tstart']=self.tstart
-        maketime['tstop']=self.tstop
+        maketime['filter'] = "IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<"+str(self.rockangle)+" && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
+        maketime['roicut'] = 'no'
+        maketime['tstart'] = self.tstart
+        maketime['tstop']  = self.tstop
         maketime.run()
 
 
@@ -597,12 +602,12 @@ class autoLC:
         if self.daily:
             infile=self.workDir+'/'+str(src)+'_daily_lc.dat'
             outfig=self.workDir+'/'+str(src)+'_daily_lc.png'
-            infileWeekly=self.workDir+'/'+str(src)+'_lc.dat'
+            infileLongTimeBin=self.workDir+'/'+str(src)+'_lc.dat'
             duration = 1. # duration of a time bin, in days
         else:
             infile=self.workDir+'/'+str(src)+'_lc.dat'
             outfig=self.workDir+'/'+str(src)+'_lc.png'
-            duration = 7. # duration of a time bin, in days
+            duration = self.longtimebin # duration of a time bin, in days
 
         data    = asciidata.open(infile)
         # the times are already read as MJD, cf createDAT function.
@@ -611,12 +616,12 @@ class autoLC:
         fluxErr = data[3].tonumpy()
 
         if self.daily:
-            dataWeekly    = asciidata.open(infileWeekly)
+            dataLongTimeBin    = asciidata.open(infileLongTimeBin)
             # the times are already read as MJD, cf createDAT function.
-            timeWeekly    = dataWeekly[1].tonumpy()
-            fluxWeekly    = dataWeekly[2].tonumpy()
-            fluxErrWeekly = dataWeekly[3].tonumpy()
-            durationWeekly= 7. # duration of a time bin, in days
+            timeLongTimeBin    = dataLongTimeBin[1].tonumpy()
+            fluxLongTimeBin    = dataLongTimeBin[2].tonumpy()
+            fluxErrLongTimeBin = dataLongTimeBin[3].tonumpy()
+            durationLongTimeBin= self.longtimebin # duration of a time bin, in days
 
         # Download Swift/BAT data if available
         # xray is boolean flag indicating that X-ray BAT data is available
@@ -659,10 +664,10 @@ class autoLC:
         
         # Plot the Fermi/LAT light curve
         if self.daily:
-            # Also plot the weekly-binned light curve
+            # Also plot the long time-binned light curve
             ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
-            ax.errorbar(x=timeWeekly, xerr=durationWeekly/2., y=fluxWeekly, yerr=fluxErrWeekly/2., fmt='bo')
-            # The last plot called is on top of the others in matplotlib (are you sure ???). Here, we want the weekly-binned LC on top, for visibility.
+            ax.errorbar(x=timeLongTimeBin, xerr=durationLongTimeBin/2., y=fluxLongTimeBin, yerr=fluxErrLongTimeBin/2., fmt='bo')
+            # The last plot called is on top of the others in matplotlib (are you sure ???). Here, we want the long time-binned LC on top, for visibility.
         else:
             ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
 
@@ -828,19 +833,35 @@ class autoLC:
             infile  = self.workDir+'/'+str(src)+'_daily_lc.dat'
             pngFig=self.workDir+'/'+str(src)+'_daily_lc.png'
 
-            # Also take a look in the weekly data
-            infileWeekly=self.workDir+'/'+str(src)+'_lc.dat'
-            dataWeekly=asciidata.open(infileWeekly)
-            timeWeekly=dataWeekly[0].tonumpy()
-            fluxWeekly=dataWeekly[2].tonumpy()
-            fluxErrWeekly=dataWeekly[3].tonumpy()
+            # Also take a look in the long time-binned data
+            infileLongTimeBin=self.workDir+'/'+str(src)+'_lc.dat'
+            dataLongTimeBin=asciidata.open(infileLongTimeBin)
+            timeLongTimeBin=dataLongTimeBin[0].tonumpy()
+            fluxLongTimeBin=dataLongTimeBin[2].tonumpy()
+            fluxErrLongTimeBin=dataLongTimeBin[3].tonumpy()
             # Catch the last flux point
-            lastTimeWeekly=timeWeekly[-1:]
-            lastFluxWeekly=fluxWeekly[-1:]
-            lastFluxErrWeekly=fluxErrWeekly[-1:]
+            lastTimeLongTimeBin=timeLongTimeBin[-1:]
+            lastFluxLongTimeBin=fluxLongTimeBin[-1:]
+            lastFluxErrLongTimeBin=fluxErrLongTimeBin[-1:]
+
+            # Get the arrival time of the last photon analysed
+            photonfileLongTimeBin            = self.workDir+'/'+str(src)+'_gti.fits'
+            photonsLongTimeBin               = pyfits.open(photonfileLongTimeBin)
+            photonsLongTimeBinTime           = photonsLongTimeBin[1].data.field('TIME')
+            arrivalTimeLastPhotonLongTimeBin = photonsLongTimeBinTime[-1:]
+
+            photonfile                  = self.workDir+'/'+str(src)+'_daily_gti.fits'
+            photons                     = pyfits.open(photonfile)
+            photonsTime                 = photons[1].data.field('TIME')
+            arrivalTimeLastPhoton       = photonsTime[-1:]
         else:
             infile  = self.workDir+'/'+str(src)+'_lc.dat'
             pngFig=self.workDir+'/'+str(src)+'_lc.png'
+
+            photonfile            = self.workDir+'/'+str(src)+'_gti.fits'
+            photons               = pyfits.open(photonfile)
+            photonsTime           = photons[1].data.field('TIME')
+            arrivalTimeLastPhoton = photonsTime[-1:]
         data    = asciidata.open(infile)
         time    = data[0].tonumpy()
         flux    = data[2].tonumpy()
@@ -863,7 +884,7 @@ class autoLC:
         if not KILLTRIGGER:
             # Assess whether the trigger condition is met, looking at the last flux point
             if self.daily:
-                if (lastFlux >= self.threshold or lastFluxWeekly >= self.threshold):
+                if (lastFlux >= self.threshold or lastFluxLongTimeBin >= self.threshold):
                     SENDALERT=True
                 else:
                     SENDALERT=False
@@ -909,17 +930,17 @@ class autoLC:
             if self.daily:
                 mailtext=mailtext+"""
 
-     The last daily-binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f
-     and the last weekly-binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f
+     The last daily-binned flux is:        %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
+     and the last %.0f-day binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
 
-"""%(lastFlux,lastFluxErr,lastTime,lastFluxWeekly,lastFluxErrWeekly,lastTimeWeekly)
-                mailtext=mailtext+"The most recent lightcurve (%.0f-day binned in red, and weekly binned in blue) is attached."%(self.tbin/24./60./60.)
+"""%(lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton,self.longtimebin,lastFluxLongTimeBin,lastFluxErrLongTimeBin,lastTimeLongTimeBin,arrivalTimeLastPhotonLongTimeBin)
+                mailtext=mailtext+"The most recent lightcurve (%.0f-day binned in red, and %.0f-day binned in blue) is attached."%(self.tbin/24./60./60.,self.longtimebin)
             else:
                 mailtext=mailtext+"""
 
-     The last weekly-binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f
+     The last %.0f-day binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
 
-"""%(lastFlux,lastFluxErr,lastTime)
+"""%(self.longtimebin,lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
             
             mailtext=mailtext+"""
@@ -1234,8 +1255,8 @@ Use '-h' to get the help message
     src=args[0]
 
 
-    # If we asked for a daily light curve, first make sure that the weekly-binned data already exsits, otherwise this script will crash, since the daily-binned PNG needs the weekly-binned data to be created. No mail alert is sent at this step.
-    # We automatically recreate here any missing weekly-binned data.
+    # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
+    # We automatically recreate here any missing long time-binned data.
     if DAILY:
         processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
 
