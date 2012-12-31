@@ -116,23 +116,23 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                           usage=helpmsg)
 
     parser.add_option("-a", "--atom", action="store_true", dest="a", default=False,
-                      help='only process those sources which are in the current ATOM schedule, forcing daily-binned data to be processed (this will also automatically create weekly-binned data)')
+                      help='only process those sources which are in the current ATOM schedule, forcing daily-binned data to be processed (this will also automatically create long time-binned data).')
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
-                      help='use daily bins for the light curves (defaulted to weekly)')
+                      help='use daily bins for the light curves (defaulted to weekly).')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
-                      help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
+                      help='use custom trigger thresholds provided in the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1).')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
-                      help='generate a long term light curve, using the whole mission time (defaulted to False)')
+                      help='generate a long term light curve, using the whole mission time (defaulted to False).')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
-                      help='merge the long-term month-by-month light curves together')
+                      help='merge the long-term month-by-month light curves together.')
     parser.add_option("--with-history", action="store_true", dest="history", default=False,
-                      help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold done by default.')
+                      help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send alert mails')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
-                      help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
+                      help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to test recipients (by default, mail alerts are sent to everybody, cf. the configuration files).')
     parser.add_option("--dry-run", action="store_true", dest="dryRun", default=False,
-                      help='simulate only what the pipeline would do, forcing the use of ATOM sources, without actually processing any Fermi/LAT event. This is useful to see if the master list of sources is up-to-date with the ATOM sources in the current schedule.')
+                      help='only simulate what the pipeline would do, forcing the use of ATOM sources, without actually processing any Fermi/LAT event. This is useful to see if the master list of sources is up-to-date with the ATOM sources in the current schedule.')
     parser.add_option("--max-cpu", default=1, dest="MAXCPU", metavar="<MAXCPU>",
                       help="in conjonction with --merge-long-term, defines the number of CPU to use for merging long-term data. Using '%default' by default.")
     parser.add_option("--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",

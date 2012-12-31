@@ -788,14 +788,18 @@ class autoLC:
             self.withhistory=False
             return (False,False)
 
-        flux    = data[2].tonumpy()
-        fluxErr = data[3].tonumpy()
+        flux        = data[2].tonumpy()
+        fluxErr     = data[3].tonumpy()
+        lastFluxErr = fluxErr[-1:]
 
         # weighted average of the historical fluxes, weighted by their errors
         fluxAverage = average(flux, weights=1./fluxErr)
         fluxRMS     = std(flux, dtype=np.float64)
 
-        self.threshold = fluxAverage + 3.0*fluxRMS
+        #self.threshold = fluxAverage + 3.0*fluxRMS
+        sigma = 2.0
+        # Dynamically redefine the flux trigger threshold
+        self.threshold = max(fluxAverage + sigma*fluxRMS, fluxAverage + sigma*lastFluxErr)
         return (fluxAverage,fluxRMS)
         
 
@@ -1173,13 +1177,13 @@ Use '-h' to get the help message
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
                       help='generate a long term light curve, for one given month (defaulted to False). With this option, one should provide a source name as usual, but also a month for which the data should be processed, in the format YYYYMM.')
     parser.add_option("--with-history", action="store_true", dest="history", default=False,
-                      help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold done by default.')
+                      help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
                       help='merge the month-by-month long-term light curves together. If those do not exist, they will be created on the fly.')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send mail alerts')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
-                      help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to J.-P. Lenain (by default, mail alerts are sent to everybody)')
+                      help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to test recipients (by default, mail alerts are sent to everybody, cf. the configuration files).')
     parser.add_option("--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
 
