@@ -54,14 +54,15 @@ def readATOMschedule(configfile='default.cfg'):
             infile=ATOMSchedulesDir+'/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
             if os.path.isfile(infile):
                 found=True
-                print 'I found one ! I will use the file: '+infile
+                print 'INFO readATOMschedule: I found an ATOM schedule ! I will use the file: '+infile
                 print
             if found:
                 break
 
         if not found:
-            print 'ERROR readATOMschedule: I could not find any ATOM schedule file for the last 10 days. Aborting...'
-            sys.exit(1)
+            print 'WARNING readATOMschedule: I could not find any ATOM schedule file for the last 10 days. I will not process any daily-binned data...'
+            # Return an empty list
+            return []
         
 
     f=open(infile,'r')
