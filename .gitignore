@@ -1,0 +1,5 @@
+*.py[cod]
+*~
+
+# Concatenated lits of sources
+listSources.txt
