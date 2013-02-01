@@ -36,6 +36,9 @@ def createResultWebsite(configfile='default.cfg'):
     WORKDIRLT=autoLT.workDir+'/'
     src,ra,dec,z,fglName=auto.readSourceList()
 
+    # Change umask, to make sure all files created hereafter in the webpage directory will be world-readable, in odrer that the web server can distribute the web page to anybody
+    os.umask(0022)
+
     # create the directory if does not exist
     if not os.path.isdir(PATH_TO_FILES):
         os.makedirs(PATH_TO_FILES)
@@ -188,7 +191,7 @@ include all data points.
         f1.write( '    <td> <a href="%s">PNG</a></td>\n' % (ltplotname) )
         f1.write( '    <td> <a href="%s"> data </a></td>\n' % (ltasciiname) )
         f1.write( '</tr>\n\n' )
-        
+
     
     ### static stuff at the end
     ### print table header

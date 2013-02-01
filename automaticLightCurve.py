@@ -45,7 +45,7 @@ DEBUG=False # Debugging flag
 BATCH=True  # True in batch mode
 
 # Global variables
-TOFFSET=54600. # MJD
+TOFFSET=54000. # MJD
 
 def met2mjd(met):
     """
@@ -137,6 +137,11 @@ class autoLC:
         except:
             # Take 7 days by default
             self.longtimebin  = 7.
+        try:
+            self.sigma        = float(self.config.get('AlertTrigger','Sigma'))
+        except:
+            # Take 2 sigma by default
+            self.sigma         = 2.
         # Read maxz and maxZA as lists, not as single floats
         self.maxz             = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZ' ))]
         self.maxZA            = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZA'))]
@@ -653,15 +658,16 @@ class autoLC:
 
         
         # Force the y-axis ticks to use 1e-6 as a base exponent
-        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.1f')%(x*1e6)))
-        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (x 10^-6 ph cm^-2 s^-1)'%(self.emin,self.emax/1000.))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.2f')%(x*1e6)))
+        ax.set_ylabel(r'F (%.0f MeV-%.0f GeV) ($\times 10^{-6}$ ph cm$^{-2}$ s$^{-1}$)'%(self.emin,self.emax/1000.),size='small')
 
         day=24.*60.*60.
 
-        # Make the x-axis ticks shifted by some value
+        ## Make the x-axis ticks shifted by some value
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
         ax.set_xlabel('MJD-'+str(TOFFSET))
-        
+        #ax.set_xlabel('MJD')
+
         # Plot the Fermi/LAT light curve
         if self.daily:
             # Also plot the long time-binned light curve
@@ -688,10 +694,10 @@ class autoLC:
 
         # Plot Swift/BAT lightcurve
         if xray:
-            #axbat.errorbar(batlc['TIME']+0.5-TOFFSET,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
             axbat.errorbar(batlc['TIME']+0.5,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
             axbat.set_xlabel('MJD-'+str(TOFFSET))
-            axbat.set_ylabel('F (15-150 keV) (count cm^-2 s^-1)')
+            #axbat.set_xlabel('MJD')
+            axbat.set_ylabel(r'F (15-50 keV) (count cm$^{-2}$ s$^{-1}$)',size='x-small')
             axbat.set_xlim(xmin=timelc[0]-duration/2.-1.,xmax=timelc[-1:]+duration/2.+1.)
             axbat.set_ylim(ymin=0.)
 
@@ -796,10 +802,10 @@ class autoLC:
         fluxAverage = average(flux, weights=1./fluxErr)
         fluxRMS     = std(flux, dtype=np.float64)
 
-        #self.threshold = fluxAverage + 3.0*fluxRMS
-        sigma = 2.0
         # Dynamically redefine the flux trigger threshold
-        self.threshold = max(fluxAverage + sigma*fluxRMS, fluxAverage + sigma*lastFluxErr)
+        self.threshold = max(fluxAverage + self.sigma*fluxRMS,
+                             fluxAverage + self.sigma*lastFluxErr,
+                             self.threshold)
         return (fluxAverage,fluxRMS)
         
 
