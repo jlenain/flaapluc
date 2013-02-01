@@ -43,9 +43,11 @@ except ImportError:
 # Flags
 DEBUG=False # Debugging flag
 BATCH=True  # True in batch mode
+FLAGASSUMEDGAMMA=False # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA or taken from the 2FGL.
 
 # Global variables
 TOFFSET=54000. # MJD
+ASSUMEDGAMMA=-2.5 # assumed photon index for a source not belonging to the 2FGL
 
 def met2mjd(met):
     """
@@ -789,7 +791,7 @@ class autoLC:
         try:
             data    = asciidata.open(infile)
         except IOError:
-            print 'Long term data file unavailable for source %s' % src
+            print '\033[95m* Long term data file unavailable for source %s\033[0m' % src
             # Falling back to default fixed trigger threshold
             self.withhistory=False
             return (False,False)
@@ -804,8 +806,8 @@ class autoLC:
 
         # Dynamically redefine the flux trigger threshold
         self.threshold = max(fluxAverage + self.sigma*fluxRMS,
-                             fluxAverage + self.sigma*lastFluxErr,
-                             self.threshold)
+                             fluxAverage + self.sigma*lastFluxErr)
+                             #,self.threshold)
         return (fluxAverage,fluxRMS)
         
 
@@ -931,7 +933,7 @@ class autoLC:
             msg.epilogue = ''
             
             mailtext="""
-     FLaapLUC (Fermi/LAT automatic aperture photometry Light CUrve) report
+     FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) report
 
      *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
@@ -952,7 +954,14 @@ class autoLC:
 
 """%(self.longtimebin,lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
-            
+
+            if FLAGASSUMEDGAMMA is True:
+                mailtext=mailtext+"""
+
+     *WARNING*: The source %s is not found in the 2FGL catalogue, its photon index is thus assumed to be %.2f for the light curve computation.
+""" % (src,ASSUMEDGAMMA)
+
+
             mailtext=mailtext+"""
 
      All available data can be found on the web site
@@ -982,7 +991,7 @@ class autoLC:
             s.sendmail(sender, recipient, msg.as_string())
             s.quit()
 
-            print "Alert sent for %s"%src
+            print "\033[94m*** Alert sent for %s\033[0m"%src
 
         return True
 
@@ -1122,7 +1131,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
             auto.createXML(src)
             mygamma=None
         else:
-            mygamma=-2.5
+            mygamma=ASSUMEDGAMMA
             print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
         auto.photoLC(src)
         auto.exposure(src,fglName,gamma=mygamma)
@@ -1140,12 +1149,14 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     if longTerm is True:
         return True
 
+    global FLAGASSUMEDGAMMA
     if fglName is not None:
         auto.createXML(src)
         mygamma=None
     else:
-        mygamma=-2.5
+        mygamma=ASSUMEDGAMMA
         print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
+        FLAGASSUMEDGAMMA=True
     auto.photoLC(src)
     auto.exposure(src,fglName,gamma=mygamma)
     auto.createDAT(src)

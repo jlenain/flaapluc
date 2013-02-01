@@ -1,9 +1,9 @@
 #! /usr/bin/python
 
 """
-FLaapLUC: Fermi/LAT automatic aperture photometry Light CUrve
+FLaapLUC: Fermi/LAT automatic aperture photometry Light C<->Urve
 
-Fermi/LAT light curve pipeline: create website for presenting results.
+This module creates the web site presenting the results.
 
 Highly inspired from Marcus Hauser's script 'create-result_website.py' for ATOM ADRAS.
 
@@ -72,7 +72,7 @@ def createResultWebsite(configfile='default.cfg'):
 
 <div id="main">
 
-<h1>The FLaapLUC (Fermi/LAT automatic aperture photometry Light CUrve) result page</h1>
+<h1>The FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) result page</h1>
 
 <h2> Processing status</h2>
 
@@ -85,13 +85,15 @@ def createResultWebsite(configfile='default.cfg'):
 
 Light curves:
 <ul>
-  <li>Horizontal red dotted lines in the lightcurves show the thresholds fixed for each source. By default, this is set to 10<sup>-6</sup> ph cm<sup>-2</sup> s<sup>-1</sup>.
+  <li>Horizontal red dotted line in the lightcurves shows the thresholds fixed for each source. By default, this is set to 10<sup>-6</sup> ph cm<sup>-2</sup> s<sup>-1</sup>.
+  <li>Horizontal blue solid line in some plots represents the flux long-term average of a source.
+  <li>Horizontal blue dotted lines in some plots represent the RMS around the flux long-term average.
 </ul>
 
 All data products are available from two sources: 
 
 <ul> 
-<li>the most recent results for the last 70 days of Fermi/LAT data, with weekly-binned light curves.</li>
+<li>the most recent results for the last 70 (respectively 68) days of Fermi/LAT data, with weekly-binned (respectively 2-day binned) light curves.</li>
 
 <li>a weekly-binned long-term light curve for the whole Fermi mission.</li>
 </ul>
@@ -215,7 +217,7 @@ include all data points.
 
 <h3>Notes:</h3>
 <ul>
-  <li>This webpage is updated daily.</li>
+  <li>This webpage is updated on a daily basis, around 8:00 (CET).</li>
 
   <li>If you need more information, please send a mail to: <a href="mailto:jlenain@in2p3.fr">jlenain@in2p3.fr</a>
   </li>
