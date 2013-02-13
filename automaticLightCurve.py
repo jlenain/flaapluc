@@ -105,6 +105,12 @@ def zaAtCulmination(dec):
     return abs(dec-siteLat)
 
 
+# TODO: add visibility of source at H.E.S.S. site
+def visibility(ra,dec):
+    '''
+    @todo implement this function
+    '''
+    pass
 
 def getConfigList(option,sep=','):
     return [ stuff for stuff in option.split(sep) ]
@@ -661,7 +667,7 @@ class autoLC:
         
         # Force the y-axis ticks to use 1e-6 as a base exponent
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.2f')%(x*1e6)))
-        ax.set_ylabel(r'F (%.0f MeV-%.0f GeV) ($\times 10^{-6}$ ph cm$^{-2}$ s$^{-1}$)'%(self.emin,self.emax/1000.),size='small')
+        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (x 10^-6 ph cm^-2 s^-1)'%(self.emin,self.emax/1000.),size='small')
 
         day=24.*60.*60.
 
@@ -699,7 +705,7 @@ class autoLC:
             axbat.errorbar(batlc['TIME']+0.5,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
             axbat.set_xlabel('MJD-'+str(TOFFSET))
             #axbat.set_xlabel('MJD')
-            axbat.set_ylabel(r'F (15-50 keV) (count cm$^{-2}$ s$^{-1}$)',size='x-small')
+            axbat.set_ylabel('F (15-50 keV) (count cm^-2 s^-1)',size='x-small')
             axbat.set_xlim(xmin=timelc[0]-duration/2.-1.,xmax=timelc[-1:]+duration/2.+1.)
             axbat.set_ylim(ymin=0.)
 
