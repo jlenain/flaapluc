@@ -667,7 +667,7 @@ class autoLC:
         
         # Force the y-axis ticks to use 1e-6 as a base exponent
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.2f')%(x*1e6)))
-        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (x 10^-6 ph cm^-2 s^-1)'%(self.emin,self.emax/1000.),size='small')
+        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (x 10^-6 ph cm^-2 s^-1)'%(self.emin,self.emax/1000.),size='x-small')
 
         day=24.*60.*60.
 
