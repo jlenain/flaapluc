@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/bin/env python
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light CUrve)
@@ -597,7 +597,7 @@ class autoLC:
         localfile.close()
         # read local file with pyfits into batlc
         batfits=pyfits.open(file)
-        batlc=np.array(batfits[1].data)
+        batlc=array(batfits[1].data)
         batfits.close()
         # delete local file
         os.unlink(file)
@@ -808,7 +808,7 @@ class autoLC:
 
         # weighted average of the historical fluxes, weighted by their errors
         fluxAverage = average(flux, weights=1./fluxErr)
-        fluxRMS     = std(flux, dtype=np.float64)
+        fluxRMS     = std(flux, dtype=float64)
 
         # Dynamically redefine the flux trigger threshold
         self.threshold = max(fluxAverage + self.sigma*fluxRMS,
