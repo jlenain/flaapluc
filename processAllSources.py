@@ -13,7 +13,7 @@ from optparse import OptionParser
 from ConfigParser import ConfigParser
 
 # Flags
-PARALLEL=True
+PARALLEL=False
 
 # Import custom module
 try:
@@ -199,8 +199,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             MAXCPU=1
     else:
         MERGELONGTERM=False
-        # Otherwise we use 6 CPU, and let 2 CPU free for other processes
-        MAXCPU=6
+        # Otherwise we use 4 CPU, and let the other CPU free for other processes
+        MAXCPU=4
 
     # If dynamical flux trigger threshold based on source history
     if opt.history:
@@ -212,7 +212,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     if(len(args)!=0):
         file=args[0]
         print "Overriding default list of source: using "+file
-        auto=autoLC(file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
+        auto=autoLC(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
     else:
         auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
 
@@ -274,9 +274,9 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             # If source is in ATOM schedule and DAILY is False, force the creation of a daily-binned light curve
             if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
                 # Put the -d option only for this source
-                options.append('\"nice -n 24 ./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
+                options.append('\"/bin/nice -n 10 ./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
             else:
-                options.append('\"nice -n 24 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
+                options.append('\"/bin/nice -n 10 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
         cmd="parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
         # use --dry-run just to test the parallel command
         if DRYRUN is False:

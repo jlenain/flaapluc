@@ -124,7 +124,7 @@ class autoLC:
     Main class, for a given of source.
     """
 
-    def __init__(self,file='listSources.txt',customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,withhistory=False,configfile='default.cfg'):
+    def __init__(self,file=None,customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,withhistory=False,configfile='default.cfg'):
         
         self.config           = self.getConfig(configfile=configfile)
         #self.file=file
@@ -133,7 +133,10 @@ class autoLC:
         self.templatesDir     = self.config.get('InputDirs','TemplatesDir')
         self.ATOMSchedulesDir = self.config.get('InputDirs','ATOMSchedulesDir')
         self.catalogFile      = self.config.get('InputFiles','CatalogFile')
-        self.file             = self.config.get('InputFiles','SourceList')
+        if file is None:
+            self.file             = self.config.get('InputFiles','SourceList')
+        else:
+            self.file = file
         self.baseOutDir       = self.config.get('OutputDirs','OutputResultsDir')
         self.allskyFile       = self.allskyDir+"/"+self.config.get('InputFiles','WholeAllskyFile')
         self.lastAllskyFile   = self.allskyDir+"/"+self.config.get('InputFiles','LastAllskyFile')
