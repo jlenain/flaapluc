@@ -189,6 +189,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         print "      Since this is too CPU intensive, we disabled this combination."
         sys.exit(1)
 
+
     # If merge long term light curves
     if opt.m:
         MERGELONGTERM=True
@@ -286,6 +287,9 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
 
     else:
         # Or directly process everything sequentially, using only 1 CPU
+        if MERGELONGTERM is True:
+            LONGTERM=True
+        
         # Loop on sources
         for i in range(nbSrc):
             print 'Starting process ',i,' for source ',src[i]

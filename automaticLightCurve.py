@@ -1162,6 +1162,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     if fglName is not None:
         auto.createXML(src)
         mygamma=None
+        FLAGASSUMEDGAMMA=False
     else:
         mygamma=ASSUMEDGAMMA
         print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
@@ -1281,7 +1282,7 @@ Use '-h' to get the help message
         WITHHISTORY=True
     else:
         WITHHISTORY=False
-    
+
     src=args[0]
 
 

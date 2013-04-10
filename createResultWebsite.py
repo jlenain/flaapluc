@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#!/bin/env python
 
 """
 FLaapLUC: Fermi/LAT automatic aperture photometry Light C<->Urve
