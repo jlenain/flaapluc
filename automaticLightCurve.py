@@ -1,7 +1,7 @@
 #!/bin/env python
 
 """
-FLaapLUC (Fermi/LAT automatic aperture photometry Light CUrve)
+FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
 
 Automatic generation of aperture photometric light curves of Fermi sources, for a given source.
 
@@ -1070,7 +1070,7 @@ class autoLC:
 
 
 
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,configfile='default.cfg'):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg'):
     """
     Process a given source.
     """
@@ -1121,7 +1121,8 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                     continue
 
                 # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
-                if year==int(thisyear) and int(month)==int(thismonth):
+                # BUT only if update=True
+                if year==int(thisyear) and int(month)==int(thismonth) and update is True:
                     tmpworkdir=auto.baseOutDir+"/longTerm/"+str(year)+str(month)
                     if not daily:
                         for file in glob.glob(tmpworkdir+'/'+src+'*'):
@@ -1130,7 +1131,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                         for file in glob.glob(tmpworkdir+'/'+src+'*daily*'):
                             os.remove(file)
 
-                processSrc(mysrc=src,useThresh=useThresh,daily=daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,configfile=configfile)
+                processSrc(mysrc=src,useThresh=useThresh,daily=daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile)
 
                 
 
@@ -1207,6 +1208,8 @@ Use '-h' to get the help message
                       help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
                       help='merge the month-by-month long-term light curves together. If those do not exist, they will be created on the fly.')
+    parser.add_option("-u","--update",action="store_true",dest="u",default=False,
+                      help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send mail alerts')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -1274,9 +1277,15 @@ Use '-h' to get the help message
         #DAILY=False
         MAIL=False
         TEST=False
+        # If update long term light curves with brand new data
+        if opt.u:
+            UPDATE=True
+        else:
+            UPDATE=False        
     else:
         MERGELONGTERM=False
-    
+        UPDATE=False
+
     # If dynamical flux trigger threshold based on source history
     if opt.history:
         WITHHISTORY=True
@@ -1289,9 +1298,9 @@ Use '-h' to get the help message
     # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
     # We automatically recreate here any missing long time-binned data.
     if DAILY:
-        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
+        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
 
     return True
 

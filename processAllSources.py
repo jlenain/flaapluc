@@ -126,6 +126,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='generate a long term light curve, using the whole mission time (defaulted to False).')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
                       help='merge the long-term month-by-month light curves together.')
+    parser.add_option("-u","--update",action="store_true",dest="u",default=False,
+                      help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
     parser.add_option("--with-history", action="store_true", dest="history", default=False,
                       help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
@@ -198,8 +200,14 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         else:
             # Force the script to process only one source at a time
             MAXCPU=1
+        # If update long term light curves with brand new data
+        if opt.u:
+            UPDATE=True
+        else:
+            UPDATE=False        
     else:
         MERGELONGTERM=False
+        UPDATE=False        
         # Otherwise we use 4 CPU, and let the other CPU free for other processes
         MAXCPU=4
 
@@ -267,6 +275,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             autoOptions.append("-l")
         if MERGELONGTERM:
             autoOptions.append("-m")
+            if UPDATE:
+                autoOptions.append("-u")
         if WITHHISTORY:
             autoOptions.append("--with-history")
 
@@ -298,16 +308,16 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 tmpDAILY=True
                 # We have to make sure that the corresponding weekly-binned data are created first (needed for daily PNG figure)
                 if DRYRUN is False:
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
                 else:
-                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",configfile="+str(CONFIGFILE)+")"
+                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+")"
             else:
                 tmpDAILY=DAILY
 
             if DRYRUN is False:
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
             else:
-                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",configfile="+str(CONFIGFILE)+")"
+                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+")"
     
     return True
 
