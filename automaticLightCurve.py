@@ -1204,7 +1204,7 @@ Use '-h' to get the help message
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
                       help='generate a long term light curve, for one given month (defaulted to False). With this option, one should provide a source name as usual, but also a month for which the data should be processed, in the format YYYYMM.')
-    parser.add_option("--with-history", action="store_true", dest="history", default=False,
+    parser.add_option("-w", "--with-history", action="store_true", dest="history", default=False,
                       help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
                       help='merge the month-by-month long-term light curves together. If those do not exist, they will be created on the fly.')
@@ -1214,7 +1214,7 @@ Use '-h' to get the help message
                       help='do not send mail alerts')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to test recipients (by default, mail alerts are sent to everybody, cf. the configuration files).')
-    parser.add_option("--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
+    parser.add_option("-f", "--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
 
     (opt, args) = parser.parse_args()

@@ -128,7 +128,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='merge the long-term month-by-month light curves together.')
     parser.add_option("-u","--update",action="store_true",dest="u",default=False,
                       help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
-    parser.add_option("--with-history", action="store_true", dest="history", default=False,
+    parser.add_option("-w", "--with-history", action="store_true", dest="history", default=False,
                       help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send alert mails')
@@ -138,7 +138,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='only simulate what the pipeline would do, forcing the use of ATOM sources, without actually processing any Fermi/LAT event. This is useful to see if the master list of sources is up-to-date with the ATOM sources in the current schedule.')
     parser.add_option("--max-cpu", default=1, dest="MAXCPU", metavar="<MAXCPU>",
                       help="in conjonction with --merge-long-term, defines the number of CPU to use for merging long-term data. Using '%default' by default.")
-    parser.add_option("--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
+    parser.add_option("-f", "--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
 
     (opt, args) = parser.parse_args()
