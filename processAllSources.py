@@ -1,5 +1,20 @@
 #!/bin/env python
 
+## SGE parameters (this should work at CCIN2P3):
+#$ -N processAllSources
+#$ -e /sps/hess/lpnhe/jlenain/fermi/log
+#$ -o /sps/hess/lpnhe/jlenain/fermi/log
+#$ -j yes
+#$ -l ct=02:00:00
+#$ -l mem_free=2048M
+#$ -l fsize=2048M
+#$ -l xrootd=0
+#$ -l sps=1
+#$ -l os=sl6
+#$ -p 0
+#$ -P P_hess -cwd
+
+
 """
 Process all sources for automatic aperture photometry of interesting 2FGL sources, with parametric batch jobs.
 

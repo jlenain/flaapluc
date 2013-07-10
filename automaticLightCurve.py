@@ -586,11 +586,11 @@ class autoLC:
         try:
             baturl=urlprefix+file
             webfile=urllib2.urlopen(baturl)
-        except urllib2.HTTPError:
+        except urllib2.HTTPError, urllib2.URLError:
             try:
                 baturl=urlprefix+'weak/'+file
                 webfile=urllib2.urlopen(baturl)
-            except urllib2.HTTPError:
+            except urllib2.HTTPError, urllib2.URLError:
                 return False,None
 
         # save lc to local file
@@ -742,10 +742,16 @@ class autoLC:
 
     def killTrigger(self,ra,dec,z):
         """
-        Defines cuts on (Ra,Dec,z) before assessing whether a mail alert shoudl be sent for a source which flux is above the trigger threshold.
+        Defines cuts on (RA,Dec,z) before assessing whether a mail alert should be sent for a source which flux is above the trigger threshold.
         We cut on a combination (z, ZenithAngle), using a bit mask.
 
-        @todo: Introduce an additional cut on Gal latitude ?
+        @param ra  Source Right Ascension
+        @param dec Source Declination
+        @param z   Source redshift (if known)
+        @rtype bool
+        @todo      Introduce an additional cut on Gal latitude ?
+
+        The 'return' value is a bit counter-intuitive. It answers the question 'Should we kill an imminent mail alert ?', i.e. if a source has the last flux point above the flux threshold, does it also fulfill the requirements on both z (not too far away) and zenith angle (not too low in the sky) ? So if an alert should definitely be sent, this function returns 'False' !
         """
 
         # Numpy array
@@ -769,15 +775,17 @@ class autoLC:
         srcGalCoord=equat2gal(srcradec)
         # Retrieve the Galactic latitude
         srcGalLat=srcGalCoord[(1,0)]
+        # To be used later, for an additional cut on Gal Lat ?!
         
         zaAtCulmin=zaAtCulmination(dec)
-    
 
+        # If input z is None, make it believe it is 0, otherwise msk crashes:
+        if str(z)=='--': # this is the result of the conversion of None to a float
+            z=0.
+    
         # Mask on both (z, ZA at culmin)
         #          z column               ZA column
         msk = (z<=grid[:,0])&(zaAtCulmin<=grid[:,1])
-    
-        # the 'return' below is a bit counter-intuitive. It answers the question 'Should we kill an imminent mail alert ?', i.e. if a source has the last flux point above the flux threshold, does it also fulfill the requirements on both z (not too far away) and zenith angle (not too low in the sky) ? So if an alert should definitely be sent, this function returns 'False' !
 
         # if the mask has at least one 'True' element, we should send an alert
         if True in msk:
@@ -792,7 +800,9 @@ class autoLC:
         '''
         If long-term data are available for a source, dynamically computes a flux trigger threshold based on the flux history of the source. Otherwise, fall back with default fixed trigger threshold.
 
-        @param src Soure name
+        @param src Source name
+        @return (fluxAverage,fluxRMS)
+        @rtype tuple
         '''
         
         # Read the longterm .dat LC file
@@ -830,6 +840,8 @@ class autoLC:
         @param dec Source declination
         @param z Source redshift
         @param nomailall Boolean, should the mail be sent to a restricted list of recipients ?
+        @return True
+        @rtype bool
         '''
 
 
