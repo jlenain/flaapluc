@@ -16,7 +16,8 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 
 import sys, os, asciidata, datetime, time, glob
 from numpy import *
-import pyfits
+import pyfits, ephem
+from astLib import astCoords
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 
@@ -97,6 +98,44 @@ def unixtime2mjd(unixtime):
     return result
 
 
+def rad2deg(angle):
+    """
+    Convert an angle from radians to degrees.
+
+    @param angle in radians
+    """
+    return angle*180./pi
+
+
+def deg2rad(angle):
+    """
+    Convert an angle from degrees to radians.
+
+    @param angle in degrees
+    """
+    return angle*pi/180.
+
+
+def angsep((ra1,dec1),(ra2,dec2),deg=True):
+    """
+    Calculates the angular separation between two points on the sky.
+
+    @param (ra1,dec1) coordinates of 1st source
+    @param (ra2,dec2) coordinates of 2nd source
+    @param deg flag whether inputs/outputs are in degrees or radians
+    """
+    if deg:
+        ra1=deg2rad(ra1)
+        dec1=deg2rad(dec1)
+        ra2=deg2rad(ra2)
+        dec2=deg2rad(dec2)
+    
+    SEP=arccos(cos(dec1)*cos(dec2)*cos(ra1-ra2)+sin(dec1)*sin(dec2)) 
+    if deg:
+        SEP=rad2deg(SEP)
+    return SEP
+
+
 def zaAtCulmination(dec):
     """
     Returns the zenith angle of a source at culmination, for the H.E.S.S. site.
@@ -104,13 +143,6 @@ def zaAtCulmination(dec):
     siteLat = -23.27167 # latitude of H.E.S.S. site in degree
     return abs(dec-siteLat)
 
-
-# TODO: add visibility of source at H.E.S.S. site
-def visibility(ra,dec):
-    '''
-    @todo implement this function
-    '''
-    pass
 
 def getConfigList(option,sep=','):
     return [ stuff for stuff in option.split(sep) ]
@@ -156,6 +188,11 @@ class autoLC:
         # Read maxz and maxZA as lists, not as single floats
         self.maxz             = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZ' ))]
         self.maxZA            = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZA'))]
+        try:
+            self.checkVisibility = self.config.get('AlertTrigger','CheckVisibility')
+        except:
+            # Don't check the source visibility, by default
+            self.checkVisibility = False
 
         self.daily            = daily
         self.withhistory      = withhistory
@@ -560,6 +597,7 @@ class autoLC:
                 file.write(str(time[i])+"\t"+str(timeMjd[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
 
+
     def getBAT(self,src):
         import urllib2
 
@@ -740,6 +778,125 @@ class autoLC:
         fig.savefig(outfig)
 
 
+    # TODO: add visibility of source at H.E.S.S. site
+    def is_visible(self,ra,dec,z):
+        '''
+        @todo implement this function
+        '''
+        
+        # Define HESS site for pyephem
+        siteHESSlon = astCoords.dms2decimal('+16:30:00',delimiter=':')
+        siteHESSlat = astCoords.dms2decimal('-23:16:18',delimiter=':')
+        siteHESSalt = 1800.
+        hessSite    = ephem.Observer()
+        hessSite.pressure = 0
+        astroHorizon = '-18:00' # astronomical twilight
+        civilHorizon = '-0:34'
+        hessSite.horizon = astroHorizon
+        hessSite.lon, hessSite.lat, hessSite.elev = astCoords.decimal2dms(siteHESSlon,delimiter=':'), astCoords.decimal2dms(siteHESSlat,delimiter=':'), siteHESSalt
+
+        # We also want the max allowed ZA for the given z of the source
+        maxz = array(self.maxz)
+        maxZA = array(self.maxZA)
+        if z > max(maxz):
+            thismaxZA = min(maxZA)
+        else:
+            msk = where(z<maxz)
+            # Get the first item in the mask, to get the corresponding ZA:
+            thismaxZA = maxZA[msk[0][0]]
+
+        # Convert ZA to Alt
+        thisminAlt=abs(90.-thismaxZA)
+        
+        ephemSrc = ephem.FixedBody()
+        ephemSrc._ra=astCoords.decimal2hms(ra,delimiter=':')
+        ephemSrc._dec=astCoords.decimal2dms(dec,delimiter=':')
+        
+        visibleFlag=False
+        transitDate=[]
+        transitAlt=[]
+        transitAz=[]
+        
+        # All times are handled here in UTC (pyEphem only uses UTC)
+        now      = datetime.datetime.utcnow()
+        tomorrow = now + datetime.timedelta(days=1)
+        
+        hessSite.date  = now
+        sun            = ephem.Sun()
+        nextSunset     = hessSite.next_setting(sun)
+        nextSunrise    = hessSite.next_rising(sun)
+        # The Moon just need to be below the horizon
+        hessSite.horizon = civilHorizon
+        moon           = ephem.Moon()
+        nextMoonset    = hessSite.next_setting(moon)
+        nextMoonrise   = hessSite.next_rising(moon)
+        hessSite.horizon = astroHorizon
+        # so far, so good. All of this is OK if we execute the program during day time.
+
+        # However, if this is dark time, we should look at the ephemerids of next night (not current night):
+        if nextSunrise < nextSunset: # DEBUG put back < instead of >
+            # we just put the current time at next sunrise + 10 min., to be sure to fall on tomorrow's morning day time
+            hessSite.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
+            nextSunset    = hessSite.next_setting(sun)
+            nextSunrise   = hessSite.next_rising(sun)
+            hessSite.horizon = civilHorizon
+            nextMoonset   = hessSite.next_setting(moon)
+            nextMoonrise  = hessSite.next_rising(moon)
+            hessSite.horizon = astroHorizon
+
+        ephemSrc.compute(hessSite)
+        srcTransitTime = hessSite.next_transit(ephemSrc)
+        
+        #sep_from_sun = angsep((astCoords.hms2decimal(ephemSrc.ra,delimiter=':'),astCoords.dms2decimal(ephemSrc.dec,delimiter=':')),(astCoords.hms2decimal(sun.ra,delimiter=':'),astCoords.dms2decimal(sun.dec,delimiter=':')))
+        #sep_from_moon = angsep((astCoords.hms2decimal(ephemSrc.ra,delimiter=':'),astCoords.dms2decimal(ephemSrc.dec,delimiter=':')),(astCoords.hms2decimal(moon.ra,delimiter=':'),astCoords.dms2decimal(moon.dec,delimiter=':')))
+        
+        hessSite.date=srcTransitTime
+        ephemSrc.compute(hessSite)
+        srcAltAtTransit=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
+        
+        # If srcAltAtTransit is below thisminAlt, the source is just not correctly visible and we stop here
+        if srcAltAtTransit < thisminAlt:
+            return False
+
+        # Compute start and end of darkness time
+        beginDarkness=max(nextSunset,nextMoonset)
+        print "DEBUG Begin darkness: ", beginDarkness
+        endDarkness=min(nextSunrise,nextMoonrise)
+        print "DEBUG End darkness: ", endDarkness
+
+        hessSite.date=beginDarkness
+        ephemSrc.compute(hessSite)
+        srcAltAtStartDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
+        
+        hessSite.date=endDarkness
+        ephemSrc.compute(hessSite)
+        srcAltAtEndDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
+        
+       
+        print "DEBUG now: ", now
+        print "DEBUG Next sunset:  ",nextSunset
+        print "DEBUG Next sunrise: ",nextSunrise
+        print "DEBUG Next moonset:  ",nextMoonset
+        print "DEBUG Next moonrise: ",nextMoonrise
+        print "DEBUG Source transit time: ", srcTransitTime
+        print "DEBUG Source alt at transit time: ", srcAltAtTransit
+        print "DEBUG Source alt at start darkness: ", srcAltAtStartDarkTime
+        print "DEBUG Source alt at end darkness: ", srcAltAtEndDarkTime
+        print "DEBUG min allowed Alt: ", thisminAlt
+        
+
+
+
+        # check if source is visible, above maxZA, during this night
+        # if srcTransitTime > nextSunset and srcTransitTime < nextSunrise and sep_from_sun > 25.:
+        #if (srcTransitTime > nextSunset and srcTransitTime < nextSunrise and srcAltAtTransit > thisminAlt) or srcAltAtSunrise > thisminAlt or srcAltAtSunset > thisminAlt:
+        if (srcTransitTime > beginDarkness and srcTransitTime < endDarkness and srcAltAtTransit > thisminAlt) or srcAltAtStartDarkTime > thisminAlt or srcAltAtEndDarkTime > thisminAlt:
+            visibleFlag=True
+
+        print "DEBUG Source visible ? ",visibleFlag
+        return visibleFlag
+
+
     def killTrigger(self,ra,dec,z):
         """
         Defines cuts on (RA,Dec,z) before assessing whether a mail alert should be sent for a source which flux is above the trigger threshold.
@@ -787,8 +944,15 @@ class autoLC:
         #          z column               ZA column
         msk = (z<=grid[:,0])&(zaAtCulmin<=grid[:,1])
 
+        # Assess whether the source is currently visible at the H.E.S.S. site
+        if self.checkVisibility == 'True':
+            visible = self.is_visible(ra,dec,z)
+        else:
+            # the source is assumed to be visible in any case, i.e. we don't care about its visibility status at the H.E.S.S. site to send a potential alert
+            visible = True
+
         # if the mask has at least one 'True' element, we should send an alert
-        if True in msk:
+        if True in msk and visible:
             # print 'An alert should be triggered !'
             return False
         else:
