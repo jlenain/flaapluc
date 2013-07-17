@@ -813,19 +813,16 @@ class autoLC:
         ephemSrc._dec=astCoords.decimal2dms(dec,delimiter=':')
         
         visibleFlag=False
-        transitDate=[]
-        transitAlt=[]
-        transitAz=[]
         
         # All times are handled here in UTC (pyEphem only uses UTC)
         now      = datetime.datetime.utcnow()
-        tomorrow = now + datetime.timedelta(days=1)
+        # tomorrow = now + datetime.timedelta(days=1)
         
         hessSite.date  = now
         sun            = ephem.Sun()
         nextSunset     = hessSite.next_setting(sun)
         nextSunrise    = hessSite.next_rising(sun)
-        # The Moon just need to be below the horizon
+        # The Moon just needs to be below the horizon
         hessSite.horizon = civilHorizon
         moon           = ephem.Moon()
         nextMoonset    = hessSite.next_setting(moon)
@@ -859,10 +856,15 @@ class autoLC:
             return False
 
         # Compute start and end of darkness time
-        beginDarkness=max(nextSunset,nextMoonset)
-        print "DEBUG Begin darkness: ", beginDarkness
-        endDarkness=min(nextSunrise,nextMoonrise)
-        print "DEBUG End darkness: ", endDarkness
+        if nextMoonset > nextSunset and nextMoonset < nextSunrise:
+            beginDarkness=nextMoonset
+        else:
+            beginDarkness=nextSunset
+
+        if nextMoonrise < nextSunrise and nextMoonrise > nextSunset:
+            endDarkness=nextMoonrise
+        else:
+            endDarkness=nextSunrise
 
         hessSite.date=beginDarkness
         ephemSrc.compute(hessSite)
@@ -872,28 +874,10 @@ class autoLC:
         ephemSrc.compute(hessSite)
         srcAltAtEndDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
         
-       
-        print "DEBUG now: ", now
-        print "DEBUG Next sunset:  ",nextSunset
-        print "DEBUG Next sunrise: ",nextSunrise
-        print "DEBUG Next moonset:  ",nextMoonset
-        print "DEBUG Next moonrise: ",nextMoonrise
-        print "DEBUG Source transit time: ", srcTransitTime
-        print "DEBUG Source alt at transit time: ", srcAltAtTransit
-        print "DEBUG Source alt at start darkness: ", srcAltAtStartDarkTime
-        print "DEBUG Source alt at end darkness: ", srcAltAtEndDarkTime
-        print "DEBUG min allowed Alt: ", thisminAlt
-        
-
-
-
-        # check if source is visible, above maxZA, during this night
-        # if srcTransitTime > nextSunset and srcTransitTime < nextSunrise and sep_from_sun > 25.:
-        #if (srcTransitTime > nextSunset and srcTransitTime < nextSunrise and srcAltAtTransit > thisminAlt) or srcAltAtSunrise > thisminAlt or srcAltAtSunset > thisminAlt:
+        # check if source is visible, above minAlt, during this night
         if (srcTransitTime > beginDarkness and srcTransitTime < endDarkness and srcAltAtTransit > thisminAlt) or srcAltAtStartDarkTime > thisminAlt or srcAltAtEndDarkTime > thisminAlt:
             visibleFlag=True
 
-        print "DEBUG Source visible ? ",visibleFlag
         return visibleFlag
 
 
