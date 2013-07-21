@@ -1065,12 +1065,12 @@ class autoLC:
         if not KILLTRIGGER:
             # Assess whether the trigger condition is met, looking at the last flux point
             if self.daily:
-                if (lastFlux >= self.threshold or lastFluxLongTimeBin >= self.threshold):
+                if ((lastFlux - lastFluxErr) >= self.threshold or (lastFluxLongTimeBin - lastFluxErrLongTimeBin) >= self.threshold):
                     SENDALERT=True
                 else:
                     SENDALERT=False
             else:
-                if lastFlux >= self.threshold:
+                if (lastFlux - lastFluxErr) >= self.threshold:
                     SENDALERT=True
                 else:
                     SENDALERT=False
