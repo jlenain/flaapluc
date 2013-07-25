@@ -592,7 +592,7 @@ class autoLC:
         # We can do this because time is NOT a list, but a numpy.array
         
         for i in range(len(time)):
-            # Exposure can be 0 if longTerm=True and TSTOP in photon file > TSTOP in spacecraft file.
+            # Exposure can be 0 if longTerm=True and TSTOP in photon file > TSTOP in spacecraft file, or if Fermi operated in pointed mode for a while.
             if exposure[i] != 0.:
                 file.write(str(time[i])+"\t"+str(timeMjd[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
@@ -741,6 +741,15 @@ class autoLC:
         # Plot a line at flux=0, for visibility/readibility
         ax.axhline(y=0.,color='k')
 
+        # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
+        # x,y in relative 0-1 coords in figure
+        figtext(0.98, 0.95,
+                'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
+                horizontalalignment="right",
+                rotation='vertical',
+                size='xx-small'
+                )
+
         # Plot Swift/BAT lightcurve
         if xray:
             axbat.errorbar(batlc['TIME']+0.5,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
@@ -750,15 +759,6 @@ class autoLC:
             axbat.set_xlim(xmin=timelc[0]-duration/2.-1.,xmax=timelc[-1:]+duration/2.+1.)
             axbat.set_ylim(ymin=0.)
 
-        # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
-        # x,y in relative 0-1 coords in figure
-        figtext(0.98, 0.05,
-                'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
-                horizontalalignment="left",
-                rotation='vertical',
-                size='xx-small'
-                )
-        
         # Need to zoom in or not, at the very end, after any call to other matplotlib functions
         NEEDTOZOOMIN=False
         for i in range(len(flux)):
