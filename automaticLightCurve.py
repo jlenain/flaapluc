@@ -197,6 +197,11 @@ class autoLC:
         self.daily            = daily
         self.withhistory      = withhistory
 
+        # Mail sender and recipients
+        self.usualRecipients= getConfigList(self.config.get('MailConfig','UsualRecipients'))
+        self.testRecipients = getConfigList(self.config.get('MailConfig','TestRecipients'))
+        self.mailSender     = self.config.get('MailConfig','MailSender')
+
         today=datetime.date.today().strftime('%Y%m%d')
 
         # Setting file names and directories
@@ -292,10 +297,6 @@ class autoLC:
                 self.tstart = missionStart
                 self.tstop  = missionStop
 
-        # Mail sender and recipients
-        self.usualRecipients= getConfigList(self.config.get('MailConfig','UsualRecipients'))
-        self.testRecipients = getConfigList(self.config.get('MailConfig','TestRecipients'))
-        self.mailSender     = self.config.get('MailConfig','MailSender')
     
 
 
@@ -965,16 +966,17 @@ class autoLC:
 
         flux        = data[2].tonumpy()
         fluxErr     = data[3].tonumpy()
-        lastFluxErr = fluxErr[-1:]
+        #lastFluxErr = fluxErr[-1:]
 
         # weighted average of the historical fluxes, weighted by their errors
         fluxAverage = average(flux, weights=1./fluxErr)
         fluxRMS     = std(flux, dtype=float64)
 
         # Dynamically redefine the flux trigger threshold
-        self.threshold = max(fluxAverage + self.sigma*fluxRMS,
-                             fluxAverage + self.sigma*lastFluxErr)
-                             #,self.threshold)
+        self.threshold = fluxAverage + self.sigma*fluxRMS
+        #self.threshold = max(fluxAverage + self.sigma*fluxRMS,
+        #                     fluxAverage + self.sigma*lastFluxErr)
+        #                     #,self.threshold)
         return (fluxAverage,fluxRMS)
         
 
@@ -1193,11 +1195,7 @@ class autoLC:
         msg = MIMEMultipart()
         msg['Subject'] = '[FLaapLUC] ERROR Fermi/LAT automatic light curve'
         sender = self.mailSender
-            
-        if mailall is True:
-            recipient = self.usualRecipients
-        else:
-            recipient = self.testRecipients
+        recipient = self.testRecipients
 
         msg['From'] = sender
         COMMASPACE = ', '
