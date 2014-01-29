@@ -1,3 +1,11 @@
 - Victor: if threshold is dynamic and it is computed using the last flux measurement uncertainty, threshold will not be a given horizontal line, but depend on each point. In that case, indicate in different color those flux measurements that trigger.
 - Add a flagging system for sources which already triggered alerts the last days, to avoid having almost same alerts for a few days in a row.
 - Implement Franceschini et al's EBL model to have nice evolutive cuts on the alerts based on tau(z) ? I personally don't really like the idea, this would make the pipeline model-dependent...
+- Add cut on visibility of sources with H.E.S.S. (make use of astropy ?), partially DONE.
+- Optimize the flux dynamic trigger: make use of MySQL to store which source triggered an alert (weekli-binned or daily-binned) and when ?
+- In case of alert:
+  + extrapolate the spectrum to VHE
+  + EBL absorption (cf. above: would make the pipeline model-dependent)
+  + compare with H.E.S.S. II sensitivity
+  + plot and send SED
+- Look only at highest energy photons (increase E_th) ?
