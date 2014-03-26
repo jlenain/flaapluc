@@ -193,6 +193,10 @@ class autoLC:
         except:
             # Don't check the source visibility, by default
             self.checkVisibility = False
+        try:
+            self.launchLikeAna = self.config.get('AlertTrigger','LaunchLikelihoodAnalysis')
+        except:
+            self.launchLikeAna = False
 
         self.daily            = daily
         self.withhistory      = withhistory
@@ -1126,6 +1130,13 @@ class autoLC:
 """%(self.longtimebin,lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
 
+            if self.launchLikeAna:
+                mailtext=mailtext+"""
+
+     *NEW*: a likelihood analysis has been automatically launched at CCIN2P3 for the time interval corresponding to the last measurement (MET %i - MET %i). Contact Jean-Philippe Lenain (jlenain@in2p3.fr) to know the outcome.
+
+"""%(self.tstop-(self.longtimebin*24.*3600.), self.tstop)
+
             if FLAGASSUMEDGAMMA is True:
                 mailtext=mailtext+"""
 
@@ -1164,7 +1175,9 @@ class autoLC:
 
             print "\033[94m*** Alert sent for %s\033[0m"%src
 
-        return True
+            return True
+        else:
+            return False
 
 
 
@@ -1226,6 +1239,40 @@ class autoLC:
         return True
 
 
+    def launchLikelihoodAnalysis(self, src, ra, dec, fglName):
+        """
+        Launch a clean likelihood analysis in Lyon
+
+        @todo To be implemented
+        """
+        
+        srcDir=src+'_FLaapLUC'
+        anaDir=os.getenv('FERMIUSER')+'/'+srcDir
+        if not os.path.isdir(anaDir):
+            os.makedirs(anaDir)
+        if fglName is not None:
+            fglNameFile=anaDir+'/FermiName.txt'
+            file=open(fglNameFile,'w')
+            file.write(fglName)
+            file.close()
+        srcSelectFile=anaDir+'/source_selection.txt'
+        srcSelect=open(srcSelectFile,'w')
+        srcSelect.write("""Search Center (RA,Dec)  =       (%f,%f)
+Radius  =       10 degrees
+Start Time (MET)        =       %i seconds (MJD%f)
+Stop Time (MET) =       %i seconds (MJD%f)
+Minimum Energy  =       %i MeV
+Maximum Energy  =       %i MeV
+""" % (ra, dec, self.tstop-(self.longtimebin*24.*3600.), met2mjd(self.tstop-(self.longtimebin*24.*3600.)), self.tstop, met2mjd(self.tstop), int(self.emin), int(self.emax)))
+        srcSelect.close()
+        catalogOption=""
+        if fglName is not None:
+            catalogOption="-c"
+        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r32p5-fssc-20130916-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
+source $FERMI_DIR/fermi-init.sh && \
+qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
+        if self.launchLikeAna:
+            os.system(command)
 
 
 def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg'):
@@ -1331,7 +1378,9 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.createDAT(src)
     auto.createPNG(src,fglName,z)
     if mail is True:
-        auto.sendAlert(src,ra,dec,z,nomailall=test)
+        alertSent=auto.sendAlert(src,ra,dec,z,nomailall=test)
+        if alertSent:
+            auto.launchLikelihoodAnalysis(src, ra, dec, fglName)
 
     
     return True
