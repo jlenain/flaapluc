@@ -193,9 +193,18 @@ class autoLC:
         except:
             # Don't check the source visibility, by default
             self.checkVisibility = False
+        try:
+            self.launchLikeAna = self.config.get('AlertTrigger','LaunchLikelihoodAnalysis')
+        except:
+            self.launchLikeAna = False
 
         self.daily            = daily
         self.withhistory      = withhistory
+
+        # Mail sender and recipients
+        self.usualRecipients= getConfigList(self.config.get('MailConfig','UsualRecipients'))
+        self.testRecipients = getConfigList(self.config.get('MailConfig','TestRecipients'))
+        self.mailSender     = self.config.get('MailConfig','MailSender')
 
         today=datetime.date.today().strftime('%Y%m%d')
 
@@ -292,10 +301,6 @@ class autoLC:
                 self.tstart = missionStart
                 self.tstop  = missionStop
 
-        # Mail sender and recipients
-        self.usualRecipients= getConfigList(self.config.get('MailConfig','UsualRecipients'))
-        self.testRecipients = getConfigList(self.config.get('MailConfig','TestRecipients'))
-        self.mailSender     = self.config.get('MailConfig','MailSender')
     
 
 
@@ -592,7 +597,7 @@ class autoLC:
         # We can do this because time is NOT a list, but a numpy.array
         
         for i in range(len(time)):
-            # Exposure can be 0 if longTerm=True and TSTOP in photon file > TSTOP in spacecraft file.
+            # Exposure can be 0 if longTerm=True and TSTOP in photon file > TSTOP in spacecraft file, or if Fermi operated in pointed mode for a while.
             if exposure[i] != 0.:
                 file.write(str(time[i])+"\t"+str(timeMjd[i])+"\t"+str(flux[i])+"\t"+str(fluxErr[i])+"\n")
         file.close()
@@ -741,6 +746,15 @@ class autoLC:
         # Plot a line at flux=0, for visibility/readibility
         ax.axhline(y=0.,color='k')
 
+        # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
+        # x,y in relative 0-1 coords in figure
+        figtext(0.98, 0.95,
+                'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
+                horizontalalignment="right",
+                rotation='vertical',
+                size='xx-small'
+                )
+
         # Plot Swift/BAT lightcurve
         if xray:
             axbat.errorbar(batlc['TIME']+0.5,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
@@ -750,15 +764,6 @@ class autoLC:
             axbat.set_xlim(xmin=timelc[0]-duration/2.-1.,xmax=timelc[-1:]+duration/2.+1.)
             axbat.set_ylim(ymin=0.)
 
-        # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
-        # x,y in relative 0-1 coords in figure
-        figtext(0.98, 0.05,
-                'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
-                horizontalalignment="left",
-                rotation='vertical',
-                size='xx-small'
-                )
-        
         # Need to zoom in or not, at the very end, after any call to other matplotlib functions
         NEEDTOZOOMIN=False
         for i in range(len(flux)):
@@ -965,16 +970,17 @@ class autoLC:
 
         flux        = data[2].tonumpy()
         fluxErr     = data[3].tonumpy()
-        lastFluxErr = fluxErr[-1:]
+        #lastFluxErr = fluxErr[-1:]
 
         # weighted average of the historical fluxes, weighted by their errors
         fluxAverage = average(flux, weights=1./fluxErr)
         fluxRMS     = std(flux, dtype=float64)
 
         # Dynamically redefine the flux trigger threshold
-        self.threshold = max(fluxAverage + self.sigma*fluxRMS,
-                             fluxAverage + self.sigma*lastFluxErr)
-                             #,self.threshold)
+        self.threshold = fluxAverage + self.sigma*fluxRMS
+        #self.threshold = max(fluxAverage + self.sigma*fluxRMS,
+        #                     fluxAverage + self.sigma*lastFluxErr)
+        #                     #,self.threshold)
         return (fluxAverage,fluxRMS)
         
 
@@ -1065,12 +1071,12 @@ class autoLC:
         if not KILLTRIGGER:
             # Assess whether the trigger condition is met, looking at the last flux point
             if self.daily:
-                if (lastFlux >= self.threshold or lastFluxLongTimeBin >= self.threshold):
+                if ((lastFlux - lastFluxErr) >= self.threshold or (lastFluxLongTimeBin - lastFluxErrLongTimeBin) >= self.threshold):
                     SENDALERT=True
                 else:
                     SENDALERT=False
             else:
-                if lastFlux >= self.threshold:
+                if (lastFlux - lastFluxErr) >= self.threshold:
                     SENDALERT=True
                 else:
                     SENDALERT=False
@@ -1124,6 +1130,13 @@ class autoLC:
 """%(self.longtimebin,lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
 
+            if self.launchLikeAna:
+                mailtext=mailtext+"""
+
+     *NEW*: a likelihood analysis has been automatically launched at CCIN2P3 for the time interval corresponding to the last measurement (MET %i - MET %i). Contact Jean-Philippe Lenain (jlenain@in2p3.fr) to know the outcome.
+
+"""%(self.tstop-(self.longtimebin*24.*3600.), self.tstop)
+
             if FLAGASSUMEDGAMMA is True:
                 mailtext=mailtext+"""
 
@@ -1162,7 +1175,9 @@ class autoLC:
 
             print "\033[94m*** Alert sent for %s\033[0m"%src
 
-        return True
+            return True
+        else:
+            return False
 
 
 
@@ -1193,11 +1208,7 @@ class autoLC:
         msg = MIMEMultipart()
         msg['Subject'] = '[FLaapLUC] ERROR Fermi/LAT automatic light curve'
         sender = self.mailSender
-            
-        if mailall is True:
-            recipient = self.usualRecipients
-        else:
-            recipient = self.testRecipients
+        recipient = self.testRecipients
 
         msg['From'] = sender
         COMMASPACE = ', '
@@ -1228,6 +1239,40 @@ class autoLC:
         return True
 
 
+    def launchLikelihoodAnalysis(self, src, ra, dec, fglName):
+        """
+        Launch a clean likelihood analysis in Lyon
+
+        @todo To be implemented
+        """
+        
+        srcDir=src+'_FLaapLUC'
+        anaDir=os.getenv('FERMIUSER')+'/'+srcDir
+        if not os.path.isdir(anaDir):
+            os.makedirs(anaDir)
+        if fglName is not None:
+            fglNameFile=anaDir+'/FermiName.txt'
+            file=open(fglNameFile,'w')
+            file.write(fglName)
+            file.close()
+        srcSelectFile=anaDir+'/source_selection.txt'
+        srcSelect=open(srcSelectFile,'w')
+        srcSelect.write("""Search Center (RA,Dec)  =       (%f,%f)
+Radius  =       10 degrees
+Start Time (MET)        =       %i seconds (MJD%f)
+Stop Time (MET) =       %i seconds (MJD%f)
+Minimum Energy  =       %i MeV
+Maximum Energy  =       %i MeV
+""" % (ra, dec, self.tstop-(self.longtimebin*24.*3600.), met2mjd(self.tstop-(self.longtimebin*24.*3600.)), self.tstop, met2mjd(self.tstop), int(self.emin), int(self.emax)))
+        srcSelect.close()
+        catalogOption=""
+        if fglName is not None:
+            catalogOption="-c"
+        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r32p5-fssc-20130916-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
+source $FERMI_DIR/fermi-init.sh && \
+qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
+        if self.launchLikeAna:
+            os.system(command)
 
 
 def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg'):
@@ -1333,7 +1378,9 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.createDAT(src)
     auto.createPNG(src,fglName,z)
     if mail is True:
-        auto.sendAlert(src,ra,dec,z,nomailall=test)
+        alertSent=auto.sendAlert(src,ra,dec,z,nomailall=test)
+        if alertSent:
+            auto.launchLikelihoodAnalysis(src, ra, dec, fglName)
 
     
     return True
