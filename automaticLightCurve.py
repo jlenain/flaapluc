@@ -1130,7 +1130,7 @@ class autoLC:
 """%(self.longtimebin,lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
 
-            if self.launchLikeAna:
+            if self.launchLikeAna == 'True':
                 mailtext=mailtext+"""
 
      *NEW*: a likelihood analysis has been automatically launched at CCIN2P3 for the time interval corresponding to the last measurement (MET %i - MET %i). Contact Jean-Philippe Lenain (jlenain@in2p3.fr) to know the outcome.
@@ -1242,8 +1242,6 @@ class autoLC:
     def launchLikelihoodAnalysis(self, src, ra, dec, fglName):
         """
         Launch a clean likelihood analysis in Lyon
-
-        @todo To be implemented
         """
         
         srcDir=src+'_FLaapLUC'
@@ -1265,14 +1263,22 @@ Minimum Energy  =       %i MeV
 Maximum Energy  =       %i MeV
 """ % (ra, dec, self.tstop-(self.longtimebin*24.*3600.), met2mjd(self.tstop-(self.longtimebin*24.*3600.)), self.tstop, met2mjd(self.tstop), int(self.emin), int(self.emax)))
         srcSelect.close()
+
+        photonFile=anaDir+'/photon.list'
+        photonList=open(photonFile,'w')
+        photonList.write('/sps/hess/users/lpnhe/jlenain/fermi/allsky/allsky_last68days_30MeV_500GeV_diffuse_filtered.fits')
+        photonList.close()
+
         catalogOption=""
         if fglName is not None:
             catalogOption="-c"
         command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r32p5-fssc-20130916-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
 source $FERMI_DIR/fermi-init.sh && \
 qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
-        if self.launchLikeAna:
-            os.system(command)
+        if self.launchLikeAna == 'True':
+            r=os.system(command)
+            return r
+        return False
 
 
 def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg'):
