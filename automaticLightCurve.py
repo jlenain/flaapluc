@@ -1384,7 +1384,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.createPNG(src,fglName,z)
     if mail is True:
         alertSent=auto.sendAlert(src,ra,dec,z,nomailall=test)
-        if alertSent and self.launchLikeAna == 'True':
+        if alertSent and auto.launchLikeAna == 'True':
             auto.launchLikelihoodAnalysis(src, ra, dec, fglName)
 
     
