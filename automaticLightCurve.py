@@ -14,7 +14,7 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 @version $Id$
 """
 
-import sys, os, asciidata, datetime, time, glob
+import sys, os, asciidata, datetime, time, glob, shutil
 from numpy import *
 import pyfits, ephem
 from astLib import astCoords
@@ -1244,10 +1244,11 @@ class autoLC:
         Launch a clean likelihood analysis in Lyon
         """
         
-        srcDir=src+'_FLaapLUC'
+        srcDir=src+'_FLaapLUC_'+str(datetime.date.today().strftime('%Y%m%d'))
         anaDir=os.getenv('FERMIUSER')+'/'+srcDir
-        if not os.path.isdir(anaDir):
-            os.makedirs(anaDir)
+        if os.path.isdir(anaDir):
+            shutil.rmtree(anaDir)
+        os.makedirs(anaDir)
         if fglName is not None:
             fglNameFile=anaDir+'/FermiName.txt'
             file=open(fglNameFile,'w')
@@ -1275,10 +1276,8 @@ Maximum Energy  =       %i MeV
         command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r32p5-fssc-20130916-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
 source $FERMI_DIR/fermi-init.sh && \
 qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
-        if self.launchLikeAna == 'True':
-            r=os.system(command)
-            return r
-        return False
+        r=os.system(command)
+        return r
 
 
 def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg'):
@@ -1385,7 +1384,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.createPNG(src,fglName,z)
     if mail is True:
         alertSent=auto.sendAlert(src,ra,dec,z,nomailall=test)
-        if alertSent:
+        if alertSent and self.launchLikeAna == 'True':
             auto.launchLikelihoodAnalysis(src, ra, dec, fglName)
 
     
