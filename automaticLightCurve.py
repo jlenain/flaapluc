@@ -944,6 +944,10 @@ class autoLC:
         if True in msk and visible:
             # print 'An alert should be triggered !'
             return False
+        elif True in msk and not visible:
+            # print 'No alert triggered'
+            print "\033[92m   Source active but not visible !\033[0m"
+            return True
         else:
             # print 'No alert triggered'
             return True
