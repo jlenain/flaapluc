@@ -835,8 +835,8 @@ class autoLC:
         hessSite.horizon = astroHorizon
         # so far, so good. All of this is OK if we execute the program during day time.
 
-        # However, if this is dark time, we should look at the ephemerids of next night (not current night):
-        if nextSunrise < nextSunset: # DEBUG put back < instead of >
+        # However, the program is run during dark time, we should look at the ephemerids of next night (not current night):
+        if nextSunrise < nextSunset:
             # we just put the current time at next sunrise + 10 min., to be sure to fall on tomorrow's morning day time
             hessSite.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
             nextSunset    = hessSite.next_setting(sun)
@@ -886,7 +886,7 @@ class autoLC:
         return visibleFlag
 
 
-    def killTrigger(self,ra,dec,z):
+    def killTrigger(self,src,ra,dec,z):
         """
         Defines cuts on (RA,Dec,z) before assessing whether a mail alert should be sent for a source which flux is above the trigger threshold.
         We cut on a combination (z, ZenithAngle), using a bit mask.
@@ -946,7 +946,7 @@ class autoLC:
             return False
         elif True in msk and not visible:
             # print 'No alert triggered'
-            print "\033[92m   Source active but not visible !\033[0m"
+            print "\033[92m   %s active but not visible !\033[0m" % src
             return True
         else:
             # print 'No alert triggered'
@@ -1070,7 +1070,7 @@ class autoLC:
             print "lastFlux=",lastFlux
             print
 
-        KILLTRIGGER = self.killTrigger(ra,dec,z)
+        KILLTRIGGER = self.killTrigger(src,ra,dec,z)
 
         if not KILLTRIGGER:
             # Assess whether the trigger condition is met, looking at the last flux point
