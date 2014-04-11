@@ -43,6 +43,7 @@ except ImportError:
 
 # Flags
 DEBUG=False # Debugging flag
+VERBOSE=False
 BATCH=True  # True in batch mode
 FLAGASSUMEDGAMMA=False # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA or taken from the 2FGL.
 

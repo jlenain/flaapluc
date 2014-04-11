@@ -155,10 +155,18 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help="in conjonction with --merge-long-term, defines the number of CPU to use for merging long-term data. Using '%default' by default.")
     parser.add_option("-f", "--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
+    parser.add_option("-v", "--verbose", action="store_true", dest="v", default=False,
+                      help='verbose output.')
 
     (opt, args) = parser.parse_args()
 
     CONFIGFILE=opt.CONFIGFILE
+
+    global VERBOSE
+    if opt.v:
+        VERBOSE=True
+    else:
+        VERBOSE=False
 
     # If dry run
     if opt.dryRun:
