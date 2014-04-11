@@ -43,7 +43,6 @@ except ImportError:
 
 # Flags
 DEBUG=False # Debugging flag
-VERBOSE=False # Verbose flag
 BATCH=True  # True in batch mode
 FLAGASSUMEDGAMMA=False # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA or taken from the 2FGL.
 
@@ -1474,10 +1473,17 @@ Use '-h' to get the help message
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to test recipients (by default, mail alerts are sent to everybody, cf. the configuration files).')
     parser.add_option("-f", "--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
-
+    parser.add_option("-v", "--verbose", action="store_true", dest="v", default=False,
+                      help='verbose output.')
     (opt, args) = parser.parse_args()
 
     CONFIGFILE=opt.CONFIGFILE
+
+    global VERBOSE
+    if opt.v:
+        VERBOSE=True
+    else:
+        VERBOSE=False
 
     # If daily bins
     if opt.d:
