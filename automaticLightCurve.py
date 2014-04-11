@@ -43,6 +43,7 @@ except ImportError:
 
 # Flags
 DEBUG=False # Debugging flag
+VERBOSE=False # Verbose flag
 BATCH=True  # True in batch mode
 FLAGASSUMEDGAMMA=False # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA or taken from the 2FGL.
 
@@ -251,7 +252,7 @@ class autoLC:
         try:
             hdu=pyfits.open(self.allsky)
         except:
-            print 'Exception: can not open file '+self.allsky
+            print 'EXCEPT: can not open file '+self.allsky
             raise
         header = hdu[0].header
 
@@ -355,12 +356,12 @@ class autoLC:
                             float(myThreshold[i])
                             self.threshold=myThreshold[i]
                         except ValueError:
-                            print "WARNING The threshold of the source "+str(mysrc)+" is not a float. Please, check the list of sources !"
+                            print 'WARNING The threshold of the source %s is not a float. Please, check the list of sources !' % mysrc
                             sys.exit(2)
                     return src[i],ra[i],dec[i],z[i],fglName[i]
             
             # If we end up without any found source, print out a WARNING
-            print "WARNING Can't find your source "+str(mysrc)+" in the list of sources !"
+            print 'WARNING Can\'t find your source %s in the list of sources !' % str(mysrc)
             return None,None,None,None,None
         
         # Otherwise, return the whole list of parameters for all the sources
@@ -800,6 +801,10 @@ class autoLC:
         hessSite.horizon = astroHorizon
         hessSite.lon, hessSite.lat, hessSite.elev = astCoords.decimal2dms(siteHESSlon,delimiter=':'), astCoords.decimal2dms(siteHESSlat,delimiter=':'), siteHESSalt
 
+        # If input z is None, make it believe it is 0, otherwise msk crashes:
+        if str(z)=='--': # this is the result of the conversion of None to a float
+            z=0.
+
         # We also want the max allowed ZA for the given z of the source
         maxz = array(self.maxz)
         maxZA = array(self.maxZA)
@@ -837,6 +842,8 @@ class autoLC:
 
         # However, the program is run during dark time, we should look at the ephemerids of next night (not current night):
         if nextSunrise < nextSunset:
+            if VERBOSE:
+                print " looking at visibility for tomorrow"
             # we just put the current time at next sunrise + 10 min., to be sure to fall on tomorrow's morning day time
             hessSite.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
             nextSunset    = hessSite.next_setting(sun)
@@ -883,6 +890,8 @@ class autoLC:
         if (srcTransitTime > beginDarkness and srcTransitTime < endDarkness and srcAltAtTransit > thisminAlt) or srcAltAtStartDarkTime > thisminAlt or srcAltAtEndDarkTime > thisminAlt:
             visibleFlag=True
 
+        if VERBOSE:
+            print " is_visible: "+str(visibleFlag)
         return visibleFlag
 
 
@@ -913,15 +922,16 @@ class autoLC:
             sys.exit(1)
 
 
-        # Equatorial coordinates -> Galactic coordinates transformation
-        equat2gal = wcs.Transformation((wcs.equatorial, wcs.fk5,'J2000.0'),wcs.galactic)
-    
-        # WCS module needs a numpy matrix for coord transformation
-        srcradec=matrix(([ra],[dec]))
-        srcGalCoord=equat2gal(srcradec)
-        # Retrieve the Galactic latitude
-        srcGalLat=srcGalCoord[(1,0)]
-        # To be used later, for an additional cut on Gal Lat ?!
+        
+        # ******** FOR THE FUTURE *********
+        ## Equatorial coordinates -> Galactic coordinates transformation
+        #equat2gal = wcs.Transformation((wcs.equatorial, wcs.fk5,'J2000.0'),wcs.galactic)
+        ## WCS module needs a numpy matrix for coord transformation
+        #srcradec=matrix(([ra],[dec]))
+        #srcGalCoord=equat2gal(srcradec)
+        ## Retrieve the Galactic latitude
+        #srcGalLat=srcGalCoord[(1,0)]
+        ## To be used later, for an additional cut on Gal Lat ?!
         
         zaAtCulmin=zaAtCulmination(dec)
 
@@ -935,19 +945,15 @@ class autoLC:
 
         # Assess whether the source is currently visible at the H.E.S.S. site
         if self.checkVisibility == 'True':
-            visible = self.is_visible(ra,dec,z)
+            self.visible = self.is_visible(ra,dec,z)
         else:
-            # the source is assumed to be visible in any case, i.e. we don't care about its visibility status at the H.E.S.S. site to send a potential alert
-            visible = True
+            # The source is assumed to be visible in any case, i.e. we don't care about its visibility status at the H.E.S.S. site to send a potential alert
+            self.visible = True
 
         # if the mask has at least one 'True' element, we should send an alert
-        if True in msk and visible:
+        if True in msk and self.visible:
             # print 'An alert should be triggered !'
             return False
-        elif True in msk and not visible:
-            # print 'No alert triggered'
-            print "\033[92m   %s active but not visible !\033[0m" % src
-            return True
         else:
             # print 'No alert triggered'
             return True
@@ -967,7 +973,7 @@ class autoLC:
         try:
             data    = asciidata.open(infile)
         except IOError:
-            print '\033[95m* Long term data file unavailable for source %s\033[0m' % src
+            print '[%s] \033[95m* Long term data file unavailable for source %s\033[0m' % (src, src)
             # Falling back to default fixed trigger threshold
             self.withhistory=False
             return (False,False)
@@ -989,7 +995,7 @@ class autoLC:
         
 
 
-    def sendAlert(self,src,ra,dec,z,nomailall=False):
+    def sendAlert(self,src,ra,dec,z,nomailall=False,sendmail=False):
         '''
         Send a mail alert in case a source fulfills the trigger conditions.
 
@@ -1070,34 +1076,44 @@ class autoLC:
             print "lastFlux=",lastFlux
             print
 
-        KILLTRIGGER = self.killTrigger(src,ra,dec,z)
+        # Do we kill potential trigger due to (ra, dec, z) cut ?
+        self.triggerkilled = self.killTrigger(src,ra,dec,z)
 
-        if not KILLTRIGGER:
-            # Assess whether the trigger condition is met, looking at the last flux point
-            if self.daily:
-                if ((lastFlux - lastFluxErr) >= self.threshold or (lastFluxLongTimeBin - lastFluxErrLongTimeBin) >= self.threshold):
-                    SENDALERT=True
-                else:
-                    SENDALERT=False
+        # Assess whether flux is above threshold, looking at the last flux point
+        if self.daily:
+            if ((lastFlux - lastFluxErr) >= self.threshold or (lastFluxLongTimeBin - lastFluxErrLongTimeBin) >= self.threshold):
+                self.active=True
             else:
-                if (lastFlux - lastFluxErr) >= self.threshold:
-                    SENDALERT=True
-                else:
-                    SENDALERT=False
+                self.active=False
         else:
-            SENDALERT=False
+            if (lastFlux - lastFluxErr) >= self.threshold:
+                self.active=True
+            else:
+                self.active=False
+
+        # Combine killTrigger and flux above threshold criteria
+        if not self.triggerkilled and self.active:
+            SENDALERT = True
+        else:
+            SENDALERT = False
+
+        if VERBOSE:
+            print " triggerkilled="+str(self.triggerkilled)
+            print " active="+str(self.active)
+            print " visible="+str(self.visible)
+            print " SENDALERT="+str(SENDALERT)
 
         if DEBUG:
             print str(src),dec,z,self.maxZA,self.maxz,KILLTRIGGER,SENDALERT
 
         # If trigger condition is met, we send a mail
-        if SENDALERT:
+        if SENDALERT and sendmail:
             # Create the container email message.
             msg = MIMEMultipart()
             sender = self.mailSender
             
             # To whom the mail should be sent (cf. __init__ function of the class)
-            if nomailall is False:
+            if not nomailall:
                 recipient = self.usualRecipients
                 msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s' % src
             else:
@@ -1250,8 +1266,9 @@ class autoLC:
         
         srcDir=src+'_FLaapLUC_'+str(datetime.date.today().strftime('%Y%m%d'))
         anaDir=os.getenv('FERMIUSER')+'/'+srcDir
+        # If this analysis has already been launched, we abort here
         if os.path.isdir(anaDir):
-            shutil.rmtree(anaDir)
+            return False
         os.makedirs(anaDir)
         if fglName is not None:
             fglNameFile=anaDir+'/FermiName.txt'
@@ -1289,17 +1306,43 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     Process a given source.
     """
 
-    if DEBUG:
-        print 'src=',mysrc
-
-    
     if mysrc is None:
         print "ERROR Missing input source !"
         sys.exit(1)
 
+    # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
+    # We automatically recreate here any missing long time-binned data.
+    if daily and not longTerm:
+        print "[%s] Daily light curve asked for, I will first process the weekly-binned one" % mysrc
+        longtermactive, visible=processSrc(mysrc=mysrc,
+                                           useThresh=useThresh,
+                                           daily=False,
+                                           mail=False,
+                                           longTerm=longTerm,
+                                           yearmonth=yearmonth,
+                                           mergelongterm=mergelongterm,
+                                           withhistory=withhistory,
+                                           update=update,
+                                           configfile=configfile)
+        if longtermactive and visible:
+            print "[%s] Source %s is active and visible in weekly-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
+        elif longtermactive and not visible:
+            print "[%s] \033[91m Source %s is active but not visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
+            return False
+        elif not longtermactive and visible:
+            print "[%s] \033[91m Source %s is visible but not active. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
+            return False
+        elif not longtermactive and not visible:
+            print "[%s] \033[91m Source %s is neither active nor visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
+            return False
+        else:
+            print "[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m" % (mysrc, mysrc)
+            return False
+    else:
+        print "[%s] Processing weekly-binned light curve..." % mysrc
+
     auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile)
     src,ra,dec,z,fglName=auto.readSourceList(mysrc)
-
 
     if longTerm is True and mergelongterm is True:
 
@@ -1356,22 +1399,23 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
             mygamma=None
         else:
             mygamma=ASSUMEDGAMMA
-            print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
+            print '[%s] Your source %s has no 2FGL counterpart given in the list of sources. I will assume a photon index of %.2f for the light curve generation.' % (src, src, mygamma)
         auto.photoLC(src)
         auto.exposure(src,fglName,gamma=mygamma)
         auto.createDAT(src)
         auto.createPNG(src,fglName,z)
         # Exit here
-        return True
-
+        return False
+    # End mergelongterm
 
 
     # When mergelongterm is False, we do the following:
     auto.selectSrc(src,ra,dec)
     auto.makeTime(src,ra,dec)
+
     # If we are in --long-term mode, but not in --merge-long-term mode, we can stop here, since the --merge-long-term mode then starts at the mergeGTIfiles level
     if longTerm is True:
-        return True
+        return False
 
     global FLAGASSUMEDGAMMA
     if fglName is not None:
@@ -1380,19 +1424,17 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         FLAGASSUMEDGAMMA=False
     else:
         mygamma=ASSUMEDGAMMA
-        print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
+        print '[%s] Your source %s has no 2FGL counterpart given in the list of sources. I will assume a photon index of %.2f for the light curve generation.' % (src, src, mygamma)
         FLAGASSUMEDGAMMA=True
     auto.photoLC(src)
     auto.exposure(src,fglName,gamma=mygamma)
     auto.createDAT(src)
     auto.createPNG(src,fglName,z)
-    if mail is True:
-        alertSent=auto.sendAlert(src,ra,dec,z,nomailall=test)
-        if alertSent and auto.launchLikeAna == 'True':
-            auto.launchLikelihoodAnalysis(src, ra, dec, fglName)
-
+    alertSent=auto.sendAlert(src,ra,dec,z,nomailall=test,sendmail=mail)
+    if alertSent and auto.active and auto.launchLikeAna == 'True':
+        auto.launchLikelihoodAnalysis(src, ra, dec, fglName)
     
-    return True
+    return auto.active, auto.visible
 
 
 def main(argv=None):
@@ -1463,7 +1505,7 @@ Use '-h' to get the help message
 
     if TEST is True and MAIL is False:
         print "ERROR You asked for both the --test and --no-mail options."
-        print "      These are mutually exclusive options."
+        print "      These options are mutually exclusive."
         sys.exit(1)
     
     # If long term
@@ -1509,12 +1551,6 @@ Use '-h' to get the help message
         WITHHISTORY=False
 
     src=args[0]
-
-
-    # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
-    # We automatically recreate here any missing long time-binned data.
-    if DAILY:
-        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
 
     processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
 
