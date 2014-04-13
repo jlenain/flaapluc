@@ -14,7 +14,7 @@ More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/
 @version $Id$
 """
 
-import sys, os, asciidata, datetime, time, glob, shutil
+import sys, os, asciidata, datetime, time, glob
 from numpy import *
 import pyfits, ephem
 from astLib import astCoords
@@ -994,6 +994,106 @@ class autoLC:
         return (fluxAverage,fluxRMS)
         
 
+    def Triggered(self,src,ra,dec,z):
+        '''
+        Has the source fulfilled the trigger conditions ?
+
+        @param src Source name
+        @param ra Source right ascension
+        @param dec Source declination
+        @param z Source redshift
+        @return True
+        @rtype bool
+        '''
+
+        # Read the light curve file
+        if self.daily:
+            infile  = self.workDir+'/'+str(src)+'_daily_lc.dat'
+            self.pngFig=self.workDir+'/'+str(src)+'_daily_lc.png'
+
+            # Also take a look in the long time-binned data
+            infileLongTimeBin=self.workDir+'/'+str(src)+'_lc.dat'
+            dataLongTimeBin=asciidata.open(infileLongTimeBin)
+            timeLongTimeBin=dataLongTimeBin[0].tonumpy()
+            fluxLongTimeBin=dataLongTimeBin[2].tonumpy()
+            fluxErrLongTimeBin=dataLongTimeBin[3].tonumpy()
+            # Catch the last flux point
+            self.lastTimeLongTimeBin=timeLongTimeBin[-1:]
+            self.lastFluxLongTimeBin=fluxLongTimeBin[-1:]
+            self.lastFluxErrLongTimeBin=fluxErrLongTimeBin[-1:]
+
+            # Get the arrival time of the last photon analysed
+            photonfileLongTimeBin            = self.workDir+'/'+str(src)+'_gti.fits'
+            photonsLongTimeBin               = pyfits.open(photonfileLongTimeBin)
+            photonsLongTimeBinTime           = photonsLongTimeBin[1].data.field('TIME')
+            self.arrivalTimeLastPhotonLongTimeBin = photonsLongTimeBinTime[-1:]
+
+            photonfile                  = self.workDir+'/'+str(src)+'_daily_gti.fits'
+            photons                     = pyfits.open(photonfile)
+            photonsTime                 = photons[1].data.field('TIME')
+            self.arrivalTimeLastPhoton       = photonsTime[-1:]
+        else:
+            infile  = self.workDir+'/'+str(src)+'_lc.dat'
+            self.pngFig=self.workDir+'/'+str(src)+'_lc.png'
+
+            photonfile            = self.workDir+'/'+str(src)+'_gti.fits'
+            photons               = pyfits.open(photonfile)
+            photonsTime           = photons[1].data.field('TIME')
+            self.arrivalTimeLastPhoton = photonsTime[-1:]
+        data    = asciidata.open(infile)
+        time    = data[0].tonumpy()
+        flux    = data[2].tonumpy()
+        fluxErr = data[3].tonumpy()
+
+        # Catch the last flux point
+        self.lastTime    = time[-1:]
+        self.lastFlux    = flux[-1:]
+        self.lastFluxErr = fluxErr[-1:]
+
+        if DEBUG:
+            print 'DEBUG: ',src,self.threshold
+            print
+            print "self.threshold=",self.threshold
+            print "lastFlux=",lastFlux
+            print
+
+        # Do we kill potential trigger due to (ra, dec, z) cut ?
+        self.triggerkilled = self.killTrigger(src,ra,dec,z)
+
+        # Assess whether flux is above threshold, looking at the last flux point
+        #if self.daily:
+        #    if ((self.lastFlux - self.lastFluxErr) >= self.threshold or (self.lastFluxLongTimeBin - self.lastFluxErrLongTimeBin) >= self.threshold):
+        #        self.active=True
+        #    else:
+        #        self.active=False
+        #else:
+        #    if (self.lastFlux - self.lastFluxErr) >= self.threshold:
+        #        self.active=True
+        #    else:
+        #        self.active=False
+
+        if (self.lastFlux - self.lastFluxErr) >= self.threshold:
+            self.active=True
+        else:
+            self.active=False
+
+        # Combine killTrigger and flux above threshold criteria
+        if not self.triggerkilled and self.active:
+            SENDALERT = True
+        else:
+            SENDALERT = False
+
+        if VERBOSE:
+            print " triggerkilled="+str(self.triggerkilled)
+            print " active="+str(self.active)
+            print " visible="+str(self.visible)
+            print " SENDALERT="+str(SENDALERT)
+
+        if DEBUG:
+            print str(src),dec,z,self.maxZA,self.maxz,KILLTRIGGER,SENDALERT
+
+        return SENDALERT
+
 
     def sendAlert(self,src,ra,dec,z,nomailall=False,sendmail=False):
         '''
@@ -1024,87 +1124,8 @@ class autoLC:
             sys.exit(1)
 
 
+        SENDALERT = self.Triggered(src=src,ra=ra,dec=dec,z=z)
 
-        # Read the light curve file
-        if self.daily:
-            infile  = self.workDir+'/'+str(src)+'_daily_lc.dat'
-            pngFig=self.workDir+'/'+str(src)+'_daily_lc.png'
-
-            # Also take a look in the long time-binned data
-            infileLongTimeBin=self.workDir+'/'+str(src)+'_lc.dat'
-            dataLongTimeBin=asciidata.open(infileLongTimeBin)
-            timeLongTimeBin=dataLongTimeBin[0].tonumpy()
-            fluxLongTimeBin=dataLongTimeBin[2].tonumpy()
-            fluxErrLongTimeBin=dataLongTimeBin[3].tonumpy()
-            # Catch the last flux point
-            lastTimeLongTimeBin=timeLongTimeBin[-1:]
-            lastFluxLongTimeBin=fluxLongTimeBin[-1:]
-            lastFluxErrLongTimeBin=fluxErrLongTimeBin[-1:]
-
-            # Get the arrival time of the last photon analysed
-            photonfileLongTimeBin            = self.workDir+'/'+str(src)+'_gti.fits'
-            photonsLongTimeBin               = pyfits.open(photonfileLongTimeBin)
-            photonsLongTimeBinTime           = photonsLongTimeBin[1].data.field('TIME')
-            arrivalTimeLastPhotonLongTimeBin = photonsLongTimeBinTime[-1:]
-
-            photonfile                  = self.workDir+'/'+str(src)+'_daily_gti.fits'
-            photons                     = pyfits.open(photonfile)
-            photonsTime                 = photons[1].data.field('TIME')
-            arrivalTimeLastPhoton       = photonsTime[-1:]
-        else:
-            infile  = self.workDir+'/'+str(src)+'_lc.dat'
-            pngFig=self.workDir+'/'+str(src)+'_lc.png'
-
-            photonfile            = self.workDir+'/'+str(src)+'_gti.fits'
-            photons               = pyfits.open(photonfile)
-            photonsTime           = photons[1].data.field('TIME')
-            arrivalTimeLastPhoton = photonsTime[-1:]
-        data    = asciidata.open(infile)
-        time    = data[0].tonumpy()
-        flux    = data[2].tonumpy()
-        fluxErr = data[3].tonumpy()
-
-        # Catch the last flux point
-        lastTime    = time[-1:]
-        lastFlux    = flux[-1:]
-        lastFluxErr = fluxErr[-1:]
-
-        if DEBUG:
-            print 'DEBUG: ',src,self.threshold
-            print
-            print "self.threshold=",self.threshold
-            print "lastFlux=",lastFlux
-            print
-
-        # Do we kill potential trigger due to (ra, dec, z) cut ?
-        self.triggerkilled = self.killTrigger(src,ra,dec,z)
-
-        # Assess whether flux is above threshold, looking at the last flux point
-        if self.daily:
-            if ((lastFlux - lastFluxErr) >= self.threshold or (lastFluxLongTimeBin - lastFluxErrLongTimeBin) >= self.threshold):
-                self.active=True
-            else:
-                self.active=False
-        else:
-            if (lastFlux - lastFluxErr) >= self.threshold:
-                self.active=True
-            else:
-                self.active=False
-
-        # Combine killTrigger and flux above threshold criteria
-        if not self.triggerkilled and self.active:
-            SENDALERT = True
-        else:
-            SENDALERT = False
-
-        if VERBOSE:
-            print " triggerkilled="+str(self.triggerkilled)
-            print " active="+str(self.active)
-            print " visible="+str(self.visible)
-            print " SENDALERT="+str(SENDALERT)
-
-        if DEBUG:
-            print str(src),dec,z,self.maxZA,self.maxz,KILLTRIGGER,SENDALERT
 
         # If trigger condition is met, we send a mail
         if SENDALERT and sendmail:
@@ -1140,14 +1161,26 @@ class autoLC:
      The last daily-binned flux is:        %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
      and the last %.0f-day binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
 
-"""%(lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton,self.longtimebin,lastFluxLongTimeBin,lastFluxErrLongTimeBin,lastTimeLongTimeBin,arrivalTimeLastPhotonLongTimeBin)
+""" % (self.lastFlux,
+       self.lastFluxErr,
+       self.lastTime,
+       self.arrivalTimeLastPhoton,
+       self.longtimebin,
+       self.lastFluxLongTimeBin,
+       self.lastFluxErrLongTimeBin,
+       self.lastTimeLongTimeBin,
+       self.arrivalTimeLastPhotonLongTimeBin)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned in red, and %.0f-day binned in blue) is attached."%(self.tbin/24./60./60.,self.longtimebin)
             else:
                 mailtext=mailtext+"""
 
      The last %.0f-day binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
 
-"""%(self.longtimebin,lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton)
+""" % (self.longtimebin,
+       self.lastFlux,
+       self.lastFluxErr,
+       self.lastTime,
+       self.arrivalTimeLastPhoton)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
 
             if self.launchLikeAna == 'True':
@@ -1181,7 +1214,7 @@ class autoLC:
             msg.attach(txt)
             
             # Open the files in binary mode.  Let the MIMEImage class automatically guess the specific image type.
-            fp = open(pngFig, 'rb')
+            fp = open(self.pngFig, 'rb')
             img = MIMEImage(fp.read())
             fp.close()
             msg.attach(img)
