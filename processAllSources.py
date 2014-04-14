@@ -16,11 +16,9 @@
 
 
 """
-Process all sources for automatic aperture photometry of interesting 2FGL sources, with parametric batch jobs.
+Process all sources for automatic aperture photometry of interesting high energy sources, with parametric batch jobs.
 
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
-@date $Date$
-@version $Id$
 """
 
 import sys, os, datetime
@@ -56,9 +54,9 @@ def readATOMschedule(configfile='default.cfg'):
 
     infile=ATOMSchedulesDir+'/'+ATOMScheduleFile
 
-    print 'First, we look for the ATOM schedule for today:'+infile
+    print 'First, we look for the ATOM schedule for today: %s' % infile
     if not os.path.isfile(infile):
-        print "WARNING readATOMschedule: ",infile," does not exist. I will try to see if there is any ATOM schedule file for the last 10 days."
+        print "WARNING readATOMschedule: %s does not exist. I will try to see if there is any ATOM schedule file for the last 10 days." % infile
     
         found=False
         # scan of ATOM schedues over the last 10 days
@@ -66,7 +64,7 @@ def readATOMschedule(configfile='default.cfg'):
             infile=ATOMSchedulesDir+'/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
             if os.path.isfile(infile):
                 found=True
-                print 'INFO readATOMschedule: I found an ATOM schedule ! I will use the file: '+infile
+                print 'INFO readATOMschedule: I found an ATOM schedule ! I will use the file: %s' % infile
                 print
             if found:
                 break
@@ -96,11 +94,11 @@ def readATOMschedule(configfile='default.cfg'):
     auto=autoLC(configfile=configfile)
     for i in range(len(ATOMsrcs)):
         ATOMsrc=ATOMsrcs[i]
-        print 'Searching for the ATOM source '+ATOMsrc+' in the master list of sources...'
+        print 'Searching for the ATOM source %s in the master list of sources...' % ATOMsrc
         tmpsrc,tmpra,tmpdec,tmpz,tmpfglName=auto.readSourceList(ATOMsrc)
         # Check if the ATOM source is in the master list of sources.
         if tmpsrc is None:
-            print "Your source "+ATOMsrc+" can't be found in the master list of sources, skip it."
+            print "Your source can't be found in the master list of sources, skip it." % ATOMsrc
             print
             continue
         FermiSrcInATOMSchedule.append(tmpsrc)
@@ -208,7 +206,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     else:
         MAIL=True
 
-    if TEST is True and MAIL is False:
+    if TEST and not MAIL:
         print "ERROR You asked for both the --test and --no-mail options."
         print "      These are mutually exclusive options."
         sys.exit(1)
@@ -221,7 +219,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     
     if LONGTERM is True and DAILY is True:
         print "ERROR You asked for both the --long-term and --daily options."
-        print "      Since this is too CPU intensive, we disabled this combination."
+        print "      Since this is too CPU intensive, this combination was disabled."
         sys.exit(1)
 
 
@@ -246,7 +244,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
 
     if(len(args)!=0):
         file=args[0]
-        print "Overriding default list of source: using "+file
+        print "Overriding default list of source: using %s" % file
         auto=autoLC(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
     else:
         auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
@@ -277,7 +275,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     nbSrc=len(src)
 
     print
-    print "I will process ",nbSrc," sources."
+    print "I will process %i sources." % nbSrc
     print
     
 
@@ -316,31 +314,31 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 options.append('\"/bin/nice -n 10 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
         cmd="parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
         # use --dry-run just to test the parallel command
-        if DRYRUN is False:
+        if not DRYRUN:
             os.system(cmd)
         else:
             print cmd
 
     else:
         # Or directly process everything sequentially, using only 1 CPU
-        if MERGELONGTERM is True:
+        if MERGELONGTERM:
             LONGTERM=True
         
         # Loop on sources
         for i in range(nbSrc):
-            print 'Starting process ',i,' for source ',src[i]
+            print 'Starting process %i for source %s' % (i,src[i])
             # If source is in the ATOM schedule and DAILY is False, force the creation of a daily-binned light curve.
-            if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
+            if src[i] in ATOMsrcsInSchedule and not DAILY and not LONGTERM and not MERGELONGTERM:
                 tmpDAILY=True
                 # We have to make sure that the corresponding weekly-binned data are created first (needed for daily PNG figure)
-                if DRYRUN is False:
+                if not DRYRUN:
                     processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
                 else:
                     print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+")"
             else:
                 tmpDAILY=DAILY
 
-            if DRYRUN is False:
+            if not DRYRUN:
                 processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
             else:
                 print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+")"
