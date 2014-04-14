@@ -359,6 +359,8 @@ PKS0920-39		140.6934	-39.9931	0.591	None			0
 PKS2136-642		325.00350	-64.02639	None	None			0
 # cf. ATel 5668:
 FermiJ0623-3351		095.93		-33.85		None	None			0
+# cf. ATel 6067:
+PKS1824-582		277.301676	-58.231989	1.531	None			0
 ##
 ## End of New Fermi sources
 ##
