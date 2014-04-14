@@ -3,15 +3,13 @@
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
 
-Automatic generation of aperture photometric light curves of Fermi sources, for a given source.
+Automatic generation of aperture photometric light curves of high energy sources, for a given source.
 
-No likelihood fit is performed, the results solely rely on the 2FGL spectral fits.
+No likelihood fit is performed, the results solely rely on the 2FGL spectral fits, if available.
 
 More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
-@date $Date$
-@version $Id$
 """
 
 import sys, os, asciidata, datetime, time, glob
@@ -48,7 +46,7 @@ BATCH=True  # True in batch mode
 FLAGASSUMEDGAMMA=False # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA or taken from the 2FGL.
 
 # Global variables
-TOFFSET=54000. # MJD
+TOFFSET=54000. # offset in MJD for plot creation
 ASSUMEDGAMMA=-2.5 # assumed photon index for a source not belonging to the 2FGL
 
 def met2mjd(met):
@@ -160,7 +158,6 @@ class autoLC:
     def __init__(self,file=None,customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,withhistory=False,configfile='default.cfg'):
         
         self.config           = self.getConfig(configfile=configfile)
-        #self.file=file
         self.allskyDir        = self.config.get('InputDirs','AllskyDir')
         self.archiveDir       = self.config.get('InputDirs','ArchiveDir')
         self.templatesDir     = self.config.get('InputDirs','TemplatesDir')
@@ -210,9 +207,9 @@ class autoLC:
         today=datetime.date.today().strftime('%Y%m%d')
 
         # Setting file names and directories
-        if longTerm is True:
+        if longTerm:
             self.allsky = self.allskyFile
-            if mergelongterm is False:
+            if not mergelongterm:
                 self.workDir    = self.baseOutDir+"/longTerm/"+yearmonth
             else:
                 self.workDir    = self.baseOutDir+"/longTerm/merged"
@@ -256,7 +253,7 @@ class autoLC:
             raise
         header = hdu[0].header
 
-        if longTerm is False:
+        if not longTerm:
             self.tstart = header['TSTART']
             self.tstop  = header['TSTOP']
             
@@ -264,7 +261,7 @@ class autoLC:
             missionStart = header['TSTART'] # in MET
             missionStop  = header['TSTOP']  # in MET
 
-            if mergelongterm is False:
+            if not mergelongterm:
                 # Need to convert 'yearmonth' in MET
                 # self.tstart is the first day of yearmonth at 00:00:00, or missionStart
                 # self.tstop  is the first day of next month at 00:00:00, or missionStop
@@ -301,16 +298,13 @@ class autoLC:
             if mergelongterm is True:
                 self.tstart = missionStart
                 self.tstop  = missionStop
-
-    
-
+ 
 
     def getConfig(self,configfile='./default.cfg'):
         """Get configuration from a configuration file."""
         self.config = ConfigParser()
         self.config.readfp(open(configfile))
         return self.config
-
 
 
     def readSourceList(self,mysrc=None):
@@ -338,7 +332,7 @@ class autoLC:
         z   = srcList[3].tonumpy()
         fglName=srcList[4]
         # Read the threshold for the source from the source list, if we asked to process with custom thresholds when instanciating the class
-        if self.customThreshold is True:
+        if self.customThreshold:
             myThreshold=srcList[5].tonumpy()
 
     
@@ -351,7 +345,7 @@ class autoLC:
                     found=True
 
                     # Redefine the threshold if we provided a custom threshold
-                    if self.customThreshold is True and myThreshold[i] != 0.:
+                    if self.customThreshold and myThreshold[i] != 0.:
                         try:
                             float(myThreshold[i])
                             self.threshold=myThreshold[i]
@@ -688,7 +682,7 @@ class autoLC:
         xray,batlc=self.getBAT(src)
 
         # Redefine the trigger threshold if withhistory=True
-        if self.withhistory is True:
+        if self.withhistory:
             (fluxAverage,fluxRMS) = self.dynamicalTrigger(src)
 
 
@@ -739,7 +733,7 @@ class autoLC:
 
         # Plot a line at the threshold value
         ax.axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
-        if self.withhistory is True:
+        if self.withhistory:
             ax.axhline(y=fluxAverage,linewidth=1,linestyle='-',color='b')
             ax.axhline(y=fluxAverage+fluxRMS,linewidth=1,linestyle='--',color='b')
             ax.axhline(y=fluxAverage-fluxRMS,linewidth=1,linestyle='--',color='b')
@@ -1255,8 +1249,6 @@ class autoLC:
             print "ERROR sendAlert: Can't import mail modules."
             sys.exit(1)
 
-
-
         # Create the container email message.
         msg = MIMEMultipart()
         msg['Subject'] = '[FLaapLUC] ERROR Fermi/LAT automatic light curve'
@@ -1447,7 +1439,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.makeTime(src,ra,dec)
 
     # If we are in --long-term mode, but not in --merge-long-term mode, we can stop here, since the --merge-long-term mode then starts at the mergeGTIfiles level
-    if longTerm is True:
+    if longTerm:
         return False
 
     global FLAGASSUMEDGAMMA
@@ -1543,7 +1535,7 @@ Use '-h' to get the help message
     else:
         TEST=False
 
-    if TEST is True and MAIL is False:
+    if TEST and not MAIL:
         print "ERROR You asked for both the --test and --no-mail options."
         print "      These options are mutually exclusive."
         sys.exit(1)
