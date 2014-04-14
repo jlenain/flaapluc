@@ -27,9 +27,6 @@ import sys, os, datetime
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 
-# Flags
-PARALLEL=False
-
 # Import custom module
 try:
     from automaticLightCurve import *
@@ -151,8 +148,10 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to test recipients (by default, mail alerts are sent to everybody, cf. the configuration files).')
     parser.add_option("--dry-run", action="store_true", dest="dryRun", default=False,
                       help='only simulate what the pipeline would do, forcing the use of ATOM sources, without actually processing any Fermi/LAT event. This is useful to see if the master list of sources is up-to-date with the ATOM sources in the current schedule.')
+    parser.add_option("--use-parallel", action="store_true", default=False, dest="parallel",
+                      help="use the linux program 'parallel' to use multiple threads on a local server.")
     parser.add_option("--max-cpu", default=1, dest="MAXCPU", metavar="<MAXCPU>",
-                      help="in conjonction with --merge-long-term, defines the number of CPU to use for merging long-term data. Using '%default' by default.")
+                      help="in conjunction with --use-parallel, defines the number of CPU to use. Using '%default' by default.")
     parser.add_option("-f", "--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
     parser.add_option("-v", "--verbose", action="store_true", dest="v", default=False,
@@ -173,6 +172,17 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         DRYRUN=True
     else:
         DRYRUN=False
+
+    # If parallel
+    if opt.parallel:
+        PARALLEL=True
+        if int(opt.MAXCPU) != 1:
+            MAXCPU=int(opt.MAXCPU)
+        else:
+            # Force the script to process only one source at a time
+            MAXCPU=1
+    else:
+        PARALLEL=False
         
     # If daily bins
     if opt.d:
@@ -218,11 +228,6 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     # If merge long term light curves
     if opt.m:
         MERGELONGTERM=True
-        if int(opt.MAXCPU) != 1:
-            MAXCPU=int(opt.MAXCPU)
-        else:
-            # Force the script to process only one source at a time
-            MAXCPU=1
         # If update long term light curves with brand new data
         if opt.u:
             UPDATE=True
@@ -231,8 +236,6 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     else:
         MERGELONGTERM=False
         UPDATE=False        
-        # Otherwise we use 4 CPU, and let the other CPU free for other processes
-        MAXCPU=4
 
     # If dynamical flux trigger threshold based on source history
     if opt.history:
