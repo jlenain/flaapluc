@@ -785,15 +785,18 @@ class autoLC:
         '''
         
         # Define HESS site for pyephem
-        siteHESSlon = astCoords.dms2decimal('+16:30:00',delimiter=':')
-        siteHESSlat = astCoords.dms2decimal('-23:16:18',delimiter=':')
-        siteHESSalt = 1800.
+        #siteHESSlon = astCoords.dms2decimal('+16:30:00',delimiter=':')
+        #siteHESSlat = astCoords.dms2decimal('-23:16:18',delimiter=':')
+        #siteHESSalt = 1800.
         hessSite    = ephem.Observer()
         hessSite.pressure = 0
         astroHorizon = '-18:00' # astronomical twilight
         civilHorizon = '-0:34'
         hessSite.horizon = astroHorizon
-        hessSite.lon, hessSite.lat, hessSite.elev = astCoords.decimal2dms(siteHESSlon,delimiter=':'), astCoords.decimal2dms(siteHESSlat,delimiter=':'), siteHESSalt
+        #hessSite.lon, hessSite.lat, hessSite.elev = astCoords.decimal2dms(siteHESSlon,delimiter=':'), astCoords.decimal2dms(siteHESSlat,delimiter=':'), siteHESSalt
+        hessSite.lon = '+16:30:00' # East from Greenwich
+        hessSite.lat = '-23:16:18' # South from equator
+        hessSite.elev = 1800.
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
         if str(z)=='--': # this is the result of the conversion of None to a float
