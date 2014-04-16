@@ -1313,7 +1313,7 @@ Maximum Energy  =       %i MeV
 
         photonFile=anaDir+'/photon.list'
         photonList=open(photonFile,'w')
-        photonList.write('/sps/hess/users/lpnhe/jlenain/fermi/allsky/allsky_last68days_30MeV_500GeV_diffuse_filtered.fits')
+        photonList.write('/sps/hess/users/lpnhe/jlenain/fermi/allsky/allsky_last70days_30MeV_500GeV_diffuse_filtered.fits')
         photonList.close()
 
         catalogOption=""
