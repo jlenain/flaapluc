@@ -875,6 +875,12 @@ class autoLC:
         else:
             endDarkness=nextSunrise
 
+        if DEBUG:
+            darknessDuration = endDarkness-beginDarkness
+            print "DEBUG JPL: darkness begin=%s" % beginDarkness
+            print "DEBUG JPL: darkness ends=%s" % endDarkness
+            print "DEBUG JPL: darkness duration=%s minutes" % (darknessDuration*24.*60.)
+
         hessSite.date=beginDarkness
         ephemSrc.compute(hessSite)
         srcAltAtStartDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
@@ -1048,11 +1054,7 @@ class autoLC:
         self.lastFluxErr = fluxErr[-1:]
 
         if DEBUG:
-            print 'DEBUG: ',src,self.threshold
-            print
-            print "self.threshold=",self.threshold
-            print "lastFlux=",lastFlux
-            print
+            print 'DEBUG %s, threshold=%g, lastFlux=%g' % (src,self.threshold,self.lastFlux)
 
         # Do we kill potential trigger due to (ra, dec, z) cut ?
         self.triggerkilled = self.killTrigger(src,ra,dec,z)
@@ -1081,13 +1083,13 @@ class autoLC:
             SENDALERT = False
 
         if VERBOSE:
-            print " triggerkilled="+str(self.triggerkilled)
-            print " active="+str(self.active)
-            print " visible="+str(self.visible)
-            print " SENDALERT="+str(SENDALERT)
+            print "VERBOSE triggerkilled="+str(self.triggerkilled)
+            print "VERBOSE active="+str(self.active)
+            print "VERBOSE visible="+str(self.visible)
+            print "VERBOSE SENDALERT="+str(SENDALERT)
 
         if DEBUG:
-            print str(src),dec,z,self.maxZA,self.maxz,KILLTRIGGER,SENDALERT
+            print "DEBUG %s, dec=%f, z=%f, maxZA=[%s], maxz=[%s], triggerkilled=%s, sendalert=%s" % (str(src),dec,z,', '.join(map(str,self.maxZA)),', '.join(map(str,self.maxz)),self.triggerkilled,SENDALERT)
 
         return SENDALERT
 
@@ -1504,6 +1506,8 @@ Use '-h' to get the help message
                       help="provide a configuration file. Using '%default' by default.")
     parser.add_option("-v", "--verbose", action="store_true", dest="v", default=False,
                       help='verbose output.')
+    parser.add_option("--debug", action="store_true", dest="debug", default=False,
+                      help='debugging output.')
     (opt, args) = parser.parse_args()
 
     CONFIGFILE=opt.CONFIGFILE
@@ -1513,6 +1517,12 @@ Use '-h' to get the help message
         VERBOSE=True
     else:
         VERBOSE=False
+
+    global DEBUG
+    if opt.debug:
+        DEBUG=True
+    else:
+        DEBUG=False
 
     # If daily bins
     if opt.d:
