@@ -370,9 +370,7 @@ class autoLC:
         
         # Otherwise, return the whole list of parameters for all the sources
         else:
-            print 'ERROR readSourceList: please provide a source, exiting...'
-            sys.exit(1)
-
+            return src,ra,dec,z,fglName
 
     def selectSrc(self):
         """
