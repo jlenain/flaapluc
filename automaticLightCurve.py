@@ -1425,7 +1425,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
 
         # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT and createPNG. No mail is sent here.
         auto.mergeGTIfiles()
-        if fglName is not None:
+        if auto.fglName is not None:
             auto.createXML()
             mygamma=None
         else:
