@@ -217,7 +217,7 @@ include all data points.
 
 <h3>Notes:</h3>
 <ul>
-  <li>This webpage is updated on a daily basis, around 8:00 (CET).</li>
+  <li>This webpage is updated on a daily basis, around 8:00 (UTC).</li>
 
   <li>If you need more information, please send a mail to: <a href="mailto:jlenain@in2p3.fr">jlenain@in2p3.fr</a>
   </li>
