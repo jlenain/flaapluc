@@ -1226,7 +1226,7 @@ class autoLC:
             s.sendmail(sender, recipient, msg.as_string())
             s.quit()
 
-            print "\033[94m*** Alert sent for %s\033[0m"%src
+            print "\033[94m*** Alert sent for %s\033[0m" % self.src
 
             return True
         else:
@@ -1325,14 +1325,14 @@ Maximum Energy  =       %i MeV
         catalogOption=""
         if self.fglName is not None:
             catalogOption="-c"
-        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r32p5-fssc-20130916-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
+        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r33p0-fssc-20140520-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
 source $FERMI_DIR/fermi-init.sh && \
 qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
         r=os.system(command)
         return r
 
 
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg'):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False):
     """
     Process a given source.
     """
@@ -1343,7 +1343,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
 
     # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
     # We automatically recreate here any missing long time-binned data.
-    if daily and not longTerm:
+    if daily and not longTerm and not force_daily:
         print "[%s] Daily light curve asked for, I will first process the weekly-binned one" % mysrc
         longtermactive, visible=processSrc(mysrc=mysrc,
                                            useThresh=useThresh,
@@ -1369,6 +1369,18 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         else:
             print "[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m" % (mysrc, mysrc)
             return False
+    elif force_daily:
+        print "[%s] Forcing daily light curve, I will first process the weekly-binned one" % mysrc
+        longtermactive, visible=processSrc(mysrc=mysrc,
+                                           useThresh=useThresh,
+                                           daily=False,
+                                           mail=False,
+                                           longTerm=longTerm,
+                                           yearmonth=yearmonth,
+                                           mergelongterm=mergelongterm,
+                                           withhistory=withhistory,
+                                           update=update,
+                                           configfile=configfile)        
     else:
         print "[%s] Processing weekly-binned light curve..." % mysrc
 
@@ -1489,6 +1501,8 @@ Use '-h' to get the help message
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
                       help='use daily bins for the light curves (defaulted to weekly)')
+    parser.add_option("--force-daily", action="store_true", dest="force_daily", default=False,
+                      help='force daily bins for the light curves')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
@@ -1530,6 +1544,12 @@ Use '-h' to get the help message
         DAILY=True
     else:
         DAILY=False
+
+    if opt.force_daily:
+        FORCE_DAILY=True
+        DAILY=True
+    else:
+        FORCE_DAILY=False
 
     # If custom thresholds
     if opt.c:
@@ -1598,7 +1618,7 @@ Use '-h' to get the help message
 
     src=args[0]
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY)
 
     return True
 
