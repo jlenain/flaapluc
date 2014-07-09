@@ -29,7 +29,7 @@ from ConfigParser import ConfigParser
 try:
     from automaticLightCurve import *
 except ImportError:
-    print "ERROR Can't import automaticLightCurve"
+    print "\033[91mERROR\033[0m Can't import automaticLightCurve"
     sys.exit(1)
 
 
@@ -56,7 +56,7 @@ def readATOMschedule(configfile='default.cfg'):
 
     print 'First, we look for the ATOM schedule for today: %s' % infile
     if not os.path.isfile(infile):
-        print "WARNING readATOMschedule: %s does not exist. I will try to see if there is any ATOM schedule file for the last 10 days." % infile
+        print "\033[93mWARNING\033[0m readATOMschedule: %s does not exist. I will try to see if there is any ATOM schedule file for the last 10 days." % infile
     
         found=False
         # scan of ATOM schedues over the last 10 days
@@ -70,7 +70,7 @@ def readATOMschedule(configfile='default.cfg'):
                 break
 
         if not found:
-            print 'WARNING readATOMschedule: I could not find any ATOM schedule file for the last 10 days. I will not process any daily-binned data...'
+            print '\033[93mWARNING\033[0m readATOMschedule: I could not find any ATOM schedule file for the last 10 days. I will not process any daily-binned data...'
             # Return an empty list
             return []
         
@@ -98,7 +98,7 @@ def readATOMschedule(configfile='default.cfg'):
         tmpsrc,tmpra,tmpdec,tmpz,tmpfglName=auto.readSourceList(ATOMsrc)
         # Check if the ATOM source is in the master list of sources.
         if tmpsrc is None:
-            print "Your source can't be found in the master list of sources, skip it." % ATOMsrc
+            print "\033[93mYour source can't be found in the master list of sources, skipping it.\033[0m" % ATOMsrc
             print
             continue
         FermiSrcInATOMSchedule.append(tmpsrc)
@@ -207,8 +207,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         MAIL=True
 
     if TEST and not MAIL:
-        print "ERROR You asked for both the --test and --no-mail options."
-        print "      These are mutually exclusive options."
+        print "\033[91mFATAL You asked for both the --test and --no-mail options."
+        print "      These are mutually exclusive options.\033[0m"
         sys.exit(1)
 
     # If long term
@@ -218,8 +218,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         LONGTERM=False
     
     if LONGTERM is True and DAILY is True:
-        print "ERROR You asked for both the --long-term and --daily options."
-        print "      Since this is too CPU intensive, this combination was disabled."
+        print "\033[91mFATAL You asked for both the --long-term and --daily options."
+        print "      Since this is too CPU intensive, this combination was disabled.\033[0m"
         sys.exit(1)
 
 
@@ -244,7 +244,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
 
     if(len(args)!=0):
         file=args[0]
-        print "Overriding default list of source: using %s" % file
+        print "\033[93mINFO\033[0m Overriding default list of source: using %s" % file
         auto=autoLC(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
     else:
         auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
@@ -342,7 +342,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
             else:
                 print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+")"
-    
+            print
+
     return True
 
 
