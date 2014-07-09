@@ -831,6 +831,18 @@ class autoLC:
         ephemSrc._dec=astCoords.decimal2dms(self.dec,delimiter=':')
         
         visibleFlag=False
+
+        zaAtCulmin = zaAtCulmination(self.dec)
+        if zaAtCulmin>90.:
+            # the source is basically NEVER visible at the H.E.S.S. site
+            print '[%s] \033[91mNEVER above horizon at H.E.S.S. site, consider discarding this source from your source list...\033[0m' % self.src
+            return False
+
+        if thismaxZA<zaAtCulmin:
+            # the source is never above maxZA set by 2D mask on Dec/z
+            print '[%s]\033[91m Never above allowed max ZA, consider relaxing the Dec/z cuts or discarding this source from your source list...\033[0m' % self.src
+            return False
+        
         
         # All times are handled here in UTC (pyEphem only uses UTC)
         now      = datetime.datetime.utcnow()
@@ -1358,13 +1370,13 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         if longtermactive and visible:
             print "[%s] Source %s is active and visible in weekly-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
         elif longtermactive and not visible:
-            print "[%s] \033[91m Source %s is active but not visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
+            print "[%s] \033[91mSource %s is active but not visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
             return False
         elif not longtermactive and visible:
-            print "[%s] \033[91m Source %s is visible but not active. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
+            print "[%s] \033[91mSource %s is visible but not active. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
             return False
         elif not longtermactive and not visible:
-            print "[%s] \033[91m Source %s is neither active nor visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
+            print "[%s] \033[91mSource %s is neither active nor visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
             return False
         else:
             print "[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m" % (mysrc, mysrc)
@@ -1442,7 +1454,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
             mygamma=None
         else:
             mygamma=ASSUMEDGAMMA
-            print '[%s] Your source %s has no 2FGL counterpart given in the list of sources. I will assume a photon index of %.2f for the light curve generation.' % (auto.src, auto.src, mygamma)
+            print '[%s] \033[93mNo 2FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
         auto.photoLC()
         auto.exposure(gamma=mygamma)
         auto.createDAT()
@@ -1467,7 +1479,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         FLAGASSUMEDGAMMA=False
     else:
         mygamma=ASSUMEDGAMMA
-        print '[%s] Your source %s has no 2FGL counterpart given in the list of sources. I will assume a photon index of %.2f for the light curve generation.' % (auto.src, auto.src, mygamma)
+        print '[%s] \033[93mNo 2FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
         FLAGASSUMEDGAMMA=True
     auto.photoLC()
     auto.exposure(gamma=mygamma)
