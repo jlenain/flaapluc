@@ -252,7 +252,7 @@ class autoLC:
         if self.daily:
             self.tbin =                  24.*60.*60. # seconds, daily bins
         else:
-            self.tbin = self.longtimebin*24.*60.*60. # seconds, weekly bins by defaults, or longtimebin days
+            self.tbin = self.longtimebin*24.*60.*60. # seconds, longtimebin by defaults
 
         self.threshold = 1.e-6 # ph cm^-2 s^-1
         self.customThreshold=customThreshold
@@ -1369,7 +1369,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
     # We automatically recreate here any missing long time-binned data.
     if daily and not longTerm and not force_daily:
-        print "[%s] Daily light curve asked for, I will first process the weekly-binned one" % mysrc
+        print "[%s] Daily light curve asked for, I will first process the long time-binned one" % mysrc
         longtermactive, visible=processSrc(mysrc=mysrc,
                                            useThresh=useThresh,
                                            daily=False,
@@ -1381,7 +1381,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            update=update,
                                            configfile=configfile)
         if longtermactive and visible:
-            print "[%s] Source %s is active and visible in weekly-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
+            print "[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
         elif longtermactive and not visible:
             print "[%s] \033[91mSource %s is active but not visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
             return False
@@ -1395,7 +1395,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
             print "[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m" % (mysrc, mysrc)
             return False
     elif force_daily:
-        print "[%s] Forcing daily light curve, I will first process the weekly-binned one" % mysrc
+        print "[%s] Forcing daily light curve, I will first process the long time-binned one" % mysrc
         longtermactive, visible=processSrc(mysrc=mysrc,
                                            useThresh=useThresh,
                                            daily=False,
@@ -1407,7 +1407,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            update=update,
                                            configfile=configfile)        
     else:
-        print "[%s] Processing weekly-binned light curve..." % mysrc
+        print "[%s] Processing long time-binned light curve..." % mysrc
 
     auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile)
     auto.readSourceList(mysrc)
@@ -1525,7 +1525,7 @@ Use '-h' to get the help message
                           usage=helpmsg)
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
-                      help='use daily bins for the light curves (defaulted to weekly)')
+                      help='use daily bins for the light curves (defaulted to long time-binned)')
     parser.add_option("--force-daily", action="store_true", dest="force_daily", default=False,
                       help='force daily bins for the light curves')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
