@@ -741,11 +741,11 @@ class autoLC:
         # Plot the Fermi/LAT light curve
         if self.daily:
             # Also plot the long time-binned light curve
-            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
-            ax.errorbar(x=timeLongTimeBin, xerr=durationLongTimeBin/2., y=fluxLongTimeBin, yerr=fluxErrLongTimeBin/2., fmt='bo')
+            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr, fmt='ro')
+            ax.errorbar(x=timeLongTimeBin, xerr=durationLongTimeBin/2., y=fluxLongTimeBin, yerr=fluxErrLongTimeBin, fmt='bo')
             # The last plot called is on top of the others in matplotlib (are you sure ???). Here, we want the long time-binned LC on top, for visibility.
         else:
-            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
+            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr, fmt='bo')
 
         # TODO if threshold is dynamic and it is computed using the last flux
         # measurement uncertainty, threshold will not be a given horizontal
