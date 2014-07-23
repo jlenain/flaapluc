@@ -173,16 +173,28 @@ class autoLC:
         self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
         self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
         self.url              = self.config.get('OutputDirs','URL')
+
         try:
             self.longtimebin  = float(self.config.get('AlertTrigger','LongTimeBin'))
         except:
             # Take 7 days by default
             self.longtimebin  = 7.
+            print '\033[93mCan not read LongTimeBin in config file, taking %.1f as default.\033[0m' % (self.longtimebin)
+
         try:
             self.sigma        = float(self.config.get('AlertTrigger','Sigma'))
         except:
             # Take 2 sigma by default
-            self.sigma         = 2.
+            self.sigma         = 3.
+            print '\033[93mCan not read Sigma in config file, taking %.1f as default.\033[0m' % (self.sigma)
+
+        try:
+            self.sigmaLT       = float(self.config.get('AlertTrigger','SigmaLT'))
+        except:
+            # Take 2 sigma by default
+            self.sigmaLT       = 1.5
+            print '\033[93mCan not read SigmaLT in config file, taking %.1f as default.\033[0m' % (self.sigmaLT)
+     
         # Read maxz and maxZA as lists, not as single floats
         self.maxz             = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZ' ))]
         self.maxZA            = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZA'))]
@@ -1010,11 +1022,12 @@ class autoLC:
         fluxAverage = average(flux, weights=1./fluxErr)
         fluxRMS     = std(flux, dtype=float64)
 
-        # Dynamically redefine the flux trigger threshold
-        self.threshold = fluxAverage + self.sigma*fluxRMS
-        #self.threshold = max(fluxAverage + self.sigma*fluxRMS,
-        #                     fluxAverage + self.sigma*lastFluxErr)
-        #                     #,self.threshold)
+        # Dynamically redefine the flux trigger threshold, using a 2-level criteria depending on whether we are currently looking at short- or long-term data
+        if self.daily:
+            self.threshold = fluxAverage + self.sigma*fluxRMS
+        else:
+            self.threshold = fluxAverage + self.sigmaLT*fluxRMS
+
         return (fluxAverage,fluxRMS)
         
 
