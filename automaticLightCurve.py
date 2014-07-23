@@ -1084,7 +1084,7 @@ class autoLC:
         self.lastFluxErr = fluxErr[-1:]
 
         if DEBUG:
-            print 'DEBUG %s, threshold=%g, lastFlux=%g' % (self.src,self.threshold,self.lastFlux)
+            print 'DEBUG %s, threshold=%g, lastFlux=%g, lastFluxErr=%g' % (self.src,self.threshold,self.lastFlux,self.lastFluxErr)
 
         # Do we kill potential trigger due to (ra, dec, z) cut ?
         self.triggerkilled = self.killTrigger()
