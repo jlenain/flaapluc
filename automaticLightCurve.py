@@ -645,11 +645,11 @@ class autoLC:
         try:
             baturl=urlprefix+file
             webfile=urllib2.urlopen(baturl)
-        except urllib2.HTTPError, urllib2.URLError:
+        except (urllib2.HTTPError, urllib2.URLError) as e:
             try:
                 baturl=urlprefix+'weak/'+file
                 webfile=urllib2.urlopen(baturl)
-            except urllib2.HTTPError, urllib2.URLError:
+            except (urllib2.HTTPError, urllib2.URLError) as e:
                 return False,None
 
         # save lc to local file
