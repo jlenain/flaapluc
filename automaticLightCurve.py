@@ -811,13 +811,17 @@ class autoLC:
         #siteHESSalt = 1800.
         hessSite    = ephem.Observer()
         hessSite.pressure = 0
+        # astronomical twilight angle: same as HESS (cf. crash/src/usersettings.C: TWILIGHT_ANGLE)
         astroHorizon = '-18:00' # astronomical twilight
         civilHorizon = '-0:34'
         hessSite.horizon = astroHorizon
         #hessSite.lon, hessSite.lat, hessSite.elev = astCoords.decimal2dms(siteHESSlon,delimiter=':'), astCoords.decimal2dms(siteHESSlat,delimiter=':'), siteHESSalt
-        hessSite.lon = '+16:30:00' # East from Greenwich
-        hessSite.lat = '-23:16:18' # South from equator
-        hessSite.elev = 1800.
+        # cf HESS soft: crash/src/usersettings.C: LONGITUDE_NAMIBIA
+        hessSite.lon = '+16:30:00.8' # East from Greenwich
+        # cf HESS soft: crash/src/usersettings.C: LATITUDE_NAMIBIA
+        hessSite.lat = '-23:16:18.4' # South from equator
+        # cf HESS soft: crash/src/usersettings.C: HEIGHT_NAMIBIA
+        hessSite.elev = 1835.
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
         if str(self.z)=='--': # this is the result of the conversion of None to a float
@@ -864,7 +868,7 @@ class autoLC:
         sun            = ephem.Sun()
         nextSunset     = hessSite.next_setting(sun)
         nextSunrise    = hessSite.next_rising(sun)
-        # The Moon just needs to be below the horizon
+        # The Moon just needs to be below the horizon, not below astronomical twilight angle
         hessSite.horizon = civilHorizon
         moon           = ephem.Moon()
         nextMoonset    = hessSite.next_setting(moon)
