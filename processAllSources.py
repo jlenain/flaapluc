@@ -247,7 +247,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         print "\033[93mINFO\033[0m Overriding default list of source: using %s" % file
         auto=autoLC(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
     else:
-        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
+        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
 
     ATOMsrcsInSchedule=readATOMschedule(configfile=CONFIGFILE)
     
