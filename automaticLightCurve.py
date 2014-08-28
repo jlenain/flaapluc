@@ -3,18 +3,16 @@
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
 
-Automatic generation of aperture photometric light curves of Fermi sources, for a given source.
+Automatic generation of aperture photometric light curves of high energy sources, for a given source.
 
-No likelihood fit is performed, the results solely rely on the 2FGL spectral fits.
+No likelihood fit is performed, the results solely rely on the 2FGL spectral fits, if available.
 
 More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
-@date $Date$
-@version $Id$
 """
 
-import sys, os, asciidata, datetime, time, glob, shutil
+import sys, os, asciidata, datetime, time, glob
 from numpy import *
 import pyfits, ephem
 from astLib import astCoords
@@ -43,11 +41,12 @@ except ImportError:
 
 # Flags
 DEBUG=False # Debugging flag
+VERBOSE=False
 BATCH=True  # True in batch mode
 FLAGASSUMEDGAMMA=False # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA or taken from the 2FGL.
 
 # Global variables
-TOFFSET=54000. # MJD
+TOFFSET=54000. # offset in MJD for plot creation
 ASSUMEDGAMMA=-2.5 # assumed photon index for a source not belonging to the 2FGL
 
 def met2mjd(met):
@@ -159,7 +158,6 @@ class autoLC:
     def __init__(self,file=None,customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,withhistory=False,configfile='default.cfg'):
         
         self.config           = self.getConfig(configfile=configfile)
-        #self.file=file
         self.allskyDir        = self.config.get('InputDirs','AllskyDir')
         self.archiveDir       = self.config.get('InputDirs','ArchiveDir')
         self.templatesDir     = self.config.get('InputDirs','TemplatesDir')
@@ -175,16 +173,28 @@ class autoLC:
         self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
         self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
         self.url              = self.config.get('OutputDirs','URL')
+
         try:
             self.longtimebin  = float(self.config.get('AlertTrigger','LongTimeBin'))
         except:
             # Take 7 days by default
             self.longtimebin  = 7.
+            print '\033[93mCan not read LongTimeBin in config file, taking %.1f as default.\033[0m' % (self.longtimebin)
+
         try:
             self.sigma        = float(self.config.get('AlertTrigger','Sigma'))
         except:
             # Take 2 sigma by default
-            self.sigma         = 2.
+            self.sigma         = 3.
+            print '\033[93mCan not read Sigma in config file, taking %.1f as default.\033[0m' % (self.sigma)
+
+        try:
+            self.sigmaLT       = float(self.config.get('AlertTrigger','SigmaLT'))
+        except:
+            # Take 2 sigma by default
+            self.sigmaLT       = 1.5
+            print '\033[93mCan not read SigmaLT in config file, taking %.1f as default.\033[0m' % (self.sigmaLT)
+     
         # Read maxz and maxZA as lists, not as single floats
         self.maxz             = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZ' ))]
         self.maxZA            = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZA'))]
@@ -209,9 +219,9 @@ class autoLC:
         today=datetime.date.today().strftime('%Y%m%d')
 
         # Setting file names and directories
-        if longTerm is True:
+        if longTerm:
             self.allsky = self.allskyFile
-            if mergelongterm is False:
+            if not mergelongterm:
                 self.workDir    = self.baseOutDir+"/longTerm/"+yearmonth
             else:
                 self.workDir    = self.baseOutDir+"/longTerm/merged"
@@ -239,10 +249,10 @@ class autoLC:
         self.zmax      = 100. # degrees
         self.rockangle = 52.  # maximal allowed rocking angle
 
-        if daily:
+        if self.daily:
             self.tbin =                  24.*60.*60. # seconds, daily bins
         else:
-            self.tbin = self.longtimebin*24.*60.*60. # seconds, weekly bins by defaults, or longtimebin days
+            self.tbin = self.longtimebin*24.*60.*60. # seconds, longtimebin by defaults
 
         self.threshold = 1.e-6 # ph cm^-2 s^-1
         self.customThreshold=customThreshold
@@ -251,11 +261,11 @@ class autoLC:
         try:
             hdu=pyfits.open(self.allsky)
         except:
-            print 'Exception: can not open file '+self.allsky
+            print 'EXCEPT: can not open file '+self.allsky
             raise
         header = hdu[0].header
 
-        if longTerm is False:
+        if not longTerm:
             self.tstart = header['TSTART']
             self.tstop  = header['TSTOP']
             
@@ -263,7 +273,7 @@ class autoLC:
             missionStart = header['TSTART'] # in MET
             missionStop  = header['TSTOP']  # in MET
 
-            if mergelongterm is False:
+            if not mergelongterm:
                 # Need to convert 'yearmonth' in MET
                 # self.tstart is the first day of yearmonth at 00:00:00, or missionStart
                 # self.tstop  is the first day of next month at 00:00:00, or missionStop
@@ -300,16 +310,13 @@ class autoLC:
             if mergelongterm is True:
                 self.tstart = missionStart
                 self.tstop  = missionStop
-
-    
-
+ 
 
     def getConfig(self,configfile='./default.cfg'):
         """Get configuration from a configuration file."""
         self.config = ConfigParser()
         self.config.readfp(open(configfile))
         return self.config
-
 
 
     def readSourceList(self,mysrc=None):
@@ -337,7 +344,7 @@ class autoLC:
         z   = srcList[3].tonumpy()
         fglName=srcList[4]
         # Read the threshold for the source from the source list, if we asked to process with custom thresholds when instanciating the class
-        if self.customThreshold is True:
+        if self.customThreshold:
             myThreshold=srcList[5].tonumpy()
 
     
@@ -350,41 +357,50 @@ class autoLC:
                     found=True
 
                     # Redefine the threshold if we provided a custom threshold
-                    if self.customThreshold is True and myThreshold[i] != 0.:
+                    if self.customThreshold and myThreshold[i] != 0.:
                         try:
                             float(myThreshold[i])
                             self.threshold=myThreshold[i]
                         except ValueError:
-                            print "WARNING The threshold of the source "+str(mysrc)+" is not a float. Please, check the list of sources !"
+                            print 'WARNING The threshold of the source %s is not a float. Please, check the list of sources !' % mysrc
                             sys.exit(2)
-                    return src[i],ra[i],dec[i],z[i],fglName[i]
+                    self.src     = src[i]
+                    self.ra      = ra[i]
+                    self.dec     = dec[i]
+                    self.z       = z[i]
+                    self.fglName = fglName[i]
+                    return
             
             # If we end up without any found source, print out a WARNING
-            print "WARNING Can't find your source "+str(mysrc)+" in the list of sources !"
-            return None,None,None,None,None
+            print 'WARNING Can\'t find your source %s in the list of sources !' % str(mysrc)
+            self.src     = None
+            self.ra      = None
+            self.dec     = None
+            self.z       = None
+            self.fglName = None
+            return
         
         # Otherwise, return the whole list of parameters for all the sources
         else:
             return src,ra,dec,z,fglName
 
-
-    def selectSrc(self,src,ra,dec):
+    def selectSrc(self):
         """
         Filter a given source, running gtselect
         """
         filter['infile']=self.allsky
         if self.daily:
-            outfile=self.workDir+'/'+str(src)+'_daily.fits'
+            outfile=self.workDir+'/'+str(self.src)+'_daily.fits'
         else:
-            outfile=self.workDir+'/'+str(src)+'.fits'
+            outfile=self.workDir+'/'+str(self.src)+'.fits'
         filter['outfile']=outfile
         
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
 
-        filter['ra']      = ra
-        filter['dec']     = dec
+        filter['ra']      = self.ra
+        filter['dec']     = self.dec
         filter['rad']     = self.roi
         filter['emin']    = self.emin
         filter['emax']    = self.emax
@@ -395,18 +411,18 @@ class autoLC:
         filter.run()
 
 
-    def makeTime(self,src,ra,dec):
+    def makeTime(self):
         """
         Filter the GTI for a given source
         """
         maketime['scfile']=self.spacecraft
 
         if self.daily:
-            maketime['evfile']=self.workDir+'/'+str(src)+'_daily.fits'
-            outfile=self.workDir+'/'+str(src)+'_daily_gti.fits'
+            maketime['evfile']=self.workDir+'/'+str(self.src)+'_daily.fits'
+            outfile=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
         else:
-            maketime['evfile']=self.workDir+'/'+str(src)+'.fits'
-            outfile=self.workDir+'/'+str(src)+'_gti.fits'
+            maketime['evfile']=self.workDir+'/'+str(self.src)+'.fits'
+            outfile=self.workDir+'/'+str(self.src)+'_gti.fits'
         maketime['outfile']=outfile
         
         # If outfile already exists, we don't do anything
@@ -415,14 +431,14 @@ class autoLC:
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
         #maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.) && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
-        maketime['filter'] = "IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<"+str(self.rockangle)+" && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
+        maketime['filter'] = "IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<"+str(self.rockangle)+" && (angsep(RA_ZENITH,DEC_ZENITH,"+str(self.ra)+","+str(self.dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(self.ra)+","+str(self.dec)+",RA_SUN,DEC_SUN)>5.)"
         maketime['roicut'] = 'no'
         maketime['tstart'] = self.tstart
         maketime['tstop']  = self.tstop
         maketime.run()
 
 
-    def mergeGTIfiles(self,src,ra,dec,daily=False):
+    def mergeGTIfiles(self):
         """
         Merge multiple GTI files when mergelongterm is True.
         Use gtselect.
@@ -430,17 +446,17 @@ class autoLC:
         """
 
         # Create list of GTI files
-        if not daily:
-            listname=self.workDir+'/'+src+'_gti.list'
+        if not self.daily:
+            listname=self.workDir+'/'+self.src+'_gti.list'
         else:
-            listname=self.workDir+'/'+src+'_daily_gti.list'
+            listname=self.workDir+'/'+self.src+'_daily_gti.list'
         filelist=open(listname,'w')
         list=[]
-        if not daily:
-            for file in glob.glob(self.workDir+'/../20????/'+src+'_gti.fits'):
+        if not self.daily:
+            for file in glob.glob(self.workDir+'/../20????/'+self.src+'_gti.fits'):
                 list.append(file)
         else:
-            for file in glob.glob(self.workDir+'/../20????/'+src+'_daily_gti.fits'):
+            for file in glob.glob(self.workDir+'/../20????/'+self.src+'_daily_gti.fits'):
                 list.append(file)
         # Sort the list of GTI files
         list=sorted(list)
@@ -449,18 +465,18 @@ class autoLC:
         filelist.close()
         
         filter['infile']='@'+listname
-        if not daily:
-            outfile=self.workDir+'/'+str(src)+'_gti.fits'
+        if not self.daily:
+            outfile=self.workDir+'/'+str(self.src)+'_gti.fits'
         else:
-            outfile=self.workDir+'/'+str(src)+'_daily_gti.fits'
+            outfile=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
         filter['outfile']=outfile
         
         # If outfile already exists, we re-create it
         if os.path.isfile(outfile):
             os.remove(outfile)
 
-        filter['ra']      = ra
-        filter['dec']     = dec
+        filter['ra']      = self.ra
+        filter['dec']     = self.dec
         filter['rad']     = self.roi
         filter['emin']    = self.emin
         filter['emax']    = self.emax
@@ -471,17 +487,17 @@ class autoLC:
         filter.run()
 
 
-    def createXML(self,src):
+    def createXML(self):
         """
         Create an XML model file based on the 2FGL catalogue
         """
         
         if self.daily:
-            evfile=self.workDir+'/'+str(src)+'_daily_gti.fits'
-            modelfile=self.workDir+'/'+str(src)+'_daily.xml'
+            evfile=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
+            modelfile=self.workDir+'/'+str(self.src)+'_daily.xml'
         else:
-            evfile=self.workDir+'/'+str(src)+'_gti.fits'
-            modelfile=self.workDir+'/'+str(src)+'.xml'
+            evfile=self.workDir+'/'+str(self.src)+'_gti.fits'
+            modelfile=self.workDir+'/'+str(self.src)+'.xml'
 
         # If modelfile already exists, we don't do anything
         if os.path.isfile(modelfile):
@@ -497,17 +513,17 @@ class autoLC:
         mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source',self.templatesDir)
 
 
-    def photoLC(self,src):
+    def photoLC(self):
         """
         Compute the photometric light curve for a given source
         """
 
         if self.daily:
-            evtbin['evfile']=self.workDir+'/'+str(src)+'_daily_gti.fits'
-            outfile=self.workDir+'/'+str(src)+'_daily_lc.fits'
+            evtbin['evfile']=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
+            outfile=self.workDir+'/'+str(self.src)+'_daily_lc.fits'
         else:
-            evtbin['evfile']=self.workDir+'/'+str(src)+'_gti.fits'
-            outfile=self.workDir+'/'+str(src)+'_lc.fits'
+            evtbin['evfile']=self.workDir+'/'+str(self.src)+'_gti.fits'
+            outfile=self.workDir+'/'+str(self.src)+'_lc.fits'
 
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
@@ -523,7 +539,7 @@ class autoLC:
         evtbin.run()
 
 
-    def exposure(self,src,fglName,gamma=None):
+    def exposure(self,gamma=None):
         """
         Compute exposure on source src, to add a flux column for the photometric light curve.
 
@@ -531,11 +547,11 @@ class autoLC:
         """
 
         if self.daily:
-            infile=self.workDir+'/'+str(src)+'_daily_lc.fits'
-            srcmdl=self.workDir+'/'+str(src)+'_daily.xml'
+            infile=self.workDir+'/'+str(self.src)+'_daily_lc.fits'
+            srcmdl=self.workDir+'/'+str(self.src)+'_daily.xml'
         else:
-            infile=self.workDir+'/'+str(src)+'_lc.fits'
-            srcmdl=self.workDir+'/'+str(src)+'.xml'
+            infile=self.workDir+'/'+str(self.src)+'_lc.fits'
+            srcmdl=self.workDir+'/'+str(self.src)+'.xml'
 
         # If infile already contains an EXPOSURE column, we don't do anything
         hdu=pyfits.open(infile)
@@ -545,7 +561,7 @@ class autoLC:
 
         scfile=self.spacecraft
         irfs='P7SOURCE_V6'
-        target=fglName
+        target=self.fglName
         rad=str(self.roi)
         
         if gamma is None:
@@ -558,18 +574,18 @@ class autoLC:
 
 
 
-    def createDAT(self,src):
+    def createDAT(self):
         """
         Create a data file with the light curve of a given source.
         """
 
         # Read LC file
         if self.daily:
-            infile=self.workDir+'/'+str(src)+'_daily_lc.fits'
-            outfile=self.workDir+'/'+str(src)+'_daily_lc.dat'
+            infile=self.workDir+'/'+str(self.src)+'_daily_lc.fits'
+            outfile=self.workDir+'/'+str(self.src)+'_daily_lc.dat'
         else:
-            infile=self.workDir+'/'+str(src)+'_lc.fits'
-            outfile=self.workDir+'/'+str(src)+'_lc.dat'
+            infile=self.workDir+'/'+str(self.src)+'_lc.fits'
+            outfile=self.workDir+'/'+str(self.src)+'_lc.dat'
 
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
@@ -603,7 +619,7 @@ class autoLC:
         file.close()
 
 
-    def getBAT(self,src):
+    def getBAT(self):
         import urllib2
 
         # daily fits example url:
@@ -619,21 +635,21 @@ class autoLC:
             }
 
         # Remove '+', add file ending
-        if urls.has_key(src):
-            file=urls[src].replace('+','p')+".lc.fits"
+        if urls.has_key(self.src):
+            file=urls[self.src].replace('+','p')+".lc.fits"
         else:
-            file=src.replace('+','p')+".lc.fits"
+            file=self.src.replace('+','p')+".lc.fits"
         urlprefix="http://swift.gsfc.nasa.gov/docs/swift/results/transients/"
 
         # lc files can be in a weak/ subdir for weak sources, we try both
         try:
             baturl=urlprefix+file
             webfile=urllib2.urlopen(baturl)
-        except urllib2.HTTPError, urllib2.URLError:
+        except (urllib2.HTTPError, urllib2.URLError) as e:
             try:
                 baturl=urlprefix+'weak/'+file
                 webfile=urllib2.urlopen(baturl)
-            except urllib2.HTTPError, urllib2.URLError:
+            except (urllib2.HTTPError, urllib2.URLError) as e:
                 return False,None
 
         # save lc to local file
@@ -652,20 +668,20 @@ class autoLC:
 
 
         
-    def createPNG(self,src,fglName,z):
+    def createPNG(self):
         """
         Create a PNG figure with the light curve of a given source. Any existing PNG file is overwritten !
         """
 
         # Read the .dat LC file
         if self.daily:
-            infile=self.workDir+'/'+str(src)+'_daily_lc.dat'
-            outfig=self.workDir+'/'+str(src)+'_daily_lc.png'
-            infileLongTimeBin=self.workDir+'/'+str(src)+'_lc.dat'
+            infile=self.workDir+'/'+str(self.src)+'_daily_lc.dat'
+            outfig=self.workDir+'/'+str(self.src)+'_daily_lc.png'
+            infileLongTimeBin=self.workDir+'/'+str(self.src)+'_lc.dat'
             duration = 1. # duration of a time bin, in days
         else:
-            infile=self.workDir+'/'+str(src)+'_lc.dat'
-            outfig=self.workDir+'/'+str(src)+'_lc.png'
+            infile=self.workDir+'/'+str(self.src)+'_lc.dat'
+            outfig=self.workDir+'/'+str(self.src)+'_lc.png'
             duration = self.longtimebin # duration of a time bin, in days
 
         data    = asciidata.open(infile)
@@ -684,11 +700,11 @@ class autoLC:
 
         # Download Swift/BAT data if available
         # xray is boolean flag indicating that X-ray BAT data is available
-        xray,batlc=self.getBAT(src)
+        xray,batlc=self.getBAT()
 
         # Redefine the trigger threshold if withhistory=True
-        if self.withhistory is True:
-            (fluxAverage,fluxRMS) = self.dynamicalTrigger(src)
+        if self.withhistory:
+            (fluxAverage,fluxRMS) = self.dynamicalTrigger()
 
 
         fig=figure()
@@ -699,14 +715,14 @@ class autoLC:
         else:
             ax = fig.add_subplot(111)
 
-        if fglName is not None:
-            title=str(src)+', '+str(fglName).replace('_2FGLJ','2FGL J')
+        if self.fglName is not None:
+            title=str(self.src)+', '+str(self.fglName).replace('_2FGLJ','2FGL J')
         else:
-            title=str(src)+', no known 2FGL counterpart'
-        if str(z)=='--': # this is the result of the conversion of None to a float
+            title=str(self.src)+', no known 2FGL counterpart'
+        if str(self.z)=='--': # this is the result of the conversion of None to a float
             title=title+' (z unknown)'
         else:
-            title=title+' (z='+str(z)+')'
+            title=title+' (z='+str(self.z)+')'
 
         ax.set_title(title)
 
@@ -725,11 +741,11 @@ class autoLC:
         # Plot the Fermi/LAT light curve
         if self.daily:
             # Also plot the long time-binned light curve
-            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='ro')
-            ax.errorbar(x=timeLongTimeBin, xerr=durationLongTimeBin/2., y=fluxLongTimeBin, yerr=fluxErrLongTimeBin/2., fmt='bo')
+            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr, fmt='ro')
+            ax.errorbar(x=timeLongTimeBin, xerr=durationLongTimeBin/2., y=fluxLongTimeBin, yerr=fluxErrLongTimeBin, fmt='bo')
             # The last plot called is on top of the others in matplotlib (are you sure ???). Here, we want the long time-binned LC on top, for visibility.
         else:
-            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr/2., fmt='bo')
+            ax.errorbar(x=timelc, xerr=duration/2., y=flux, yerr=fluxErr, fmt='bo')
 
         # TODO if threshold is dynamic and it is computed using the last flux
         # measurement uncertainty, threshold will not be a given horizontal
@@ -738,7 +754,7 @@ class autoLC:
 
         # Plot a line at the threshold value
         ax.axhline(y=self.threshold,linewidth=3,linestyle='--',color='r')
-        if self.withhistory is True:
+        if self.withhistory:
             ax.axhline(y=fluxAverage,linewidth=1,linestyle='-',color='b')
             ax.axhline(y=fluxAverage+fluxRMS,linewidth=1,linestyle='--',color='b')
             ax.axhline(y=fluxAverage-fluxRMS,linewidth=1,linestyle='--',color='b')
@@ -784,21 +800,34 @@ class autoLC:
 
 
     # TODO: add visibility of source at H.E.S.S. site
-    def is_visible(self,ra,dec,z):
+    def is_visible(self):
         '''
         @todo implement this function
         '''
         
         # Define HESS site for pyephem
-        siteHESSlon = astCoords.dms2decimal('+16:30:00',delimiter=':')
-        siteHESSlat = astCoords.dms2decimal('-23:16:18',delimiter=':')
-        siteHESSalt = 1800.
+        #siteHESSlon = astCoords.dms2decimal('+16:30:00',delimiter=':')
+        #siteHESSlat = astCoords.dms2decimal('-23:16:18',delimiter=':')
+        #siteHESSalt = 1800.
         hessSite    = ephem.Observer()
         hessSite.pressure = 0
+        # astronomical twilight angle: same as HESS (cf. crash/src/usersettings.C: TWILIGHT_ANGLE)
         astroHorizon = '-18:00' # astronomical twilight
         civilHorizon = '-0:34'
         hessSite.horizon = astroHorizon
-        hessSite.lon, hessSite.lat, hessSite.elev = astCoords.decimal2dms(siteHESSlon,delimiter=':'), astCoords.decimal2dms(siteHESSlat,delimiter=':'), siteHESSalt
+        #hessSite.lon, hessSite.lat, hessSite.elev = astCoords.decimal2dms(siteHESSlon,delimiter=':'), astCoords.decimal2dms(siteHESSlat,delimiter=':'), siteHESSalt
+        # cf HESS soft: crash/src/usersettings.C: LONGITUDE_NAMIBIA
+        hessSite.lon = '+16:30:00.8' # East from Greenwich
+        # cf HESS soft: crash/src/usersettings.C: LATITUDE_NAMIBIA
+        hessSite.lat = '-23:16:18.4' # South from equator
+        # cf HESS soft: crash/src/usersettings.C: HEIGHT_NAMIBIA
+        hessSite.elev = 1835.
+
+        # If input z is None, make it believe it is 0, otherwise msk crashes:
+        if str(self.z)=='--': # this is the result of the conversion of None to a float
+            z = 0.
+        else:
+            z = self.z
 
         # We also want the max allowed ZA for the given z of the source
         maxz = array(self.maxz)
@@ -814,10 +843,22 @@ class autoLC:
         thisminAlt=abs(90.-thismaxZA)
         
         ephemSrc = ephem.FixedBody()
-        ephemSrc._ra=astCoords.decimal2hms(ra,delimiter=':')
-        ephemSrc._dec=astCoords.decimal2dms(dec,delimiter=':')
+        ephemSrc._ra=astCoords.decimal2hms(self.ra,delimiter=':')
+        ephemSrc._dec=astCoords.decimal2dms(self.dec,delimiter=':')
         
         visibleFlag=False
+
+        zaAtCulmin = zaAtCulmination(self.dec)
+        if zaAtCulmin>90.:
+            # the source is basically NEVER visible at the H.E.S.S. site
+            print '[%s] \033[91mNEVER above horizon at H.E.S.S. site, consider discarding this source from your source list...\033[0m' % self.src
+            return False
+
+        if thismaxZA<zaAtCulmin:
+            # the source is never above maxZA set by 2D mask on Dec/z
+            print '[%s]\033[91m Never above allowed max ZA, consider relaxing the Dec/z cuts or discarding this source from your source list...\033[0m' % self.src
+            return False
+        
         
         # All times are handled here in UTC (pyEphem only uses UTC)
         now      = datetime.datetime.utcnow()
@@ -827,7 +868,7 @@ class autoLC:
         sun            = ephem.Sun()
         nextSunset     = hessSite.next_setting(sun)
         nextSunrise    = hessSite.next_rising(sun)
-        # The Moon just needs to be below the horizon
+        # The Moon just needs to be below the horizon, not below astronomical twilight angle
         hessSite.horizon = civilHorizon
         moon           = ephem.Moon()
         nextMoonset    = hessSite.next_setting(moon)
@@ -835,8 +876,10 @@ class autoLC:
         hessSite.horizon = astroHorizon
         # so far, so good. All of this is OK if we execute the program during day time.
 
-        # However, if this is dark time, we should look at the ephemerids of next night (not current night):
-        if nextSunrise < nextSunset: # DEBUG put back < instead of >
+        # However, the program is run during dark time, we should look at the ephemerids of next night (not current night):
+        if nextSunrise < nextSunset:
+            if VERBOSE:
+                print " looking at visibility for tomorrow"
             # we just put the current time at next sunrise + 10 min., to be sure to fall on tomorrow's morning day time
             hessSite.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
             nextSunset    = hessSite.next_setting(sun)
@@ -871,6 +914,12 @@ class autoLC:
         else:
             endDarkness=nextSunrise
 
+        if DEBUG:
+            darknessDuration = endDarkness-beginDarkness
+            print "DEBUG JPL: darkness begin=%s" % beginDarkness
+            print "DEBUG JPL: darkness ends=%s" % endDarkness
+            print "DEBUG JPL: darkness duration=%s minutes" % (darknessDuration*24.*60.)
+
         hessSite.date=beginDarkness
         ephemSrc.compute(hessSite)
         srcAltAtStartDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
@@ -883,17 +932,16 @@ class autoLC:
         if (srcTransitTime > beginDarkness and srcTransitTime < endDarkness and srcAltAtTransit > thisminAlt) or srcAltAtStartDarkTime > thisminAlt or srcAltAtEndDarkTime > thisminAlt:
             visibleFlag=True
 
+        if VERBOSE:
+            print " is_visible: "+str(visibleFlag)
         return visibleFlag
 
 
-    def killTrigger(self,ra,dec,z):
+    def killTrigger(self):
         """
         Defines cuts on (RA,Dec,z) before assessing whether a mail alert should be sent for a source which flux is above the trigger threshold.
         We cut on a combination (z, ZenithAngle), using a bit mask.
 
-        @param ra  Source Right Ascension
-        @param dec Source Declination
-        @param z   Source redshift (if known)
         @rtype bool
         @todo      Introduce an additional cut on Gal latitude ?
 
@@ -913,61 +961,59 @@ class autoLC:
             sys.exit(1)
 
 
-        # Equatorial coordinates -> Galactic coordinates transformation
-        equat2gal = wcs.Transformation((wcs.equatorial, wcs.fk5,'J2000.0'),wcs.galactic)
-    
-        # WCS module needs a numpy matrix for coord transformation
-        srcradec=matrix(([ra],[dec]))
-        srcGalCoord=equat2gal(srcradec)
-        # Retrieve the Galactic latitude
-        srcGalLat=srcGalCoord[(1,0)]
-        # To be used later, for an additional cut on Gal Lat ?!
         
-        zaAtCulmin=zaAtCulmination(dec)
+        # ******** FOR THE FUTURE *********
+        ## Equatorial coordinates -> Galactic coordinates transformation
+        #equat2gal = wcs.Transformation((wcs.equatorial, wcs.fk5,'J2000.0'),wcs.galactic)
+        ## WCS module needs a numpy matrix for coord transformation
+        #srcradec=matrix(([ra],[dec]))
+        #srcGalCoord=equat2gal(srcradec)
+        ## Retrieve the Galactic latitude
+        #srcGalLat=srcGalCoord[(1,0)]
+        ## To be used later, for an additional cut on Gal Lat ?!
+        
+        zaAtCulmin=zaAtCulmination(self.dec)
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
-        if str(z)=='--': # this is the result of the conversion of None to a float
-            z=0.
-    
+        if str(self.z)=='--': # this is the result of the conversion of None to a float
+            z = 0.
+        else:
+            z = self.z
+
         # Mask on both (z, ZA at culmin)
         #          z column               ZA column
         msk = (z<=grid[:,0])&(zaAtCulmin<=grid[:,1])
 
         # Assess whether the source is currently visible at the H.E.S.S. site
         if self.checkVisibility == 'True':
-            visible = self.is_visible(ra,dec,z)
+            self.visible = self.is_visible()
         else:
-            # the source is assumed to be visible in any case, i.e. we don't care about its visibility status at the H.E.S.S. site to send a potential alert
-            visible = True
+            # The source is assumed to be visible in any case, i.e. we don't care about its visibility status at the H.E.S.S. site to send a potential alert
+            self.visible = True
 
         # if the mask has at least one 'True' element, we should send an alert
-        if True in msk and visible:
+        if True in msk and self.visible:
             # print 'An alert should be triggered !'
             return False
-        elif True in msk and not visible:
-            # print 'No alert triggered'
-            print "\033[92m   Source active but not visible !\033[0m"
-            return True
         else:
             # print 'No alert triggered'
             return True
 
 
-    def dynamicalTrigger(self,src):
+    def dynamicalTrigger(self):
         '''
         If long-term data are available for a source, dynamically computes a flux trigger threshold based on the flux history of the source. Otherwise, fall back with default fixed trigger threshold.
 
-        @param src Source name
         @return (fluxAverage,fluxRMS)
         @rtype tuple
         '''
         
         # Read the longterm .dat LC file
-        infile = self.baseOutDir+'/longTerm/merged/'+str(src)+'_lc.dat'
+        infile = self.baseOutDir+'/longTerm/merged/'+str(self.src)+'_lc.dat'
         try:
             data    = asciidata.open(infile)
         except IOError:
-            print '\033[95m* Long term data file unavailable for source %s\033[0m' % src
+            print '[%s] \033[95m* Long term data file unavailable for source %s\033[0m' % (self.src, self.src)
             # Falling back to default fixed trigger threshold
             self.withhistory=False
             return (False,False)
@@ -980,23 +1026,112 @@ class autoLC:
         fluxAverage = average(flux, weights=1./fluxErr)
         fluxRMS     = std(flux, dtype=float64)
 
-        # Dynamically redefine the flux trigger threshold
-        self.threshold = fluxAverage + self.sigma*fluxRMS
-        #self.threshold = max(fluxAverage + self.sigma*fluxRMS,
-        #                     fluxAverage + self.sigma*lastFluxErr)
-        #                     #,self.threshold)
+        # Dynamically redefine the flux trigger threshold, using a 2-level criteria depending on whether we are currently looking at short- or long-term data
+        if self.daily:
+            self.threshold = fluxAverage + self.sigma*fluxRMS
+        else:
+            self.threshold = fluxAverage + self.sigmaLT*fluxRMS
+
         return (fluxAverage,fluxRMS)
         
 
+    def Triggered(self):
+        '''
+        Has the source fulfilled the trigger conditions ?
 
-    def sendAlert(self,src,ra,dec,z,nomailall=False):
+        @return True
+        @rtype bool
+        '''
+
+        # Read the light curve file
+        if self.daily:
+            infile  = self.workDir+'/'+str(self.src)+'_daily_lc.dat'
+            self.pngFig=self.workDir+'/'+str(self.src)+'_daily_lc.png'
+
+            # Also take a look in the long time-binned data
+            infileLongTimeBin=self.workDir+'/'+str(self.src)+'_lc.dat'
+            dataLongTimeBin=asciidata.open(infileLongTimeBin)
+            timeLongTimeBin=dataLongTimeBin[0].tonumpy()
+            fluxLongTimeBin=dataLongTimeBin[2].tonumpy()
+            fluxErrLongTimeBin=dataLongTimeBin[3].tonumpy()
+            # Catch the last flux point
+            self.lastTimeLongTimeBin=timeLongTimeBin[-1:]
+            self.lastFluxLongTimeBin=fluxLongTimeBin[-1:]
+            self.lastFluxErrLongTimeBin=fluxErrLongTimeBin[-1:]
+
+            # Get the arrival time of the last photon analysed
+            photonfileLongTimeBin            = self.workDir+'/'+str(self.src)+'_gti.fits'
+            photonsLongTimeBin               = pyfits.open(photonfileLongTimeBin)
+            photonsLongTimeBinTime           = photonsLongTimeBin[1].data.field('TIME')
+            self.arrivalTimeLastPhotonLongTimeBin = photonsLongTimeBinTime[-1:]
+
+            photonfile                  = self.workDir+'/'+str(self.src)+'_daily_gti.fits'
+            photons                     = pyfits.open(photonfile)
+            photonsTime                 = photons[1].data.field('TIME')
+            self.arrivalTimeLastPhoton       = photonsTime[-1:]
+        else:
+            infile  = self.workDir+'/'+str(self.src)+'_lc.dat'
+            self.pngFig=self.workDir+'/'+str(self.src)+'_lc.png'
+
+            photonfile            = self.workDir+'/'+str(self.src)+'_gti.fits'
+            photons               = pyfits.open(photonfile)
+            photonsTime           = photons[1].data.field('TIME')
+            self.arrivalTimeLastPhoton = photonsTime[-1:]
+        data    = asciidata.open(infile)
+        time    = data[0].tonumpy()
+        flux    = data[2].tonumpy()
+        fluxErr = data[3].tonumpy()
+
+        # Catch the last flux point
+        self.lastTime    = time[-1:]
+        self.lastFlux    = flux[-1:]
+        self.lastFluxErr = fluxErr[-1:]
+
+        if DEBUG:
+            print 'DEBUG %s, threshold=%g, lastFlux=%g, lastFluxErr=%g' % (self.src,self.threshold,self.lastFlux,self.lastFluxErr)
+
+        # Do we kill potential trigger due to (ra, dec, z) cut ?
+        self.triggerkilled = self.killTrigger()
+
+        # Assess whether flux is above threshold, looking at the last flux point
+        #if self.daily:
+        #    if ((self.lastFlux - self.lastFluxErr) >= self.threshold or (self.lastFluxLongTimeBin - self.lastFluxErrLongTimeBin) >= self.threshold):
+        #        self.active=True
+        #    else:
+        #        self.active=False
+        #else:
+        #    if (self.lastFlux - self.lastFluxErr) >= self.threshold:
+        #        self.active=True
+        #    else:
+        #        self.active=False
+
+        if (self.lastFlux - self.lastFluxErr) >= self.threshold:
+            self.active=True
+        else:
+            self.active=False
+
+        # Combine killTrigger and flux above threshold criteria
+        if not self.triggerkilled and self.active:
+            SENDALERT = True
+        else:
+            SENDALERT = False
+
+        if VERBOSE:
+            print "VERBOSE triggerkilled="+str(self.triggerkilled)
+            print "VERBOSE active="+str(self.active)
+            print "VERBOSE visible="+str(self.visible)
+            print "VERBOSE SENDALERT="+str(SENDALERT)
+
+        if DEBUG:
+            print "DEBUG %s, dec=%f, z=%f, maxZA=[%s], maxz=[%s], triggerkilled=%s, sendalert=%s" % (str(self.src),self.dec,self.z,', '.join(map(str,self.maxZA)),', '.join(map(str,self.maxz)),self.triggerkilled,SENDALERT)
+
+        return SENDALERT
+
+
+    def sendAlert(self,nomailall=False,sendmail=False):
         '''
         Send a mail alert in case a source fulfills the trigger conditions.
 
-        @param src Source name
-        @param ra Source right ascension
-        @param dec Source declination
-        @param z Source redshift
         @param nomailall Boolean, should the mail be sent to a restricted list of recipients ?
         @return True
         @rtype bool
@@ -1018,91 +1153,22 @@ class autoLC:
             sys.exit(1)
 
 
+        SENDALERT = self.Triggered()
 
-        # Read the light curve file
-        if self.daily:
-            infile  = self.workDir+'/'+str(src)+'_daily_lc.dat'
-            pngFig=self.workDir+'/'+str(src)+'_daily_lc.png'
-
-            # Also take a look in the long time-binned data
-            infileLongTimeBin=self.workDir+'/'+str(src)+'_lc.dat'
-            dataLongTimeBin=asciidata.open(infileLongTimeBin)
-            timeLongTimeBin=dataLongTimeBin[0].tonumpy()
-            fluxLongTimeBin=dataLongTimeBin[2].tonumpy()
-            fluxErrLongTimeBin=dataLongTimeBin[3].tonumpy()
-            # Catch the last flux point
-            lastTimeLongTimeBin=timeLongTimeBin[-1:]
-            lastFluxLongTimeBin=fluxLongTimeBin[-1:]
-            lastFluxErrLongTimeBin=fluxErrLongTimeBin[-1:]
-
-            # Get the arrival time of the last photon analysed
-            photonfileLongTimeBin            = self.workDir+'/'+str(src)+'_gti.fits'
-            photonsLongTimeBin               = pyfits.open(photonfileLongTimeBin)
-            photonsLongTimeBinTime           = photonsLongTimeBin[1].data.field('TIME')
-            arrivalTimeLastPhotonLongTimeBin = photonsLongTimeBinTime[-1:]
-
-            photonfile                  = self.workDir+'/'+str(src)+'_daily_gti.fits'
-            photons                     = pyfits.open(photonfile)
-            photonsTime                 = photons[1].data.field('TIME')
-            arrivalTimeLastPhoton       = photonsTime[-1:]
-        else:
-            infile  = self.workDir+'/'+str(src)+'_lc.dat'
-            pngFig=self.workDir+'/'+str(src)+'_lc.png'
-
-            photonfile            = self.workDir+'/'+str(src)+'_gti.fits'
-            photons               = pyfits.open(photonfile)
-            photonsTime           = photons[1].data.field('TIME')
-            arrivalTimeLastPhoton = photonsTime[-1:]
-        data    = asciidata.open(infile)
-        time    = data[0].tonumpy()
-        flux    = data[2].tonumpy()
-        fluxErr = data[3].tonumpy()
-
-        # Catch the last flux point
-        lastTime    = time[-1:]
-        lastFlux    = flux[-1:]
-        lastFluxErr = fluxErr[-1:]
-
-        if DEBUG:
-            print 'DEBUG: ',src,self.threshold
-            print
-            print "self.threshold=",self.threshold
-            print "lastFlux=",lastFlux
-            print
-
-        KILLTRIGGER = self.killTrigger(ra,dec,z)
-
-        if not KILLTRIGGER:
-            # Assess whether the trigger condition is met, looking at the last flux point
-            if self.daily:
-                if ((lastFlux - lastFluxErr) >= self.threshold or (lastFluxLongTimeBin - lastFluxErrLongTimeBin) >= self.threshold):
-                    SENDALERT=True
-                else:
-                    SENDALERT=False
-            else:
-                if (lastFlux - lastFluxErr) >= self.threshold:
-                    SENDALERT=True
-                else:
-                    SENDALERT=False
-        else:
-            SENDALERT=False
-
-        if DEBUG:
-            print str(src),dec,z,self.maxZA,self.maxz,KILLTRIGGER,SENDALERT
 
         # If trigger condition is met, we send a mail
-        if SENDALERT:
+        if SENDALERT and sendmail:
             # Create the container email message.
             msg = MIMEMultipart()
             sender = self.mailSender
             
             # To whom the mail should be sent (cf. __init__ function of the class)
-            if nomailall is False:
+            if not nomailall:
                 recipient = self.usualRecipients
-                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s' % src
+                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s' % self.src
             else:
                 recipient = self.testRecipients
-                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s' % src
+                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s' % self.src
 
             msg['From'] = sender
             COMMASPACE = ', '
@@ -1116,7 +1182,7 @@ class autoLC:
 
      *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
-     """%(self.emin,self.emax/1000.,src,self.threshold)
+     """%(self.emin,self.emax/1000.,self.src,self.threshold)
 
             if self.daily:
                 mailtext=mailtext+"""
@@ -1124,14 +1190,26 @@ class autoLC:
      The last daily-binned flux is:        %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
      and the last %.0f-day binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
 
-"""%(lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton,self.longtimebin,lastFluxLongTimeBin,lastFluxErrLongTimeBin,lastTimeLongTimeBin,arrivalTimeLastPhotonLongTimeBin)
+""" % (self.lastFlux,
+       self.lastFluxErr,
+       self.lastTime,
+       self.arrivalTimeLastPhoton,
+       self.longtimebin,
+       self.lastFluxLongTimeBin,
+       self.lastFluxErrLongTimeBin,
+       self.lastTimeLongTimeBin,
+       self.arrivalTimeLastPhotonLongTimeBin)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned in red, and %.0f-day binned in blue) is attached."%(self.tbin/24./60./60.,self.longtimebin)
             else:
                 mailtext=mailtext+"""
 
      The last %.0f-day binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
 
-"""%(self.longtimebin,lastFlux,lastFluxErr,lastTime,arrivalTimeLastPhoton)
+""" % (self.longtimebin,
+       self.lastFlux,
+       self.lastFluxErr,
+       self.lastTime,
+       self.arrivalTimeLastPhoton)
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
 
             if self.launchLikeAna == 'True':
@@ -1165,7 +1243,7 @@ class autoLC:
             msg.attach(txt)
             
             # Open the files in binary mode.  Let the MIMEImage class automatically guess the specific image type.
-            fp = open(pngFig, 'rb')
+            fp = open(self.pngFig, 'rb')
             img = MIMEImage(fp.read())
             fp.close()
             msg.attach(img)
@@ -1177,7 +1255,7 @@ class autoLC:
             s.sendmail(sender, recipient, msg.as_string())
             s.quit()
 
-            print "\033[94m*** Alert sent for %s\033[0m"%src
+            print "\033[94m*** Alert sent for %s\033[0m" % self.src
 
             return True
         else:
@@ -1205,8 +1283,6 @@ class autoLC:
         except:
             print "ERROR sendAlert: Can't import mail modules."
             sys.exit(1)
-
-
 
         # Create the container email message.
         msg = MIMEMultipart()
@@ -1243,20 +1319,21 @@ class autoLC:
         return True
 
 
-    def launchLikelihoodAnalysis(self, src, ra, dec, fglName):
+    def launchLikelihoodAnalysis(self):
         """
         Launch a clean likelihood analysis in Lyon
         """
         
-        srcDir=src+'_FLaapLUC_'+str(datetime.date.today().strftime('%Y%m%d'))
+        srcDir=self.src+'_FLaapLUC_'+str(datetime.date.today().strftime('%Y%m%d'))
         anaDir=os.getenv('FERMIUSER')+'/'+srcDir
+        # If this analysis has already been launched, we abort here
         if os.path.isdir(anaDir):
-            shutil.rmtree(anaDir)
+            return False
         os.makedirs(anaDir)
-        if fglName is not None:
+        if self.fglName is not None:
             fglNameFile=anaDir+'/FermiName.txt'
             file=open(fglNameFile,'w')
-            file.write(fglName)
+            file.write(self.fglName)
             file.close()
         srcSelectFile=anaDir+'/source_selection.txt'
         srcSelect=open(srcSelectFile,'w')
@@ -1266,49 +1343,87 @@ Start Time (MET)        =       %i seconds (MJD%f)
 Stop Time (MET) =       %i seconds (MJD%f)
 Minimum Energy  =       %i MeV
 Maximum Energy  =       %i MeV
-""" % (ra, dec, self.tstop-(self.longtimebin*24.*3600.), met2mjd(self.tstop-(self.longtimebin*24.*3600.)), self.tstop, met2mjd(self.tstop), int(self.emin), int(self.emax)))
+""" % (self.ra, self.dec, self.tstop-(self.longtimebin*24.*3600.), met2mjd(self.tstop-(self.longtimebin*24.*3600.)), self.tstop, met2mjd(self.tstop), int(self.emin), int(self.emax)))
         srcSelect.close()
 
         photonFile=anaDir+'/photon.list'
         photonList=open(photonFile,'w')
-        photonList.write('/sps/hess/users/lpnhe/jlenain/fermi/allsky/allsky_last68days_30MeV_500GeV_diffuse_filtered.fits')
+        photonList.write('/sps/hess/users/lpnhe/jlenain/fermi/allsky/allsky_last70days_30MeV_500GeV_diffuse_filtered.fits')
         photonList.close()
 
         catalogOption=""
-        if fglName is not None:
+        if self.fglName is not None:
             catalogOption="-c"
-        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r32p5-fssc-20130916-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
+        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r33p0-fssc-20140520-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
 source $FERMI_DIR/fermi-init.sh && \
 qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
         r=os.system(command)
         return r
 
 
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg'):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False):
     """
     Process a given source.
     """
 
-    if DEBUG:
-        print 'src=',mysrc
-
-    
     if mysrc is None:
         print "ERROR Missing input source !"
         sys.exit(1)
 
-    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile)
-    src,ra,dec,z,fglName=auto.readSourceList(mysrc)
+    # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
+    # We automatically recreate here any missing long time-binned data.
+    if daily and not longTerm and not force_daily:
+        print "[%s] Daily light curve asked for, I will first process the long time-binned one" % mysrc
+        longtermactive, visible=processSrc(mysrc=mysrc,
+                                           useThresh=useThresh,
+                                           daily=False,
+                                           mail=False,
+                                           longTerm=longTerm,
+                                           yearmonth=yearmonth,
+                                           mergelongterm=mergelongterm,
+                                           withhistory=withhistory,
+                                           update=update,
+                                           configfile=configfile)
+        if longtermactive and visible:
+            print "[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
+        elif longtermactive and not visible:
+            print "[%s] \033[91mSource %s is active but not visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
+            return False
+        elif not longtermactive and visible:
+            print "[%s] \033[91mSource %s is visible but not active. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
+            return False
+        elif not longtermactive and not visible:
+            print "[%s] \033[91mSource %s is neither active nor visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
+            return False
+        else:
+            print "[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m" % (mysrc, mysrc)
+            return False
+    elif force_daily:
+        print "[%s] Forcing daily light curve, I will first process the long time-binned one" % mysrc
+        longtermactive, visible=processSrc(mysrc=mysrc,
+                                           useThresh=useThresh,
+                                           daily=False,
+                                           mail=False,
+                                           longTerm=longTerm,
+                                           yearmonth=yearmonth,
+                                           mergelongterm=mergelongterm,
+                                           withhistory=withhistory,
+                                           update=update,
+                                           configfile=configfile)        
+    else:
+        print "[%s] Processing long time-binned light curve..." % mysrc
 
+    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile)
+    auto.readSourceList(mysrc)
 
     if longTerm is True and mergelongterm is True:
 
         # Remove all the old merged file for this source, before reprocessing the merged data
-        if not daily:
-            for file in glob.glob(auto.workDir+'/'+src+'*'):
+        if not auto.daily:
+            for file in glob.glob(auto.workDir+'/'+auto.src+'*'):
                 os.remove(file)
-        if daily:
-            for file in glob.glob(auto.workDir+'/'+src+'*daily*'):
+        if auto.daily:
+            for file in glob.glob(auto.workDir+'/'+auto.src+'*daily*'):
                 os.remove(file)
 
 
@@ -1338,61 +1453,60 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                 # BUT only if update=True
                 if year==int(thisyear) and int(month)==int(thismonth) and update is True:
                     tmpworkdir=auto.baseOutDir+"/longTerm/"+str(year)+str(month)
-                    if not daily:
-                        for file in glob.glob(tmpworkdir+'/'+src+'*'):
+                    if not auto.daily:
+                        for file in glob.glob(tmpworkdir+'/'+auto.src+'*'):
                             os.remove(file)
-                    if daily:
-                        for file in glob.glob(tmpworkdir+'/'+src+'*daily*'):
+                    if auto.daily:
+                        for file in glob.glob(tmpworkdir+'/'+auto.src+'*daily*'):
                             os.remove(file)
 
-                processSrc(mysrc=src,useThresh=useThresh,daily=daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile)
+                processSrc(mysrc=auto.src,useThresh=useThresh,daily=auto.daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile)
 
                 
 
         # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT and createPNG. No mail is sent here.
-        auto.mergeGTIfiles(src,ra,dec,daily=daily)
-        if fglName is not None:
-            auto.createXML(src)
+        auto.mergeGTIfiles()
+        if auto.fglName is not None:
+            auto.createXML()
             mygamma=None
         else:
             mygamma=ASSUMEDGAMMA
-            print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
-        auto.photoLC(src)
-        auto.exposure(src,fglName,gamma=mygamma)
-        auto.createDAT(src)
-        auto.createPNG(src,fglName,z)
+            print '[%s] \033[93mNo 2FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
+        auto.photoLC()
+        auto.exposure(gamma=mygamma)
+        auto.createDAT()
+        auto.createPNG()
         # Exit here
-        return True
-
+        return False
+    # End mergelongterm
 
 
     # When mergelongterm is False, we do the following:
-    auto.selectSrc(src,ra,dec)
-    auto.makeTime(src,ra,dec)
+    auto.selectSrc()
+    auto.makeTime()
+
     # If we are in --long-term mode, but not in --merge-long-term mode, we can stop here, since the --merge-long-term mode then starts at the mergeGTIfiles level
-    if longTerm is True:
-        return True
+    if longTerm:
+        return False
 
     global FLAGASSUMEDGAMMA
-    if fglName is not None:
-        auto.createXML(src)
+    if auto.fglName is not None:
+        auto.createXML()
         mygamma=None
         FLAGASSUMEDGAMMA=False
     else:
         mygamma=ASSUMEDGAMMA
-        print 'Your source '+src+' has no 2FGL counterpart given in the list of sources. I will assume a photon index of '+str(mygamma)+' for the light curve generation.'
+        print '[%s] \033[93mNo 2FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
         FLAGASSUMEDGAMMA=True
-    auto.photoLC(src)
-    auto.exposure(src,fglName,gamma=mygamma)
-    auto.createDAT(src)
-    auto.createPNG(src,fglName,z)
-    if mail is True:
-        alertSent=auto.sendAlert(src,ra,dec,z,nomailall=test)
-        if alertSent and auto.launchLikeAna == 'True':
-            auto.launchLikelihoodAnalysis(src, ra, dec, fglName)
-
+    auto.photoLC()
+    auto.exposure(gamma=mygamma)
+    auto.createDAT()
+    auto.createPNG()
+    alertSent=auto.sendAlert(nomailall=test,sendmail=mail)
+    if alertSent and auto.active and auto.launchLikeAna == 'True':
+        auto.launchLikelihoodAnalysis()
     
-    return True
+    return auto.active, auto.visible
 
 
 def main(argv=None):
@@ -1415,7 +1529,9 @@ Use '-h' to get the help message
                           usage=helpmsg)
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
-                      help='use daily bins for the light curves (defaulted to weekly)')
+                      help='use daily bins for the light curves (defaulted to long time-binned)')
+    parser.add_option("--force-daily", action="store_true", dest="force_daily", default=False,
+                      help='force daily bins for the light curves')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
@@ -1432,16 +1548,37 @@ Use '-h' to get the help message
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to test recipients (by default, mail alerts are sent to everybody, cf. the configuration files).')
     parser.add_option("-f", "--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
-
+    parser.add_option("-v", "--verbose", action="store_true", dest="v", default=False,
+                      help='verbose output.')
+    parser.add_option("--debug", action="store_true", dest="debug", default=False,
+                      help='debugging output.')
     (opt, args) = parser.parse_args()
 
     CONFIGFILE=opt.CONFIGFILE
+
+    global VERBOSE
+    if opt.v:
+        VERBOSE=True
+    else:
+        VERBOSE=False
+
+    global DEBUG
+    if opt.debug:
+        DEBUG=True
+    else:
+        DEBUG=False
 
     # If daily bins
     if opt.d:
         DAILY=True
     else:
         DAILY=False
+
+    if opt.force_daily:
+        FORCE_DAILY=True
+        DAILY=True
+    else:
+        FORCE_DAILY=False
 
     # If custom thresholds
     if opt.c:
@@ -1461,9 +1598,9 @@ Use '-h' to get the help message
     else:
         TEST=False
 
-    if TEST is True and MAIL is False:
+    if TEST and not MAIL:
         print "ERROR You asked for both the --test and --no-mail options."
-        print "      These are mutually exclusive options."
+        print "      These options are mutually exclusive."
         sys.exit(1)
     
     # If long term
@@ -1510,13 +1647,7 @@ Use '-h' to get the help message
 
     src=args[0]
 
-
-    # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
-    # We automatically recreate here any missing long time-binned data.
-    if DAILY:
-        processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
-
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY)
 
     return True
 
