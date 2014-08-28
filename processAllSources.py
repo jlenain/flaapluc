@@ -235,8 +235,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
 
     if(len(args)!=0):
         file=args[0]
-        print "Overriding default list of source: using "+file
-        auto=autoLC(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
+        print "\033[93mINFO\033[0m Overriding default list of source: using %s" % file
+        auto=autoLC(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
     else:
         auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
 
