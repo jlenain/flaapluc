@@ -1223,7 +1223,7 @@ class autoLC:
                 mailtext=mailtext+"""
 
      *WARNING*: The source %s is not found in the 2FGL catalogue, its photon index is thus assumed to be %.2f for the light curve computation.
-""" % (src,ASSUMEDGAMMA)
+""" % (self.src,ASSUMEDGAMMA)
 
 
             mailtext=mailtext+"""
