@@ -96,6 +96,87 @@ def unixtime2mjd(unixtime):
     result = 40587.0 + unixtime / (24.*60.*60.)
     return result
 
+######  julian date to gregorian date ########################
+def jd2gd(x):
+    """
+    Compute gregorian date out of julian date
+
+    input: julian date x (float)
+    return value: string of gregorian date
+
+    based on/copied from script jd2dg.py from Enno Middelberg
+    http://www.atnf.csiro.au/people/Enno.Middelberg/python/jd2gd.py
+
+    task to convert a list of julian dates to gregorian dates
+    description at http://mathforum.org/library/drmath/view/51907.html
+    Original algorithm in Jean Meeus, "Astronomical Formulae for Calculators"
+    """
+    
+    jd=float(x)
+
+    jd=jd+0.5
+    Z=int(jd)
+    F=jd-Z
+    alpha=int((Z-1867216.25)/36524.25)
+    A=Z + 1 + alpha - int(alpha/4)
+
+    B = A + 1524
+    C = int( (B-122.1)/365.25)
+    D = int( 365.25*C )
+    E = int( (B-D)/30.6001 )
+
+    dd = B - D - int(30.6001*E) + F
+
+    if E<13.5:
+	mm=E-1
+
+    if E>13.5:
+	mm=E-13
+
+    if mm>2.5:
+	yyyy=C-4716
+
+    if mm<2.5:
+	yyyy=C-4715
+
+    #months=["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+    daylist=[31,28,31,30,31,30,31,31,30,31,30,31]
+    daylist2=[31,29,31,30,31,30,31,31,30,31,30,31]
+
+    h=int((dd-int(dd))*24)
+    min=int((((dd-int(dd))*24)-h)*60)
+    sec=86400*(dd-int(dd))-h*3600-min*60
+
+    # Now calculate the fractional year. Do we have a leap year?
+    if (yyyy%4 != 0):
+	days=daylist2
+    elif (yyyy%400 == 0):
+	days=daylist2
+    elif (yyyy%100 == 0):
+	days=daylist
+    else:
+	days=daylist2
+
+    #print x+" = "+months[mm-1]+" %i, %i, " % (dd, yyyy), 
+    #print string.zfill(h,2)+":"+string.zfill(min,2)+":"+string.zfill(sec,2)+" UTC"
+
+    string = "%04d-%02d-%02d %02d:%02d:%04.1f" % (yyyy, mm, dd, h, min, sec)
+
+    return string
+
+
+
+###### modified julian date to gregorian date ########################
+def mjd2gd(time):
+    """
+    Converts Modified Julian Day in Gregorian Date.
+
+    Under the hood, it calls jd2gd().
+    """
+
+    return jd2gd(time+2400000.5)
+
 
 def rad2deg(angle):
     """
@@ -1187,35 +1268,35 @@ class autoLC:
             if self.daily:
                 mailtext=mailtext+"""
 
-     The last daily-binned flux is:        %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
-     and the last %.0f-day binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
+     The last daily-binned flux is:        %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.1f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.1f, %s)
+     and the last %.0f-day binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.1f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.1f, %s)
 
 """ % (self.lastFlux,
        self.lastFluxErr,
-       self.lastTime,
-       self.arrivalTimeLastPhoton,
+       self.lastTime, met2mjd(self.lastTime), str(mjd2gd(met2mjd(self.lastTime))),
+       self.arrivalTimeLastPhoton, met2mjd(self.arrivalTimeLastPhoton), str(mjd2gd(met2mjd(self.arrivalTimeLastPhoton))),
        self.longtimebin,
        self.lastFluxLongTimeBin,
        self.lastFluxErrLongTimeBin,
-       self.lastTimeLongTimeBin,
-       self.arrivalTimeLastPhotonLongTimeBin)
+       self.lastTimeLongTimeBin, met2mjd(self.lastTimeLongTimeBin), str(mjd2gd(met2mjd(self.lastTimeLongTimeBin))),
+       self.arrivalTimeLastPhotonLongTimeBin, met2mjd(self.arrivalTimeLastPhotonLongTimeBin), str(mjd2gd(met2mjd(self.arrivalTimeLastPhotonLongTimeBin))))
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned in red, and %.0f-day binned in blue) is attached."%(self.tbin/24./60./60.,self.longtimebin)
             else:
                 mailtext=mailtext+"""
 
-     The last %.0f-day binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (arrival time of last photon analysed: %.0f)
+     The last %.0f-day binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.1f, i.e. %s) (arrival time of last photon analysed: %.0f, MJD %.1f, %s)
 
 """ % (self.longtimebin,
        self.lastFlux,
        self.lastFluxErr,
-       self.lastTime,
-       self.arrivalTimeLastPhoton)
+       self.lastTime, met2mjd(self.lastTime), str(mjd2gd(met2mjd(self.lastTime))),
+       self.arrivalTimeLastPhoton, met2mjd(self.arrivalTimeLastPhoton), str(mjd2gd(met2mjd(self.arrivalTimeLastPhoton))))
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
 
             if self.launchLikeAna == 'True':
                 mailtext=mailtext+"""
 
-     *NEW*: a likelihood analysis has been automatically launched at CCIN2P3 for the time interval corresponding to the last measurement (MET %i - MET %i). Contact Jean-Philippe Lenain (jlenain@in2p3.fr) to know the outcome.
+     *NOTE*: a likelihood analysis has been automatically launched at CCIN2P3 for the time interval corresponding to the last measurement (MET %i - MET %i). Contact Jean-Philippe Lenain (jlenain@in2p3.fr) to know the outcome.
 
 """%(self.tstop-(self.longtimebin*24.*3600.), self.tstop)
 
