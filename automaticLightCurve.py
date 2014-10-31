@@ -1343,12 +1343,16 @@ Start Time (MET)        =       %i seconds (MJD%f)
 Stop Time (MET) =       %i seconds (MJD%f)
 Minimum Energy  =       %i MeV
 Maximum Energy  =       %i MeV
-""" % (self.ra, self.dec, self.tstop-(self.longtimebin*24.*3600.), met2mjd(self.tstop-(self.longtimebin*24.*3600.)), self.tstop, met2mjd(self.tstop), int(self.emin), int(self.emax)))
+""" % (self.ra, self.dec,
+       self.tstop-(self.longtimebin*24.*3600.), met2mjd(self.tstop-(self.longtimebin*24.*3600.)),
+       self.tstop, met2mjd(self.tstop),
+       int(self.emin),
+       int(self.emax)))
         srcSelect.close()
 
         photonFile=anaDir+'/photon.list'
         photonList=open(photonFile,'w')
-        photonList.write('/sps/hess/users/lpnhe/jlenain/fermi/allsky/allsky_last70days_30MeV_500GeV_diffuse_filtered.fits')
+        photonList.write(str(self.lastAllskyFile))
         photonList.close()
 
         catalogOption=""
