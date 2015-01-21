@@ -1228,6 +1228,8 @@ class autoLC:
             from email.MIMEImage import MIMEImage
             from email.MIMEMultipart import MIMEMultipart
             from email.MIMEText import MIMEText
+            from email.MIMEBase import MIMEBase
+            from email import Encoders
 
         except:
             print "ERROR sendAlert: Can't import mail modules."
@@ -1325,7 +1327,14 @@ class autoLC:
             
             # Open the files in binary mode.  Let the MIMEImage class automatically guess the specific image type.
             fp = open(self.pngFig, 'rb')
-            img = MIMEImage(fp.read())
+
+            # img = MIMEImage(fp.read(), name=os.path.basename(self.pngFig))
+
+            img = MIMEBase('application', 'octet-stream')
+            img.set_payload(fp.read())
+            Encoders.encode_base64(img)
+            img.add_header('Content-Disposition',
+                            'attachment; filename="%s"' % os.path.basename(self.pngFig))
             fp.close()
             msg.attach(img)
 
