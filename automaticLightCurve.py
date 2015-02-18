@@ -1451,7 +1451,7 @@ Maximum Energy  =       %i MeV
         command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r33p0-fssc-20140520-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
 source $FERMI_DIR/fermi-init.sh && \
 qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
-        if str(self.z)!=='--' and self.z != 0: # this is the result of the conversion of None to a float
+        if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None to a float
             # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
             command += ' -z %f' % self.z
         r=os.system(command)
