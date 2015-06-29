@@ -488,7 +488,7 @@ class autoLC:
         filter['tmin']    = self.tstart
         filter['tmax']    = self.tstop
         filter['zmax']    = self.zmax
-        filter['evclass'] = 2
+        filter['evclass'] = 128
         filter.run()
 
 
@@ -564,7 +564,7 @@ class autoLC:
         filter['tmin']    = self.tstart
         filter['tmax']    = self.tstop
         filter['zmax']    = self.zmax
-        filter['evclass'] = 2
+        filter['evclass'] = 128
         filter.run()
 
 
@@ -641,7 +641,7 @@ class autoLC:
  
 
         scfile=self.spacecraft
-        irfs='P7SOURCE_V6'
+        irfs='P8R2_SOURCE_V6'
         target=self.fglName
         rad=str(self.roi)
         
@@ -1448,7 +1448,7 @@ Maximum Energy  =       %i MeV
         catalogOption=""
         if self.fglName is not None:
             catalogOption="-c"
-        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r33p0-fssc-20140520-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
+        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v10r0p5-fssc-20150518-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
 source $FERMI_DIR/fermi-init.sh && \
 qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
         if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None to a float
