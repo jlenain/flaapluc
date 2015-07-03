@@ -323,7 +323,7 @@ class autoLC:
 	        os.makedirs(self.workDir)
 	    except OSError:
 		pass
-
+        
         self.fermiDir   = os.getenv('FERMI_DIR')
 
         # Setting default parameters
