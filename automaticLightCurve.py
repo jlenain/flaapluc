@@ -319,7 +319,10 @@ class autoLC:
 
         self.spacecraft = self.spacecraftFile
         if not os.path.isdir(self.workDir):
-            os.makedirs(self.workDir)
+            try:
+	        os.makedirs(self.workDir)
+	    except OSError:
+		pass
 
         self.fermiDir   = os.getenv('FERMI_DIR')
 
