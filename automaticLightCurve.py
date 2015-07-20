@@ -1270,8 +1270,8 @@ class autoLC:
             if self.daily:
                 mailtext=mailtext+"""
 
-     The last daily-binned flux is:        %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.1f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.1f, %s)
-     and the last %.0f-day binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.1f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.1f, %s)
+     The last daily-binned flux is:        %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.5f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.5f, %s)
+     and the last %.0f-day binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.5f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.5f, %s)
 
 """ % (self.lastFlux,
        self.lastFluxErr,
@@ -1286,7 +1286,7 @@ class autoLC:
             else:
                 mailtext=mailtext+"""
 
-     The last %.0f-day binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.1f, i.e. %s) (arrival time of last photon analysed: %.0f, MJD %.1f, %s)
+     The last %.0f-day binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.5f, i.e. %s) (arrival time of last photon analysed: %.0f, MJD %.5f, %s)
 
 """ % (self.longtimebin,
        self.lastFlux,
