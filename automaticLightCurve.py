@@ -5,7 +5,7 @@ FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
 
 Automatic generation of aperture photometric light curves of high energy sources, for a given source.
 
-No likelihood fit is performed, the results solely rely on the 2FGL spectral fits, if available.
+No likelihood fit is performed, the results solely rely on the 3FGL spectral fits, if available.
 
 More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 
@@ -43,11 +43,11 @@ except ImportError:
 DEBUG=False # Debugging flag
 VERBOSE=False
 BATCH=True  # True in batch mode
-FLAGASSUMEDGAMMA=False # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA or taken from the 2FGL.
+FLAGASSUMEDGAMMA=False # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA or taken from the 3FGL.
 
 # Global variables
 TOFFSET=54000. # offset in MJD for plot creation
-ASSUMEDGAMMA=-2.5 # assumed photon index for a source not belonging to the 2FGL
+ASSUMEDGAMMA=-2.5 # assumed photon index for a source not belonging to the 3FGL
 
 def met2mjd(met):
     """
@@ -377,8 +377,8 @@ class autoLC:
                 tmptstop  = mjd2met(unixtime2mjd(yearmonthStop))
 
                 if DEBUG:
-                    print 'INIT yearmonthStart=',yearmonthStart
-                    print 'INIT yearmonthStop=',yearmonthStop
+                    print 'DEBUG: INIT yearmonthStart=',yearmonthStart
+                    print 'DEBUG: INIT yearmonthStop=',yearmonthStop
 
                 # Make sure that start of yearmonth is after the launch of Fermi, and that stop of yearmonth is before the very last data we have from NASA servers !
                 if tmptstart > missionStart:
@@ -568,12 +568,14 @@ class autoLC:
         filter['tmax']    = self.tstop
         filter['zmax']    = self.zmax
         filter['evclass'] = 128
+        if VERBOSE:
+            print 'INFO Running gtmktime'
         filter.run()
 
 
     def createXML(self):
         """
-        Create an XML model file based on the 2FGL catalogue
+        Create an XML model file based on the 3FGL catalogue
         """
         
         if self.daily:
@@ -588,13 +590,15 @@ class autoLC:
             return True
 
         try:
-            import make2FGLxml
+            import make3FGLxml
         except ImportError:
-            print "ERROR Can't import make2FGLxml."
+            print "ERROR Can't import make3FGLxml."
             sys.exit(1)
         
-        mymodel=make2FGLxml.srcList(self.catalogFile,evfile,modelfile)
-        mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gal_2yearp7v6_v0.fits','Gal_2yearp7v6_v0',self.fermiDir+'/refdata/fermi/galdiffuse/iso_p7v6source.txt','iso_p7v6source',self.templatesDir)
+        mymodel=make3FGLxml.srcList(self.catalogFile,evfile,modelfile)
+        if VERBOSE:
+            print 'INFO Running makeModel'
+        mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gll_iem_v06.fits','GalDiffuse',self.fermiDir+'/refdata/fermi/galdiffuse/iso_P8R2_SOURCE_V6_v06.txt','IsotropicDiffuse',self.templatesDir)
 
 
     def photoLC(self):
@@ -620,6 +624,8 @@ class autoLC:
         evtbin['tstart']    = self.tstart
         evtbin['tstop']     = self.tstop
         evtbin['dtime']     = self.tbin
+        if VERBOSE:
+            print 'INFO Running gtbin'
         evtbin.run()
 
 
@@ -645,14 +651,18 @@ class autoLC:
 
         scfile=self.spacecraft
         irfs='P8R2_SOURCE_V6'
-        target=self.fglName
+        target=self.fglName.replace('3FGLJ','3FGL J')
+        if DEBUG:
+            print 'DEBUG: exposure: target=%s' % target
         rad=str(self.roi)
         
         if gamma is None:
-            options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target='+target+' rad='+rad
+            options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target=\"'+target+'\" rad='+rad
         else:
             options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl="none" specin='+str(gamma)+' rad='+rad
         cmd='time -p '+self.fermiDir+'/bin/gtexposure '+options
+        if VERBOSE:
+            print 'INFO Running %s' % cmd
         os.system(cmd)
 
 
@@ -800,9 +810,9 @@ class autoLC:
             ax = fig.add_subplot(111)
 
         if self.fglName is not None:
-            title=str(self.src)+', '+str(self.fglName).replace('_2FGLJ','2FGL J')
+            title=str(self.src)+', '+str(self.fglName).replace('_2FGLJ','2FGL J').replace('3FGLJ','3FGL J')
         else:
-            title=str(self.src)+', no known 2FGL counterpart'
+            title=str(self.src)+', no known 3FGL counterpart'
         if str(self.z)=='--': # this is the result of the conversion of None to a float
             title=title+' (z unknown)'
         else:
@@ -963,7 +973,7 @@ class autoLC:
         # However, the program is run during dark time, we should look at the ephemerids of next night (not current night):
         if nextSunrise < nextSunset:
             if VERBOSE:
-                print " looking at visibility for tomorrow"
+                print "INFO: looking at visibility for tomorrow"
             # we just put the current time at next sunrise + 10 min., to be sure to fall on tomorrow's morning day time
             hessSite.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
             nextSunset    = hessSite.next_setting(sun)
@@ -1000,9 +1010,9 @@ class autoLC:
 
         if DEBUG:
             darknessDuration = endDarkness-beginDarkness
-            print "DEBUG JPL: darkness begin=%s" % beginDarkness
-            print "DEBUG JPL: darkness ends=%s" % endDarkness
-            print "DEBUG JPL: darkness duration=%s minutes" % (darknessDuration*24.*60.)
+            print "DEBUG: darkness begin=%s" % beginDarkness
+            print "DEBUG: darkness ends=%s" % endDarkness
+            print "DEBUG: darkness duration=%s minutes" % (darknessDuration*24.*60.)
 
         hessSite.date=beginDarkness
         ephemSrc.compute(hessSite)
@@ -1017,7 +1027,7 @@ class autoLC:
             visibleFlag=True
 
         if VERBOSE:
-            print " is_visible: "+str(visibleFlag)
+            print "INFO: is_visible: "+str(visibleFlag)
         return visibleFlag
 
 
@@ -1201,10 +1211,10 @@ class autoLC:
             SENDALERT = False
 
         if VERBOSE:
-            print "VERBOSE triggerkilled="+str(self.triggerkilled)
-            print "VERBOSE active="+str(self.active)
-            print "VERBOSE visible="+str(self.visible)
-            print "VERBOSE SENDALERT="+str(SENDALERT)
+            print "INFO: triggerkilled="+str(self.triggerkilled)
+            print "INFO: active="+str(self.active)
+            print "INFO: visible="+str(self.visible)
+            print "INFO: SENDALERT="+str(SENDALERT)
 
         if DEBUG:
             print "DEBUG %s, dec=%f, z=%f, maxZA=[%s], maxz=[%s], triggerkilled=%s, sendalert=%s" % (str(self.src),self.dec,self.z,', '.join(map(str,self.maxZA)),', '.join(map(str,self.maxz)),self.triggerkilled,SENDALERT)
@@ -1308,7 +1318,7 @@ class autoLC:
             if FLAGASSUMEDGAMMA is True:
                 mailtext=mailtext+"""
 
-     *WARNING*: The source %s is not found in the 2FGL catalogue, its photon index is thus assumed to be %.2f for the light curve computation.
+     *WARNING*: The source %s is not found in the 3FGL catalogue, its photon index is thus assumed to be %.2f for the light curve computation.
 """ % (self.src,ASSUMEDGAMMA)
 
 
@@ -1450,7 +1460,7 @@ class autoLC:
         if os.path.isdir(anaDir):
             return False
         os.makedirs(anaDir)
-        if self.fglName is not None:
+        if self.fglName is not None and '2FGL' in self.fglName:
             threefglName=self.search3FGLcounterpart()
             if threefglName is not None:
                 fglNameFile=anaDir+'/FermiName.txt'
@@ -1600,7 +1610,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
             mygamma=None
         else:
             mygamma=ASSUMEDGAMMA
-            print '[%s] \033[93mNo 2FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
+            print '[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
         auto.photoLC()
         auto.exposure(gamma=mygamma)
         auto.createDAT()
@@ -1625,7 +1635,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         FLAGASSUMEDGAMMA=False
     else:
         mygamma=ASSUMEDGAMMA
-        print '[%s] \033[93mNo 2FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
+        print '[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
         FLAGASSUMEDGAMMA=True
     auto.photoLC()
     auto.exposure(gamma=mygamma)
