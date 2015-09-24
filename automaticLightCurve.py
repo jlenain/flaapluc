@@ -319,8 +319,11 @@ class autoLC:
 
         self.spacecraft = self.spacecraftFile
         if not os.path.isdir(self.workDir):
-            os.makedirs(self.workDir)
-
+            try:
+	        os.makedirs(self.workDir)
+	    except OSError:
+		pass
+        
         self.fermiDir   = os.getenv('FERMI_DIR')
 
         # Setting default parameters
@@ -488,7 +491,7 @@ class autoLC:
         filter['tmin']    = self.tstart
         filter['tmax']    = self.tstop
         filter['zmax']    = self.zmax
-        filter['evclass'] = 2
+        filter['evclass'] = 128
         filter.run()
 
 
@@ -564,7 +567,7 @@ class autoLC:
         filter['tmin']    = self.tstart
         filter['tmax']    = self.tstop
         filter['zmax']    = self.zmax
-        filter['evclass'] = 2
+        filter['evclass'] = 128
         filter.run()
 
 
@@ -641,7 +644,7 @@ class autoLC:
  
 
         scfile=self.spacecraft
-        irfs='P7SOURCE_V6'
+        irfs='P8R2_SOURCE_V6'
         target=self.fglName
         rad=str(self.roi)
         
@@ -1270,8 +1273,8 @@ class autoLC:
             if self.daily:
                 mailtext=mailtext+"""
 
-     The last daily-binned flux is:        %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.1f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.1f, %s)
-     and the last %.0f-day binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.1f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.1f, %s)
+     The last daily-binned flux is:        %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.5f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.5f, %s)
+     and the last %.0f-day binned flux is: %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.5f, i.e. %s) (arrival time of last photon analysed: MET %.0f, MJD %.5f, %s)
 
 """ % (self.lastFlux,
        self.lastFluxErr,
@@ -1286,7 +1289,7 @@ class autoLC:
             else:
                 mailtext=mailtext+"""
 
-     The last %.0f-day binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.1f, i.e. %s) (arrival time of last photon analysed: %.0f, MJD %.1f, %s)
+     The last %.0f-day binned flux is:      %.2g +/- %.2g ph cm^-2 s^-1, centred on MET %.0f (MJD %.5f, i.e. %s) (arrival time of last photon analysed: %.0f, MJD %.5f, %s)
 
 """ % (self.longtimebin,
        self.lastFlux,
@@ -1408,6 +1411,33 @@ class autoLC:
 
         return True
 
+    def search3FGLcounterpart(self):
+        """
+        Search the 3FGL name of a 2FGL source name
+        """
+        cat3FGLfile = self.catalogFile.replace('v08','v14')
+        hdulist = pyfits.open(cat3FGLfile)
+        cat=hdulist[1].data
+        if DEBUG:
+            print 'DEBUG: 2FGL name is %s' % self.fglName.replace('_2FGLJ','2FGL J')
+
+        found=False
+        for stuff in cat:
+            if stuff.field('2FGL_Name') == self.fglName.replace('_2FGLJ','2FGL J'):
+                threefglName=stuff.field('Source_Name')
+                if VERBOSE:
+                    print 'INFO: Found the 3FGL counterpart of %s: %s' % (self.fglName,threefglName)
+                found=True
+                break
+
+        if not found:
+            threefglName=None
+            if VERBOSE:
+                print 'INFO: No 3FGL counterpart found for %s' % self.fglName
+                
+        hdulist.close()
+        return threefglName
+        
 
     def launchLikelihoodAnalysis(self):
         """
@@ -1421,10 +1451,12 @@ class autoLC:
             return False
         os.makedirs(anaDir)
         if self.fglName is not None:
-            fglNameFile=anaDir+'/FermiName.txt'
-            file=open(fglNameFile,'w')
-            file.write(self.fglName)
-            file.close()
+            threefglName=self.search3FGLcounterpart()
+            if threefglName is not None:
+                fglNameFile=anaDir+'/FermiName.txt'
+                file=open(fglNameFile,'w')
+                file.write(threefglName)
+                file.close()
         srcSelectFile=anaDir+'/source_selection.txt'
         srcSelect=open(srcSelectFile,'w')
         srcSelect.write("""Search Center (RA,Dec)  =       (%f,%f)
@@ -1448,7 +1480,7 @@ Maximum Energy  =       %i MeV
         catalogOption=""
         if self.fglName is not None:
             catalogOption="-c"
-        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v9r33p0-fssc-20140520-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
+        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v10r0p5-fssc-20150518-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
 source $FERMI_DIR/fermi-init.sh && \
 qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
         if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None to a float
