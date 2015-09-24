@@ -1411,6 +1411,33 @@ class autoLC:
 
         return True
 
+    def search3FGLcounterpart(self):
+        """
+        Search the 3FGL name of a 2FGL source name
+        """
+        cat3FGLfile = self.catalogFile.replace('v08','v14')
+        hdulist = pyfits.open(cat3FGLfile)
+        cat=hdulist[1].data
+        if DEBUG:
+            print 'DEBUG: 2FGL name is %s' % self.fglName.replace('_2FGLJ','2FGL J')
+
+        found=False
+        for stuff in cat:
+            if stuff.field('2FGL_Name') == self.fglName.replace('_2FGLJ','2FGL J'):
+                threefglName=stuff.field('Source_Name')
+                if VERBOSE:
+                    print 'INFO: Found the 3FGL counterpart of %s: %s' % (self.fglName,threefglName)
+                found=True
+                break
+
+        if not found:
+            threefglName=None
+            if VERBOSE:
+                print 'INFO: No 3FGL counterpart found for %s' % self.fglName
+                
+        hdulist.close()
+        return threefglName
+        
 
     def launchLikelihoodAnalysis(self):
         """
@@ -1424,10 +1451,12 @@ class autoLC:
             return False
         os.makedirs(anaDir)
         if self.fglName is not None:
-            fglNameFile=anaDir+'/FermiName.txt'
-            file=open(fglNameFile,'w')
-            file.write(self.fglName)
-            file.close()
+            threefglName=self.search3FGLcounterpart()
+            if threefglName is not None:
+                fglNameFile=anaDir+'/FermiName.txt'
+                file=open(fglNameFile,'w')
+                file.write(threefglName)
+                file.close()
         srcSelectFile=anaDir+'/source_selection.txt'
         srcSelect=open(srcSelectFile,'w')
         srcSelect.write("""Search Center (RA,Dec)  =       (%f,%f)
