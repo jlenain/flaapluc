@@ -1,4 +1,4 @@
-# Name			RA		Dec		z	2FGL name		Threshold(0=use the default threshold, which should be 1.e-6 ph cm^-2 s^-1)
+# Name			RA		Dec		z	3FGL name		Threshold(0=use the default threshold, which should be 1.e-6 ph cm^-2 s^-1)
 #########################################################################################
 ##
 ## Galactic plane, b=0° and +/-2°
