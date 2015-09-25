@@ -648,24 +648,22 @@ class autoLC:
         if hdu[1].header.get('TTYPE5')=='EXPOSURE':
             return True
  
-
         scfile=self.spacecraft
         irfs='P8R2_SOURCE_V6'
-        target=self.fglName.replace('3FGLJ','3FGL J')
-        if DEBUG:
-            print 'DEBUG: exposure: target=%s' % target
         rad=str(self.roi)
-        
-        if gamma is None:
-            options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl='+srcmdl+' target=\"'+target+'\" rad='+rad
+
+        options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' rad='+rad
+        if self.fglName is not None:
+            target=self.fglName.replace('3FGLJ','3FGL J')
+            if DEBUG:
+                print 'DEBUG: exposure: target=%s' % target
+            options+=' srcmdl='+srcmdl+' target="'+target+'"'
         else:
-            options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' srcmdl="none" specin='+str(gamma)+' rad='+rad
+            options+=' srcmdl="none" specin='+str(gamma)
         cmd='time -p '+self.fermiDir+'/bin/gtexposure '+options
         if VERBOSE:
             print 'INFO Running %s' % cmd
         os.system(cmd)
-
-
 
 
     def createDAT(self):
