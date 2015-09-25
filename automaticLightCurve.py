@@ -598,7 +598,7 @@ class autoLC:
         mymodel=make3FGLxml.srcList(self.catalogFile,evfile,modelfile)
         if VERBOSE:
             print 'INFO Running makeModel'
-        mymodel.makeModel(self.fermiDir+'/refdata/fermi/galdiffuse/gll_iem_v06.fits','GalDiffuse',self.fermiDir+'/refdata/fermi/galdiffuse/iso_P8R2_SOURCE_V6_v06.txt','IsotropicDiffuse',self.templatesDir)
+        mymodel.makeModel(GDfile=self.fermiDir+'/refdata/fermi/galdiffuse/gll_iem_v06.fits',GDname='GalDiffuse',ISOfile=self.fermiDir+'/refdata/fermi/galdiffuse/iso_P8R2_SOURCE_V6_v06.txt',ISOname='IsotropicDiffuse',extDir=self.templatesDir,makeRegion=False)
 
 
     def photoLC(self):
