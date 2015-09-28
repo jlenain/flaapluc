@@ -515,7 +515,8 @@ class autoLC:
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
         #maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.) && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
-        maketime['filter'] = "IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<"+str(self.rockangle)+" && (angsep(RA_ZENITH,DEC_ZENITH,"+str(self.ra)+","+str(self.dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(self.ra)+","+str(self.dec)+",RA_SUN,DEC_SUN)>5.)"
+        #maketime['filter'] = "IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<"+str(self.rockangle)+" && (angsep(RA_ZENITH,DEC_ZENITH,"+str(self.ra)+","+str(self.dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(self.ra)+","+str(self.dec)+",RA_SUN,DEC_SUN)>5.)"
+        maketime['filter'] = "LAT_CONFIG==1 && DATA_QUAL>0"
         maketime['roicut'] = 'no'
         maketime['tstart'] = self.tstart
         maketime['tstop']  = self.tstop
@@ -1460,11 +1461,17 @@ class autoLC:
         os.makedirs(anaDir)
         if self.fglName is not None and '2FGL' in self.fglName:
             threefglName=self.search3FGLcounterpart()
-            if threefglName is not None:
-                fglNameFile=anaDir+'/FermiName.txt'
-                file=open(fglNameFile,'w')
-                file.write(threefglName)
-                file.close()
+        elif self.fglName is not None and '3FGL' in self.fglName:
+            threefglName=self.fglName
+        else:
+            threefglName=None
+        if threefglName is not None:
+            fglNameFile=anaDir+'/FermiName.txt'
+            file=open(fglNameFile,'w')
+            file.write(threefglName.replace('3FGLJ','3FGL J'))
+            file.close()
+        if VERBOSE:
+            print 'INFO: launchLikelihoodAnalysis: 3FGL name is %s' % threefglName
         srcSelectFile=anaDir+'/source_selection.txt'
         srcSelect=open(srcSelectFile,'w')
         srcSelect.write("""Search Center (RA,Dec)  =       (%f,%f)
