@@ -1272,12 +1272,18 @@ class autoLC:
             # Guarantees the message ends in a newline
             msg.epilogue = ''
             
+            fhlName=self.search2FHLcounterpart()
+            if fhlName is not None:
+                fhlmessage="2FHL counterpart is %s" % fhlName
+            else:
+                fhlmessage="No 2FHL counterpart found"
+            
             mailtext="""
      FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) report
 
-     *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
+     *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s (%s) exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
-     """%(self.emin,self.emax/1000.,self.src,self.threshold)
+     """%(self.emin,self.emax/1000.,self.src,fhlmesssage,self.threshold)
 
             if self.daily:
                 mailtext=mailtext+"""
@@ -1446,6 +1452,38 @@ class autoLC:
                 
         hdulist.close()
         return threefglName
+
+
+    def search2FHLcounterpart(self):
+        """
+        Search the 2FHL name of a 2FGL source name
+        """
+        cat2FHLfile = self.catalogFile.replace('/3FGL/','/2FHL/').replace('psc_v08','psch_v08')
+        try:
+            hdulist = pyfits.open(cat2FHLfile)
+        except IOErrror:
+            print '2FHL catalog file not found'
+            return None
+        cat=hdulist[1].data
+        if DEBUG:
+            print 'DEBUG: 2FGL name is %s' % self.fglName.replace('_2FGLJ','2FGL J')
+
+        found=False
+        for stuff in cat:
+            if stuff.field('2FGL_Name') == self.fglName.replace('_2FGLJ','2FGL J'):
+                fhlName=stuff.field('Source_Name')
+                if VERBOSE:
+                    print 'INFO: Found the 2FHL counterpart of %s: %s' % (self.fglName,fhlName)
+                found=True
+                break
+
+        if not found:
+            fhlName=None
+            if VERBOSE:
+                print 'INFO: No 2FHL counterpart found for %s' % self.fglName
+                
+        hdulist.close()
+        return fhlName
         
 
     def launchLikelihoodAnalysis(self):
