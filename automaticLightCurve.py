@@ -1283,7 +1283,7 @@ class autoLC:
 
      *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s (%s) exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
-     """%(self.emin,self.emax/1000.,self.src,fhlmesssage,self.threshold)
+     """%(self.emin,self.emax/1000.,self.src,fhlmessage,self.threshold)
 
             if self.daily:
                 mailtext=mailtext+"""
@@ -1458,19 +1458,18 @@ class autoLC:
         """
         Search the 2FHL name of a 2FGL source name
         """
-        cat2FHLfile = self.catalogFile.replace('/3FGL/','/2FHL/').replace('psc_v08','psch_v08')
+        cat2FHLfile = self.catalogFile.replace('/3FGL/','/2FHL/').replace('psc_v08','psch_v08').replace('psc_v16','psch_v08')
         try:
             hdulist = pyfits.open(cat2FHLfile)
         except IOErrror:
             print '2FHL catalog file not found'
             return None
         cat=hdulist[1].data
-        if DEBUG:
-            print 'DEBUG: 2FGL name is %s' % self.fglName.replace('_2FGLJ','2FGL J')
 
         found=False
+        threefglName=self.search3FGLcounterpart()
         for stuff in cat:
-            if stuff.field('2FGL_Name') == self.fglName.replace('_2FGLJ','2FGL J'):
+            if stuff.field('3FGL_Name') == self.fglName.replace('_3FGLJ','3FGL J').replace('3FGLJ','3FGL J') or stuff.field('3FGL_Name') == str(threefglName).replace('3FGLJ','3FGL J'):
                 fhlName=stuff.field('Source_Name')
                 if VERBOSE:
                     print 'INFO: Found the 2FHL counterpart of %s: %s' % (self.fglName,fhlName)
@@ -1597,6 +1596,9 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
 
     auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile)
     auto.readSourceList(mysrc)
+
+    if DEBUG:
+        print '2FHL counterpart is ', auto.search2FHLcounterpart()
 
     if longTerm is True and mergelongterm is True:
 
