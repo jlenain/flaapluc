@@ -1256,14 +1256,20 @@ class autoLC:
             # Create the container email message.
             msg = MIMEMultipart()
             sender = self.mailSender
-            
+
+            fhlName=self.search2FHLcounterpart()
+            if fhlName is not None:
+                fhlmessage="2FHL counterpart is %s" % fhlName
+            else:
+                fhlmessage="No 2FHL counterpart found"
+
             # To whom the mail should be sent (cf. __init__ function of the class)
             if not nomailall:
                 recipient = self.usualRecipients
-                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s' % self.src
+                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s [2FHL: %s]' % (self.src,fhlName)
             else:
                 recipient = self.testRecipients
-                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s' % self.src
+                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s [2FHL: %s]' % (self.src, fhlName)
 
             msg['From'] = sender
             COMMASPACE = ', '
@@ -1271,13 +1277,7 @@ class autoLC:
             msg.preamble = 'You will not see this in a MIME-aware mail reader.\n'
             # Guarantees the message ends in a newline
             msg.epilogue = ''
-            
-            fhlName=self.search2FHLcounterpart()
-            if fhlName is not None:
-                fhlmessage="2FHL counterpart is %s" % fhlName
-            else:
-                fhlmessage="No 2FHL counterpart found"
-            
+                       
             mailtext="""
      FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) report
 
