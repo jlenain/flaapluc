@@ -1462,7 +1462,8 @@ class autoLC:
         try:
             hdulist = pyfits.open(cat2FHLfile)
         except IOErrror:
-            print '2FHL catalog file not found'
+            if VERBOSE:
+                print 'INFO: 2FHL catalog file not found'
             return None
         cat=hdulist[1].data
 
