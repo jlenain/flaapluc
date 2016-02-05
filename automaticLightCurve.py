@@ -1430,15 +1430,18 @@ class autoLC:
         """
         Search the 3FGL name of a 2FGL source name
         """
-        cat3FGLfile = self.catalogFile.replace('v08','v14')
+        if "3FGL" in self.fglName:
+            return self.fglName.replace('_3FGLJ','3FGL J').replace('3FGLJ','3FGL J')
+
+        cat3FGLfile = self.catalogFile.replace('gll_psc_v08','gll_psc_v16')
         hdulist = pyfits.open(cat3FGLfile)
         cat=hdulist[1].data
         if DEBUG:
-            print 'DEBUG: 2FGL name is %s' % self.fglName.replace('_2FGLJ','2FGL J')
+            print 'DEBUG: 2FGL name is %s' % self.fglName.replace('_2FGLJ','2FGL J').replace('2FGLJ','2FGL J')
 
         found=False
         for stuff in cat:
-            if stuff.field('2FGL_Name') == self.fglName.replace('_2FGLJ','2FGL J'):
+            if stuff.field('2FGL_Name') == self.fglName.replace('_2FGLJ','2FGL J').replace('2FGLJ','2FGL J'):
                 threefglName=stuff.field('Source_Name')
                 if VERBOSE:
                     print 'INFO: Found the 3FGL counterpart of %s: %s' % (self.fglName,threefglName)
@@ -1456,8 +1459,11 @@ class autoLC:
 
     def search2FHLcounterpart(self):
         """
-        Search the 2FHL name of a 2FGL source name
+        Search the 2FHL name of a 2FGL or a 3FGL source name
         """
+        if "2FHL" in self.fglName:
+            return self.fglName.replace('_2FHLJ','2FHL J').replace('2FHLJ','2FHL J')
+        
         cat2FHLfile = self.catalogFile.replace('/3FGL/','/2FHL/').replace('psc_v08','psch_v08').replace('psc_v16','psch_v08')
         try:
             hdulist = pyfits.open(cat2FHLfile)
