@@ -296,6 +296,10 @@ class autoLC:
         self.usualRecipients= getConfigList(self.config.get('MailConfig','UsualRecipients'))
         self.testRecipients = getConfigList(self.config.get('MailConfig','TestRecipients'))
         self.mailSender     = self.config.get('MailConfig','MailSender')
+        try:
+            self.likelihoodRecipients = self.config.get('MailConfig','LikelihoodRecipients')
+        except:
+            self.likelihoodRecipients = None
 
         today=datetime.date.today().strftime('%Y%m%d')
 
@@ -812,7 +816,7 @@ class autoLC:
             title=str(self.src)+', '+str(self.fglName).replace('_2FGLJ','2FGL J').replace('3FGLJ','3FGL J')
         else:
             title=str(self.src)+', no known 3FGL counterpart'
-        if str(self.z)=='--': # this is the result of the conversion of None to a float
+        if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
             title=title+' (z unknown)'
         else:
             title=title+' (z='+str(self.z)+')'
@@ -917,7 +921,7 @@ class autoLC:
         hessSite.elev = 1835.
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
-        if str(self.z)=='--': # this is the result of the conversion of None to a float
+        if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
             z = 0.
         else:
             z = self.z
@@ -1068,7 +1072,7 @@ class autoLC:
         zaAtCulmin=zaAtCulmination(self.dec)
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
-        if str(self.z)=='--': # this is the result of the conversion of None to a float
+        if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
             z = 0.
         else:
             z = self.z
@@ -1492,7 +1496,7 @@ class autoLC:
         return fhlName
         
 
-    def launchLikelihoodAnalysis(self):
+    def launchLikelihoodAnalysis(self, nomailall=False):
         """
         Launch a clean likelihood analysis in Lyon
         """
@@ -1536,15 +1540,55 @@ Maximum Energy  =       %i MeV
         photonList.write(str(self.lastAllskyFile))
         photonList.close()
 
-        catalogOption=""
+        options=""
+
         if self.fglName is not None:
-            catalogOption="-c"
-        command = "export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v10r0p5-fssc-20150518-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12 && \
-source $FERMI_DIR/fermi-init.sh && \
-qsub -l ct=2:00:00 ../myLATanalysis.sh %s -a std -s %s -m BINNED -e %i -E %i" % (catalogOption, srcDir, int(self.emin), int(self.emax))
-        if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None to a float
-            # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
-            command += ' -z %f' % self.z
+            options += " -c "
+        options += " -a std -m BINNED -e %i -E %i" % (int(self.emin), int(self.emax))
+        if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None from asciidata to numpy to str
+        # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
+            options += ' -z %f' % self.z
+    
+        command = """export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
+tmpfile=`mktemp --tmpdir=\$FERMIUSER/tmp`
+        
+cat > $tmpfile << EOF
+#$ -S /bin/bash
+#$ -N myLATanalysis
+#$ -e /sps/hess/lpnhe/jlenain/fermi/log
+#$ -o /sps/hess/lpnhe/jlenain/fermi/log
+#$ -j yes
+#$ -l ct=2:00:00
+#$ -l mem_free=2048M
+#$ -l fsize=2048M
+#$ -l xrootd=0
+#$ -l sps=1
+#$ -l os=sl6
+#$ -p 0
+#$ -P P_hess -cwd
+
+SRC=%s
+export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v10r0p5-fssc-20150518-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12
+export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
+source $FERMI_DIR/fermi-init.sh
+
+LOG=\$FERMIUSER/tmp/myLATanalysis_\${SRC}.log
+
+cat > \$LOG << EOM
+From: flaapluc@ccin2p3.fr
+Subject: [myLAT@\${HOSTNAME}] FLaapLUC: Fermi likelihood analysis report on \$SRC
+To: %s
+EOM
+
+\$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
+""" % (srcDir, self.likelihoodRecipients, options)
+        if not nomailall and self.likelihoodRecipients is not None:
+            command += "sendmail -t < \$LOG"
+        command += """
+EOF
+
+qsub ${tmpfile}
+"""
         r=os.system(command)
         return r
 
@@ -1695,7 +1739,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.createPNG()
     alertSent=auto.sendAlert(nomailall=test,sendmail=mail)
     if alertSent and auto.active and auto.launchLikeAna == 'True':
-        auto.launchLikelihoodAnalysis()
+        auto.launchLikelihoodAnalysis(nomailall=test)
     
     return auto.active, auto.visible
 
