@@ -289,6 +289,11 @@ class autoLC:
         except:
             self.launchLikeAna = False
 
+        try:
+            self.likeHighEThresh = self.config.get('AlertTrigger', 'LikelihoodHighEnergyThreshold')
+        except:
+            self.likeHighEThresh = None
+
         self.daily            = daily
         self.withhistory      = withhistory
 
@@ -765,7 +770,7 @@ class autoLC:
 
 
         
-    def createPNG(self):
+    def createLCfig(self):
         """
         Create a PNG figure with the light curve of a given source. Any existing PNG file is overwritten !
         """
@@ -888,6 +893,65 @@ class autoLC:
                 ax.set_ylim(ymin=-1.e-7,ymax=maxy)
             else:
                 ax.set_ylim(ymin=-1.e-7,ymax=self.threshold)
+        
+        # Don't show the figure in batch mode
+        if not BATCH:
+            show()
+        # Save the figure
+        fig.savefig(outfig)
+
+
+    def createEnergyTimeFig(self, eThresh=3.e3):
+        """
+        Create a PNG figure with the energy vs time of a given source, above eThresh MeV. Any existing PNG file is overwritten !
+        """
+
+        # Read the GTI FITS file
+        infile=self.workDir+'/'+str(self.src)+'_gti.fits'
+        outfig=self.workDir+'/'+str(self.src)+'_energyTime.png'
+
+        hdu   = pyfits.open(infile)
+        data  = hdu[1].data
+        mask  = data.field('ENERGY')>eThresh
+        datac = data[mask]
+
+        t=met2mjd(datac['TIME'])
+        e=datac['ENERGY']
+
+        fig=figure()
+        ax = fig.add_subplot(111)
+
+        if self.fglName is not None:
+            title=str(self.src)+', '+str(self.fglName).replace('_2FGLJ','2FGL J').replace('3FGLJ','3FGL J')
+        else:
+            title=str(self.src)+', no known 3FGL counterpart'
+        if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
+            title=title+' (z unknown)'
+        else:
+            title=title+' (z='+str(self.z)+')'
+
+        ax.set_title(title)
+
+        
+        ax.set_ylabel('Energy (MeV) -- only data above %.0f GeV are shown' % (eThresh/1.e3), size='x-small')
+
+        ## Make the x-axis ticks shifted by some value
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
+        ax.set_xlabel('MJD-'+str(TOFFSET))
+        #ax.set_xlabel('MJD')
+
+        # Plot the energy vs time distribution
+        ax.plot(t, e,  'bo')
+        ax.set_yscale('log')
+
+        # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
+        # x,y in relative 0-1 coords in figure
+        figtext(0.98, 0.95,
+                'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
+                horizontalalignment="right",
+                rotation='vertical',
+                size='xx-small'
+                )
         
         # Don't show the figure in batch mode
         if not BATCH:
@@ -1184,6 +1248,8 @@ class autoLC:
         self.lastFlux    = flux[-1:]
         self.lastFluxErr = fluxErr[-1:]
 
+        self.energyTimeFig=self.workDir+'/'+str(self.src)+'_energyTime.png'
+            
         if DEBUG:
             print 'DEBUG %s, threshold=%g, lastFlux=%g, lastFluxErr=%g' % (self.src,self.threshold,self.lastFlux,self.lastFluxErr)
 
@@ -1347,18 +1413,18 @@ class autoLC:
             txt = MIMEText(mailtext)
             msg.attach(txt)
             
-            # Open the files in binary mode.  Let the MIMEImage class automatically guess the specific image type.
-            fp = open(self.pngFig, 'rb')
-
-            # img = MIMEImage(fp.read(), name=os.path.basename(self.pngFig))
-
-            img = MIMEBase('application', 'octet-stream')
-            img.set_payload(fp.read())
-            Encoders.encode_base64(img)
-            img.add_header('Content-Disposition',
-                            'attachment; filename="%s"' % os.path.basename(self.pngFig))
-            fp.close()
-            msg.attach(img)
+            # Attach the figures
+            for fig  in [self.pngFig, self.energyTimeFig]:
+                # Open the files in binary mode.  Let the MIMEImage class automatically guess the specific image type.
+                fp = open(fig, 'rb')
+                # img = MIMEImage(fp.read(), name=os.path.basename(fig))
+                img = MIMEBase('application', 'octet-stream')
+                img.set_payload(fp.read())
+                Encoders.encode_base64(img)
+                img.add_header('Content-Disposition',
+                               'attachment; filename="%s"' % os.path.basename(fig))
+                fp.close()
+                msg.attach(img)
 
             # Send the email via our own SMTP server.
             s = smtplib.SMTP()
@@ -1558,7 +1624,7 @@ cat > $tmpfile << EOF
 #$ -e /sps/hess/lpnhe/jlenain/fermi/log
 #$ -o /sps/hess/lpnhe/jlenain/fermi/log
 #$ -j yes
-#$ -l ct=2:00:00
+#$ -l ct=5:00:00
 #$ -l mem_free=2048M
 #$ -l fsize=2048M
 #$ -l xrootd=0
@@ -1575,13 +1641,13 @@ source $FERMI_DIR/fermi-init.sh
 LOG=\$FERMIUSER/tmp/myLATanalysis_\${SRC}.log
 
 cat > \$LOG << EOM
-From: flaapluc@ccin2p3.fr
-Subject: [myLAT@\${HOSTNAME}] FLaapLUC: Fermi likelihood analysis report on \$SRC
+From: %s
+Subject: [FLaapLUC likelihood] Fermi likelihood analysis report on \$SRC
 To: %s
 EOM
 
 \$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
-""" % (srcDir, self.likelihoodRecipients, options)
+""" % (srcDir, self.mailSender, self.likelihoodRecipients, options)
         if not nomailall and self.likelihoodRecipients is not None:
             command += "sendmail -t < \$LOG"
         command += """
@@ -1590,6 +1656,61 @@ EOF
 qsub ${tmpfile}
 """
         r=os.system(command)
+
+        # If a high energy threshold has been set in the config file, launch another instance of the likelihood analysis using this higher energy threshold:
+        if self.likeHighEThresh is not None:
+            options=""
+
+            if self.fglName is not None:
+                options += " -c "
+            options += " -a std -m BINNED -e %i -E %i" % (int(float(self.likeHighEThresh)), int(self.emax))
+            if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None from asciidata to numpy to str
+            # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
+                options += ' -z %f' % self.z
+
+            command = """export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
+tmpfile=`mktemp --tmpdir=\$FERMIUSER/tmp`
+
+cat > $tmpfile << EOF
+#$ -S /bin/bash
+#$ -N myLATanalysis
+#$ -e /sps/hess/lpnhe/jlenain/fermi/log
+#$ -o /sps/hess/lpnhe/jlenain/fermi/log
+#$ -j yes
+#$ -l ct=5:00:00
+#$ -l mem_free=2048M
+#$ -l fsize=2048M
+#$ -l xrootd=0
+#$ -l sps=1
+#$ -l os=sl6
+#$ -p 0
+#$ -P P_hess -cwd
+
+SRC=%s
+export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v10r0p5-fssc-20150518-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12
+export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
+source $FERMI_DIR/fermi-init.sh
+
+LOG=\$FERMIUSER/tmp/myLATanalysis_\${SRC}.log
+
+cat > \$LOG << EOM
+From: %s
+Subject: [FLaapLUC likelihood] Fermi likelihood analysis report on \$SRC
+To: %s
+EOM
+
+\$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
+""" % (srcDir, self.mailSender, self.likelihoodRecipients, options)
+            if not nomailall and self.likelihoodRecipients is not None:
+                command += "sendmail -t < \$LOG"
+            command += """
+EOF
+
+qsub ${tmpfile}
+"""
+            r2=os.system(command)
+            return r, r2
+            
         return r
 
 
@@ -1699,7 +1820,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
 
                 
 
-        # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT and createPNG. No mail is sent here.
+        # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT, createLCfig, createEnergyTimeFig. No mail is sent here.
         auto.mergeGTIfiles()
         if auto.fglName is not None:
             auto.createXML()
@@ -1710,7 +1831,8 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         auto.photoLC()
         auto.exposure(gamma=mygamma)
         auto.createDAT()
-        auto.createPNG()
+        auto.createLCfig()
+        auto.createEnergyTimeFig()
         # Exit here
         return False
     # End mergelongterm
@@ -1736,7 +1858,8 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.photoLC()
     auto.exposure(gamma=mygamma)
     auto.createDAT()
-    auto.createPNG()
+    auto.createLCfig()
+    auto.createEnergyTimeFig()
     alertSent=auto.sendAlert(nomailall=test,sendmail=mail)
     if alertSent and auto.active and auto.launchLikeAna == 'True':
         auto.launchLikelihoodAnalysis(nomailall=test)
