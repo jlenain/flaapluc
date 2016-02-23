@@ -1615,10 +1615,13 @@ Maximum Energy  =       %i MeV
         # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
             options += ' -z %f' % self.z
     
-        command = """export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
-tmpfile=`mktemp --tmpdir=\$FERMIUSER/tmp`
+        command = """#!/usr/local/bin/bash
+export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
+SRC=%s
+tmpfile=`mktemp --tmpdir=\$FERMIUSER/tmp myLATanalysis_\${SRC}_XXXX.sh`
         
 cat > $tmpfile << EOF
+#!/usr/local/bin/bash
 #$ -S /bin/bash
 #$ -N myLATanalysis
 #$ -e /sps/hess/lpnhe/jlenain/fermi/log
@@ -1633,12 +1636,12 @@ cat > $tmpfile << EOF
 #$ -p 0
 #$ -P P_hess -cwd
 
-SRC=%s
+SRC=$SRC
 export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v10r0p5-fssc-20150518-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12
 export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
 source $FERMI_DIR/fermi-init.sh
 
-LOG=\$FERMIUSER/tmp/myLATanalysis_\${SRC}.log
+LOG=${tmpfile%%.sh}.log
 
 cat > \$LOG << EOM
 From: %s
@@ -1668,8 +1671,10 @@ qsub ${tmpfile}
             # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
                 options += ' -z %f' % self.z
 
-            command = """export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
-tmpfile=`mktemp --tmpdir=\$FERMIUSER/tmp`
+            command = """#!/usr/local/bin/bash
+export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
+SRC=%s
+tmpfile=`mktemp --tmpdir=\$FERMIUSER/tmp myLATanalysis_\${SRC}_XXXX.sh`
 
 cat > $tmpfile << EOF
 #$ -S /bin/bash
@@ -1686,12 +1691,12 @@ cat > $tmpfile << EOF
 #$ -p 0
 #$ -P P_hess -cwd
 
-SRC=%s
+SRC=$SRC
 export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v10r0p5-fssc-20150518-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12
 export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
 source $FERMI_DIR/fermi-init.sh
 
-LOG=\$FERMIUSER/tmp/myLATanalysis_\${SRC}.log
+LOG=${tmpfile%%.sh}.log
 
 cat > \$LOG << EOM
 From: %s
