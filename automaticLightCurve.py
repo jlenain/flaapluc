@@ -938,7 +938,7 @@ class autoLC:
         ## Make the x-axis ticks shifted by some value
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
         ax.set_xlabel('MJD-'+str(TOFFSET))
-        #ax.set_xlabel('MJD')
+        ax.set_xlim(xmin=t[0]-1.,xmax=t[-1:]+1.)
 
         # Plot the energy vs time distribution
         ax.plot(t, e,  'bo')
