@@ -1,5 +1,5 @@
 # $Id$
-# Time-stamp: "2016-02-22 10:35:55 jlenain"
+# Time-stamp: "2016-03-02 11:19:40 jlenain"
 #
 # Name			RA		Dec		z	3FGL name		Threshold(0=use the default threshold, which should be 1.e-6 ph cm^-2 s^-1)
 #########################################################################################
@@ -388,6 +388,8 @@ S52007+77		301.379183	+77.878686	0.342	3FGLJ2005.2+7752	0
 TXS2358+209		0.38487		+21.22674	1.106	3FGLJ0001.4+2120	0
 # cf. ATel 8721
 FermiJ1654-1055		248.19		-10.93		None	None			0
+# cf. ATel 8740
+PKSB1035-281		159.4269058	-28.3844750	1.066	3FGLJ1037.5-2821	0
 ##
 ## End of New Fermi sources
 ##
