@@ -879,8 +879,11 @@ class autoLC:
             axbat.set_xlabel('MJD-'+str(TOFFSET))
             #axbat.set_xlabel('MJD')
             axbat.set_ylabel('F (15-50 keV) (count cm^-2 s^-1)',size='x-small')
-            axbat.set_xlim(xmin=timelc[0]-duration/2.-1.,xmax=timelc[-1:]+duration/2.+1.)
-            axbat.set_ylim(ymin=0.)
+            try:
+                axbat.set_xlim(xmin=timelc[0]-duration/2.-1.,xmax=timelc[-1:]+duration/2.+1.)
+                axbat.set_ylim(ymin=0.)
+            except:
+                pass
 
         # Need to zoom in or not, at the very end, after any call to other matplotlib functions
         NEEDTOZOOMIN=False
@@ -938,7 +941,10 @@ class autoLC:
         ## Make the x-axis ticks shifted by some value
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
         ax.set_xlabel('MJD-'+str(TOFFSET))
-        ax.set_xlim(xmin=t[0]-1.,xmax=t[-1:]+1.)
+        try:
+            ax.set_xlim(xmin=t[0]-1.,xmax=t[-1:]+1.)
+        except:
+            pass
 
         # Plot the energy vs time distribution
         ax.plot(t, e,  'bo')
