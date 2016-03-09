@@ -1606,16 +1606,8 @@ Maximum Energy  =       %i MeV
         photonList.write(str(self.lastAllskyFile))
         photonList.close()
 
-        options=""
-
-        if self.fglName is not None:
-            options += " -c "
-        options += " -a std -m BINNED -e %i -E %i" % (int(self.emin), int(self.emax))
-        if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None from asciidata to numpy to str
-        # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
-            options += ' -z %f' % self.z
-    
-        command = """#!/usr/local/bin/bash
+        def writescript(emin,options=""):
+            script = """#!/usr/local/bin/bash
 export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
 SRC=%s
 tmpfile=`mktemp --tmpdir=\$FERMIUSER/tmp myLATanalysis_\${SRC}_XXXX.sh`
@@ -1642,22 +1634,46 @@ export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
 source $FERMI_DIR/fermi-init.sh
 
 LOG=${tmpfile%%.sh}.log
+EMIN=%i
+EMAX=%i
 
 cat > \$LOG << EOM
 From: %s
-Subject: [FLaapLUC likelihood] Fermi likelihood analysis report on \$SRC
+Subject: [FLaapLUC likelihood] [\$SRC] Fermi likelihood analysis report (\$EMIN MeV - \$EMAX MeV)
 To: %s
+
+Source:  \$SRC
+E_min:   \$EMIN MeV
+E_max:   \$EMAX MeV
+
+A likelihood analysis was automatically launched by FLaapLUC after issuing an alert on \$SRC, which log can be found below. You'll most probably be interested mainly in the lines beginning with 'INFO FINAL', giving the fitted flux and photon index fo the source.
+
+*********************************************************************************
+
 EOM
 
 \$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
-""" % (srcDir, self.mailSender, self.likelihoodRecipients, options)
-        if not nomailall and self.likelihoodRecipients is not None:
-            command += "sendmail -t < \$LOG"
-        command += """
+""" % (srcDir, int(emin), int(self.emax), self.mailSender, self.likelihoodRecipients, options)
+            if not nomailall and self.likelihoodRecipients is not None:
+                script += "sendmail -t < \$LOG"
+            script += """
 EOF
 
 qsub ${tmpfile}
 """
+            return script
+
+
+        options=""
+
+        if self.fglName is not None:
+            options += " -c "
+        options += " -a std -m BINNED -e %i -E %i" % (int(self.emin), int(self.emax))
+        if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None from asciidata to numpy to str
+            # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
+            options += ' -z %f' % self.z
+    
+        command=writescript(emin=self.emin,options=options)
         r=os.system(command)
 
         # If a high energy threshold has been set in the config file, launch another instance of the likelihood analysis using this higher energy threshold:
@@ -1671,48 +1687,7 @@ qsub ${tmpfile}
             # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
                 options += ' -z %f' % self.z
 
-            command = """#!/usr/local/bin/bash
-export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
-SRC=%s
-tmpfile=`mktemp --tmpdir=\$FERMIUSER/tmp myLATanalysis_\${SRC}_XXXX.sh`
-
-cat > $tmpfile << EOF
-#$ -S /bin/bash
-#$ -N myLATanalysis
-#$ -e /sps/hess/lpnhe/jlenain/fermi/log
-#$ -o /sps/hess/lpnhe/jlenain/fermi/log
-#$ -j yes
-#$ -l ct=5:00:00
-#$ -l mem_free=2048M
-#$ -l fsize=2048M
-#$ -l xrootd=0
-#$ -l sps=1
-#$ -l os=sl6
-#$ -p 0
-#$ -P P_hess -cwd
-
-SRC=$SRC
-export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v10r0p5-fssc-20150518-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12
-export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
-source $FERMI_DIR/fermi-init.sh
-
-LOG=${tmpfile%%.sh}.log
-
-cat > \$LOG << EOM
-From: %s
-Subject: [FLaapLUC likelihood] Fermi likelihood analysis report on \$SRC
-To: %s
-EOM
-
-\$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
-""" % (srcDir, self.mailSender, self.likelihoodRecipients, options)
-            if not nomailall and self.likelihoodRecipients is not None:
-                command += "sendmail -t < \$LOG"
-            command += """
-EOF
-
-qsub ${tmpfile}
-"""
+            command=writescript(emin=float(self.likeHighEThresh),options=options)
             r2=os.system(command)
             return r, r2
             
