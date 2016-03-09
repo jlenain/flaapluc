@@ -917,6 +917,9 @@ class autoLC:
         data  = hdu[1].data
         mask  = data.field('ENERGY')>eThresh
         datac = data[mask]
+        if not datac:
+            print '[%s] \033[92mWARNING Empty energy vs time plot above %0.f GeV\033[0m' % (self.src, eThresh/1.e3)
+            return
 
         t=met2mjd(datac['TIME'])
         e=datac['ENERGY']
@@ -1421,16 +1424,19 @@ class autoLC:
             
             # Attach the figures
             for fig  in [self.pngFig, self.energyTimeFig]:
-                # Open the files in binary mode.  Let the MIMEImage class automatically guess the specific image type.
-                fp = open(fig, 'rb')
-                # img = MIMEImage(fp.read(), name=os.path.basename(fig))
-                img = MIMEBase('application', 'octet-stream')
-                img.set_payload(fp.read())
-                Encoders.encode_base64(img)
-                img.add_header('Content-Disposition',
-                               'attachment; filename="%s"' % os.path.basename(fig))
-                fp.close()
-                msg.attach(img)
+                try:
+                    # Open the files in binary mode.  Let the MIMEImage class automatically guess the specific image type.
+                    fp = open(fig, 'rb')
+                    # img = MIMEImage(fp.read(), name=os.path.basename(fig))
+                    img = MIMEBase('application', 'octet-stream')
+                    img.set_payload(fp.read())
+                    Encoders.encode_base64(img)
+                    img.add_header('Content-Disposition',
+                                   'attachment; filename="%s"' % os.path.basename(fig))
+                    fp.close()
+                    msg.attach(img)
+                except:
+                    pass
 
             # Send the email via our own SMTP server.
             s = smtplib.SMTP()
@@ -1652,14 +1658,14 @@ Source:  \$SRC
 E_min:   \$EMIN MeV
 E_max:   \$EMAX MeV
 
-A likelihood analysis was automatically launched by FLaapLUC after issuing an alert on \$SRC, which log can be found below. You'll most probably be interested mainly in the lines beginning with 'INFO FINAL', giving the fitted flux and photon index fo the source.
+A likelihood analysis was automatically launched by FLaapLUC after issuing an alert on %s, which log can be found below. You'll most probably be interested mainly in the lines beginning with 'INFO FINAL', giving the fitted flux and photon index for the source.
 
 *********************************************************************************
 
 EOM
 
 \$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
-""" % (srcDir, int(emin), int(self.emax), self.mailSender, self.likelihoodRecipients, options)
+""" % (srcDir, int(emin), int(self.emax), self.mailSender, self.likelihoodRecipients, self.src, options)
             if not nomailall and self.likelihoodRecipients is not None:
                 script += "sendmail -t < \$LOG"
             script += """
