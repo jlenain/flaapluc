@@ -917,7 +917,7 @@ class autoLC:
         data  = hdu[1].data
         mask  = data.field('ENERGY')>eThresh
         datac = data[mask]
-        if not datac:
+        if not datac.size:
             print '[%s] \033[92mWARNING Empty energy vs time plot above %0.f GeV\033[0m' % (self.src, eThresh/1.e3)
             return
 
