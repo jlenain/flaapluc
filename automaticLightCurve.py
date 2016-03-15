@@ -353,8 +353,8 @@ class autoLC:
         # Open allsky file to get the start and stop dates
         try:
             hdu=pyfits.open(self.allsky)
-        except:
-            print 'EXCEPT: can not open file '+self.allsky
+        except IOError:
+            print 'Exception: can not open file '+self.allsky
             raise
         header = hdu[0].header
 
