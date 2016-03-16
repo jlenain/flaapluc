@@ -337,8 +337,18 @@ class autoLC:
 
         # Setting default parameters
         self.roi       = 1.   # degrees (http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html: "For aperture photometry we select a very small aperture (rad=1 degree), because we are not fitting the background.")
-        self.emin      = 1.e2 # E min
-        self.emax      = 5.e5 # E max
+        try:
+            self.emin  = float(self.config.get('Erange','Emin'))
+        except:
+            # Take 100 MeV by default
+            self.emin      = 1.e2 # E min
+            print '\033[93mCan not read Emin in config file, taking %.1g as default.\033[0m' % (self.emin)
+        try:
+            self.emax  = float(self.config.get('Erange','Emax'))
+        except:
+            # Take 500 GeV by default
+            self.emax      = 5.e5 # E max
+            print '\033[93mCan not read Emax in config file, taking %.1g as default.\033[0m' % (self.emax)
         self.zmax      = 100. # degrees
         self.rockangle = 52.  # maximal allowed rocking angle
 
