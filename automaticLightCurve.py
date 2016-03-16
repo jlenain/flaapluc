@@ -1,20 +1,30 @@
 #!/bin/env python
+# -*- coding: utf-8 -*-
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
 
-Automatic generation of aperture photometric light curves of high energy sources, for a given source.
+Automatic generation of aperture photometric light curves of
+high energy sources, for a given source.
 
-No likelihood fit is performed, the results solely rely on the 3FGL spectral fits, if available.
+No likelihood fit is performed, the results solely rely on the
+3FGL spectral fits, if available.
 
-More information are available at: http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
+More information are available at:
+http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
 """
 
-import sys, os, asciidata, datetime, time, glob
+import sys
+import os
+import asciidata
+import datetime
+import time
+import glob
 from numpy import *
-import pyfits, ephem
+import pyfits
+import ephem
 from astLib import astCoords
 from optparse import OptionParser
 from ConfigParser import ConfigParser
@@ -22,7 +32,7 @@ from ConfigParser import ConfigParser
 # Import some matplotlib modules
 try:
     import matplotlib
-    matplotlib.use ('Agg')
+    matplotlib.use('Agg')
 
     from matplotlib.pyplot import *
     from matplotlib.ticker import FuncFormatter
@@ -37,29 +47,31 @@ except ImportError:
     print "ERROR Can't import the Fermi Science tools"
     sys.exit(1)
 
-
-
 # Flags
-DEBUG=False # Debugging flag
-VERBOSE=False
-BATCH=True  # True in batch mode
-FLAGASSUMEDGAMMA=False # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA or taken from the 3FGL.
+DEBUG = False
+VERBOSE = False
+BATCH = True
+# Flag to know whether Gamma is assumed to be ASSUMEDGAMMA
+# or taken from the 3FGL.
+FLAGASSUMEDGAMMA = False
 
 # Global variables
-TOFFSET=54000. # offset in MJD for plot creation
-ASSUMEDGAMMA=-2.5 # assumed photon index for a source not belonging to the 3FGL
+TOFFSET = 54000.  # offset in MJD for plot creation
+# assumed photon index for a source not belonging to the 3FGL
+ASSUMEDGAMMA = -2.5
+
 
 def met2mjd(met):
     """
     Converts Mission Elapsed Time (MET, in seconds) in Modified Julian Day.
     Cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Data/Time_in_ScienceTools.html
     to see how the time is handled in the Fermi Science Tools.
-    
+
     Input: time in MET (s)
     Output: time in MJD (fraction of a day)
     """
-    MJDREFI=51910.0
-    MJDREFF=7.428703703703703e-4
+    MJDREFI = 51910.0
+    MJDREFF = 7.428703703703703e-4
     return(MJDREFI+MJDREFF+met/24./60./60.)
 
 
@@ -68,20 +80,21 @@ def mjd2met(mjd):
     Converts Modified Julian Day in Mission Elapsed Time (MET, in seconds).
     Cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/documentation/Cicerone/Cicerone_Data/Time_in_ScienceTools.html
     to see how the time is handled in the Fermi Science Tools.
-    
+
     Input:  time in MJD (fraction of a day)
     Output: time in MET (s)
     """
-    MJDREFI=51910.0
-    MJDREFF=7.428703703703703e-4
-    return(24.*60.*60* (mjd - MJDREFI - MJDREFF) )
+    MJDREFI = 51910.0
+    MJDREFF = 7.428703703703703e-4
+    return(24. * 60. * 60 * (mjd - MJDREFI - MJDREFF))
 
 
 def unixtime2mjd(unixtime):
     """
     Converts a UNIX time stamp in Modified Julian Day
 
-    Highly inspired from the function 'mjd_now()' from Marcus Hauser's ADRAS/ATOM pipeline
+    Highly inspired from the function 'mjd_now()' from
+    Marcus Hauser's ADRAS/ATOM pipeline
 
     Input:  time in UNIX seconds
     Output: time in MJD (fraction of a day)
@@ -96,7 +109,7 @@ def unixtime2mjd(unixtime):
     result = 40587.0 + unixtime / (24.*60.*60.)
     return result
 
-######  julian date to gregorian date ########################
+
 def jd2gd(x):
     """
     Compute gregorian date out of julian date
@@ -111,60 +124,59 @@ def jd2gd(x):
     description at http://mathforum.org/library/drmath/view/51907.html
     Original algorithm in Jean Meeus, "Astronomical Formulae for Calculators"
     """
-    
-    jd=float(x)
 
-    jd=jd+0.5
-    Z=int(jd)
-    F=jd-Z
-    alpha=int((Z-1867216.25)/36524.25)
-    A=Z + 1 + alpha - int(alpha/4)
+    jd = float(x)
+
+    jd = jd+0.5
+    Z = int(jd)
+    F = jd-Z
+    alpha = int((Z-1867216.25)/36524.25)
+    A = Z + 1 + alpha - int(alpha/4)
 
     B = A + 1524
-    C = int( (B-122.1)/365.25)
-    D = int( 365.25*C )
-    E = int( (B-D)/30.6001 )
+    C = int((B-122.1)/365.25)
+    D = int(365.25*C)
+    E = int((B-D)/30.6001)
 
     dd = B - D - int(30.6001*E) + F
 
-    if E<13.5:
-	mm=E-1
+    if E < 13.5:
+        mm = E-1
 
-    if E>13.5:
-	mm=E-13
+    if E > 13.5:
+        mm = E-13
 
-    if mm>2.5:
-	yyyy=C-4716
+    if mm > 2.5:
+        yyyy = C-4716
 
-    if mm<2.5:
-	yyyy=C-4715
+    if mm < 2.5:
+        yyyy = C-4715
 
-    #months=["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    # months=["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
-    daylist=[31,28,31,30,31,30,31,31,30,31,30,31]
-    daylist2=[31,29,31,30,31,30,31,31,30,31,30,31]
+    daylist = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    daylist2 = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
-    h=int((dd-int(dd))*24)
-    min=int((((dd-int(dd))*24)-h)*60)
-    sec=86400*(dd-int(dd))-h*3600-min*60
+    h = int((dd-int(dd))*24)
+    min = int((((dd-int(dd))*24)-h)*60)
+    sec = 86400*(dd-int(dd))-h*3600-min*60
 
     # Now calculate the fractional year. Do we have a leap year?
-    if (yyyy%4 != 0):
-	days=daylist2
-    elif (yyyy%400 == 0):
-	days=daylist2
-    elif (yyyy%100 == 0):
-	days=daylist
+    if (yyyy % 4 != 0):
+        days = daylist2
+    elif (yyyy % 400 == 0):
+        days = daylist2
+    elif (yyyy % 100 == 0):
+        days = daylist
     else:
-	days=daylist2
+        days = daylist2
 
-    #print x+" = "+months[mm-1]+" %i, %i, " % (dd, yyyy), 
-    #print string.zfill(h,2)+":"+string.zfill(min,2)+":"+string.zfill(sec,2)+" UTC"
+    # print x+" = "+months[mm-1]+" %i, %i, " % (dd, yyyy), 
+    # print string.zfill(h,2)+":"+string.zfill(min,2)+":"+string.zfill(sec,2)+" UTC"
 
     string = "%04d-%02d-%02d %02d:%02d:%04.1f" % (yyyy, mm, dd, h, min, sec)
 
     return string
-
 
 
 ###### modified julian date to gregorian date ########################
@@ -196,7 +208,7 @@ def deg2rad(angle):
     return angle*pi/180.
 
 
-def angsep((ra1,dec1),(ra2,dec2),deg=True):
+def angsep((ra1,dec1), (ra2,dec2), deg=True):
     """
     Calculates the angular separation between two points on the sky.
 
@@ -205,14 +217,14 @@ def angsep((ra1,dec1),(ra2,dec2),deg=True):
     @param deg flag whether inputs/outputs are in degrees or radians
     """
     if deg:
-        ra1=deg2rad(ra1)
-        dec1=deg2rad(dec1)
-        ra2=deg2rad(ra2)
-        dec2=deg2rad(dec2)
-    
-    SEP=arccos(cos(dec1)*cos(dec2)*cos(ra1-ra2)+sin(dec1)*sin(dec2)) 
+        ra1 = deg2rad(ra1)
+        dec1 = deg2rad(dec1)
+        ra2 = deg2rad(ra2)
+        dec2 = deg2rad(dec2)
+
+    SEP = arccos(cos(dec1)*cos(dec2)*cos(ra1-ra2)+sin(dec1)*sin(dec2))
     if deg:
-        SEP=rad2deg(SEP)
+        SEP = rad2deg(SEP)
     return SEP
 
 
@@ -220,12 +232,12 @@ def zaAtCulmination(dec):
     """
     Returns the zenith angle of a source at culmination, for the H.E.S.S. site.
     """
-    siteLat = -23.27167 # latitude of H.E.S.S. site in degree
+    siteLat = -23.27167  # latitude of H.E.S.S. site in degree
     return abs(dec-siteLat)
 
 
-def getConfigList(option,sep=','):
-    return [ stuff for stuff in option.split(sep) ]
+def getConfigList(option, sep=','):
+    return [stuff for stuff in option.split(sep)]
 
 
 class autoLC:
@@ -236,56 +248,58 @@ class autoLC:
     Main class, for a given of source.
     """
 
-    def __init__(self,file=None,customThreshold=False,daily=False,longTerm=False,yearmonth=None,mergelongterm=False,withhistory=False,configfile='default.cfg'):
+    def __init__(self, file=None, customThreshold=False, daily=False,
+                 longTerm=False, yearmonth=None, mergelongterm=False,
+                 withhistory=False, configfile='default.cfg'):
         
-        self.config           = self.getConfig(configfile=configfile)
-        self.allskyDir        = self.config.get('InputDirs','AllskyDir')
-        self.archiveDir       = self.config.get('InputDirs','ArchiveDir')
-        self.templatesDir     = self.config.get('InputDirs','TemplatesDir')
-        self.ATOMSchedulesDir = self.config.get('InputDirs','ATOMSchedulesDir')
-        self.catalogFile      = self.config.get('InputFiles','CatalogFile')
+        self.config = self.getConfig(configfile=configfile)
+        self.allskyDir = self.config.get('InputDirs', 'AllskyDir')
+        self.archiveDir = self.config.get('InputDirs', 'ArchiveDir')
+        self.templatesDir = self.config.get('InputDirs', 'TemplatesDir')
+        self.ATOMSchedulesDir = self.config.get('InputDirs', 'ATOMSchedulesDir')
+        self.catalogFile = self.config.get('InputFiles', 'CatalogFile')
         if file is None:
-            self.file             = self.config.get('InputFiles','SourceList')
+            self.file = self.config.get('InputFiles', 'SourceList')
         else:
             self.file = file
-        self.baseOutDir       = self.config.get('OutputDirs','OutputResultsDir')
-        self.allskyFile       = self.allskyDir+"/"+self.config.get('InputFiles','WholeAllskyFile')
-        self.lastAllskyFile   = self.allskyDir+"/"+self.config.get('InputFiles','LastAllskyFile')
-        self.spacecraftFile   = self.allskyDir+"/"+self.config.get('InputFiles','SpacecraftFile')
-        self.webpageDir       = self.config.get('OutputDirs','OutputWebpageDir')
-        self.url              = self.config.get('OutputDirs','URL')
+        self.baseOutDir = self.config.get('OutputDirs', 'OutputResultsDir')
+        self.allskyFile = self.allskyDir + "/" + self.config.get('InputFiles', 'WholeAllskyFile')
+        self.lastAllskyFile = self.allskyDir + "/"+self.config.get('InputFiles', 'LastAllskyFile')
+        self.spacecraftFile = self.allskyDir + "/" + self.config.get('InputFiles', 'SpacecraftFile')
+        self.webpageDir = self.config.get('OutputDirs', 'OutputWebpageDir')
+        self.url = self.config.get('OutputDirs', 'URL')
 
         try:
-            self.longtimebin  = float(self.config.get('AlertTrigger','LongTimeBin'))
+            self.longtimebin = float(self.config.get('AlertTrigger', 'LongTimeBin'))
         except:
             # Take 7 days by default
-            self.longtimebin  = 7.
+            self.longtimebin = 7.
             print '\033[93mCan not read LongTimeBin in config file, taking %.1f as default.\033[0m' % (self.longtimebin)
 
         try:
-            self.sigma        = float(self.config.get('AlertTrigger','Sigma'))
+            self.sigma = float(self.config.get('AlertTrigger', 'Sigma'))
         except:
             # Take 2 sigma by default
-            self.sigma         = 3.
+            self.sigma = 3.
             print '\033[93mCan not read Sigma in config file, taking %.1f as default.\033[0m' % (self.sigma)
 
         try:
-            self.sigmaLT       = float(self.config.get('AlertTrigger','SigmaLT'))
+            self.sigmaLT = float(self.config.get('AlertTrigger', 'SigmaLT'))
         except:
             # Take 2 sigma by default
-            self.sigmaLT       = 1.5
+            self.sigmaLT = 1.5
             print '\033[93mCan not read SigmaLT in config file, taking %.1f as default.\033[0m' % (self.sigmaLT)
      
         # Read maxz and maxZA as lists, not as single floats
-        self.maxz             = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZ' ))]
-        self.maxZA            = [float(i) for i in getConfigList(self.config.get('AlertTrigger','MaxZA'))]
+        self.maxz = [float(i) for i in getConfigList(self.config.get('AlertTrigger', 'MaxZ'))]
+        self.maxZA = [float(i) for i in getConfigList(self.config.get('AlertTrigger', 'MaxZA'))]
         try:
-            self.checkVisibility = self.config.get('AlertTrigger','CheckVisibility')
+            self.checkVisibility = self.config.get('AlertTrigger', 'CheckVisibility')
         except:
             # Don't check the source visibility, by default
             self.checkVisibility = False
         try:
-            self.launchLikeAna = self.config.get('AlertTrigger','LaunchLikelihoodAnalysis')
+            self.launchLikeAna = self.config.get('AlertTrigger', 'LaunchLikelihoodAnalysis')
         except:
             self.launchLikeAna = False
 
@@ -294,37 +308,37 @@ class autoLC:
         except:
             self.likeHighEThresh = None
 
-        self.daily            = daily
-        self.withhistory      = withhistory
+        self.daily = daily
+        self.withhistory = withhistory
 
         # Mail sender and recipients
-        self.usualRecipients= getConfigList(self.config.get('MailConfig','UsualRecipients'))
-        self.testRecipients = getConfigList(self.config.get('MailConfig','TestRecipients'))
-        self.mailSender     = self.config.get('MailConfig','MailSender')
+        self.usualRecipients = getConfigList(self.config.get('MailConfig', 'UsualRecipients'))
+        self.testRecipients = getConfigList(self.config.get('MailConfig', 'TestRecipients'))
+        self.mailSender = self.config.get('MailConfig', 'MailSender')
         try:
-            self.likelihoodRecipients = self.config.get('MailConfig','LikelihoodRecipients')
+            self.likelihoodRecipients = self.config.get('MailConfig', 'LikelihoodRecipients')
         except:
             self.likelihoodRecipients = None
 
-        today=datetime.date.today().strftime('%Y%m%d')
+        today = datetime.date.today().strftime('%Y%m%d')
 
         # Setting file names and directories
         if longTerm:
             self.allsky = self.allskyFile
             if not mergelongterm:
-                self.workDir    = self.baseOutDir+"/longTerm/"+yearmonth
+                self.workDir = self.baseOutDir + "/longTerm/" + yearmonth
             else:
-                self.workDir    = self.baseOutDir+"/longTerm/merged"
+                self.workDir = self.baseOutDir + "/longTerm/merged"
         else:
             # If lock files exist in the archive directory (e.g. if NASA servers are down), we do not do anything and exit
-            photonLock=self.archiveDir+"/photon.lock"
-            spacecraftLock=self.archiveDir+"/spacecraft.lock"
+            photonLock = self.archiveDir + "/photon.lock"
+            spacecraftLock = self.archiveDir + "/spacecraft.lock"
             if os.path.isfile(photonLock) or os.path.isfile(spacecraftLock):
                 self.sendErrorMail(mailall=True)
                 sys.exit(10)
 
-            self.allsky     = self.lastAllskyFile
-            self.workDir    = self.baseOutDir+"/"+today
+            self.allsky = self.lastAllskyFile
+            self.workDir = self.baseOutDir + "/" + today
 
         self.spacecraft = self.spacecraftFile
         if not os.path.isdir(self.workDir):
