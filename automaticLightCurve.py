@@ -377,8 +377,8 @@ class autoLC:
         # Open allsky file to get the start and stop dates
         try:
             hdu=pyfits.open(self.allsky)
-        except IOError:
-            print 'Exception: can not open file '+self.allsky
+        except IOError as e:
+            print 'I/O error ({0}): can not open file {1}: {2}'.format(e.errno, self.allsky, e.strerror)
             raise
         header = hdu[0].header
 
@@ -505,7 +505,12 @@ class autoLC:
         """
         Filter a given source, running gtselect
         """
-        filter['infile']=self.allsky
+        # Do we have to deal with a FITS file or an ASCII list of FITS file ?
+        allskyext = os.path.splitext(self.allsky)
+        if allskyext in [".fit", ".fits"]:
+            filter['infile'] = self.allsky
+        else:
+            filter['infile'] = '@%s' % self.allsky
         if self.daily:
             outfile=self.workDir+'/'+str(self.src)+'_daily.fits'
         else:
