@@ -1,5 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
+#
+# Time-stamp: "2016-03-31 14:54:48 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -933,7 +935,7 @@ class autoLC:
         fig.savefig(outfig)
 
 
-    def createEnergyTimeFig(self, eThresh=3.e3):
+    def createEnergyTimeFig(self, eThresh=1.e2):
         """
         Create a PNG figure with the energy vs time of a given source, above eThresh MeV. Any existing PNG file is overwritten !
         """
@@ -967,8 +969,10 @@ class autoLC:
 
         ax.set_title(title)
 
-        
-        ax.set_ylabel('Energy (MeV) -- only data above %.0f GeV are shown' % (eThresh/1.e3), size='x-small')
+        ylabel = 'Energy (MeV)'
+        if eThresh > self.emin:
+            ylable += ' -- only data above %.1f GeV are shown' % (eThresh/1.e3)
+        ax.set_ylabel(ylabel, size='x-small')
 
         ## Make the x-axis ticks shifted by some value
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
@@ -979,7 +983,19 @@ class autoLC:
             pass
 
         # Plot the energy vs time distribution
-        ax.plot(t, e,  'bo')
+        try:
+            # cf. http://stackoverflow.com/questions/20105364/how-can-i-make-a-scatter-plot-colored-by-density-in-matplotlib
+            from scipy.stats import gaussian_kde
+            xy = vstack([t, e])
+            z = gaussian_kde(xy)(xy)
+            # Re-normalize the density
+            z = z/max(z)
+            idx = z.argsort()
+            t, e, z = t[idx], e[idx], z[idx]
+            pcm = ax.scatter(t, e, c=z, s=100, edgecolor='')
+            colorbar(pcm, ax=ax)
+        except ImportError:
+            ax.plot(t, e,  'bo')
         ax.set_yscale('log')
 
         # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
