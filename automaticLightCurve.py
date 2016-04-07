@@ -1,7 +1,7 @@
-#!/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-04-07 11:09:46 jlenain"
+# Time-stamp: "2016-04-07 14:47:45 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)

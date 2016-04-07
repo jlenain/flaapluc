@@ -1,7 +1,7 @@
-#!/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-04-07 09:51:47 jlenain"
+# Time-stamp: "2016-04-07 14:47:34 jlenain"
 
 """
 Process all sources for automatic aperture photometry of interesting high energy sources.
