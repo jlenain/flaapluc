@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-03-31 14:54:48 jlenain"
+# Time-stamp: "2016-04-07 16:50:11 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -230,14 +230,6 @@ def angsep((ra1,dec1), (ra2,dec2), deg=True):
     return SEP
 
 
-def zaAtCulmination(dec):
-    """
-    Returns the zenith angle of a source at culmination, for the H.E.S.S. site.
-    """
-    siteLat = -23.27167  # latitude of H.E.S.S. site in degree
-    return abs(dec-siteLat)
-
-
 def getConfigList(option, sep=','):
     return [stuff for stuff in option.split(sep)]
 
@@ -296,7 +288,10 @@ class autoLC:
         self.maxz = [float(i) for i in getConfigList(self.config.get('AlertTrigger', 'MaxZ'))]
         self.maxZA = [float(i) for i in getConfigList(self.config.get('AlertTrigger', 'MaxZA'))]
         try:
-            self.checkVisibility = self.config.get('AlertTrigger', 'CheckVisibility')
+            self.checkVisibility = self.config.get('Site', 'CheckVisibility')
+            self.siteLon = float(self.config.get('Site', 'SiteLongitude'))
+            self.siteLat = float(self.config.get('Site', 'SiteLatitude'))
+            self.siteAlt = float(self.config.get('Site', 'SiteAltitude'))
         except:
             # Don't check the source visibility, by default
             self.checkVisibility = False
@@ -508,7 +503,7 @@ class autoLC:
         Filter a given source, running gtselect
         """
         # Do we have to deal with a FITS file or an ASCII list of FITS file ?
-        allskyext = os.path.splitext(self.allsky)
+        allskyext = os.path.splitext(self.allsky)[1]
         if allskyext in [".fit", ".fits"]:
             filter['infile'] = self.allsky
         else:
@@ -1014,29 +1009,27 @@ class autoLC:
         fig.savefig(outfig)
 
 
-    # TODO: add visibility of source at H.E.S.S. site
+    def zaAtCulmination(self):
+        """
+        Returns the zenith angle of a source at culmination, for the provided site.
+        """
+        return abs(self.dec-self.siteLat)
+
+
     def is_visible(self):
         '''
-        @todo implement this function
+        Check whether the current source is visible at the site provided.
         '''
         
-        # Define HESS site for pyephem
-        #siteHESSlon = astCoords.dms2decimal('+16:30:00',delimiter=':')
-        #siteHESSlat = astCoords.dms2decimal('-23:16:18',delimiter=':')
-        #siteHESSalt = 1800.
-        hessSite    = ephem.Observer()
-        hessSite.pressure = 0
-        # astronomical twilight angle: same as HESS (cf. crash/src/usersettings.C: TWILIGHT_ANGLE)
+        # Define site for pyephem
+        site    = ephem.Observer()
+        site.pressure = 0
         astroHorizon = '-18:00' # astronomical twilight
         civilHorizon = '-0:34'
-        hessSite.horizon = astroHorizon
-        #hessSite.lon, hessSite.lat, hessSite.elev = astCoords.decimal2dms(siteHESSlon,delimiter=':'), astCoords.decimal2dms(siteHESSlat,delimiter=':'), siteHESSalt
-        # cf HESS soft: crash/src/usersettings.C: LONGITUDE_NAMIBIA
-        hessSite.lon = '+16:30:00.8' # East from Greenwich
-        # cf HESS soft: crash/src/usersettings.C: LATITUDE_NAMIBIA
-        hessSite.lat = '-23:16:18.4' # South from equator
-        # cf HESS soft: crash/src/usersettings.C: HEIGHT_NAMIBIA
-        hessSite.elev = 1835.
+        site.horizon = astroHorizon
+        site.lon = astCoords.decimal2dms(self.siteLon, delimiter=':')
+        site.lat = astCoords.decimal2dms(self.siteLat, delimiter=':')
+        site.elev = self.siteAlt
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
         if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
@@ -1063,10 +1056,10 @@ class autoLC:
         
         visibleFlag=False
 
-        zaAtCulmin = zaAtCulmination(self.dec)
+        zaAtCulmin = self.zaAtCulmination()
         if zaAtCulmin>90.:
-            # the source is basically NEVER visible at the H.E.S.S. site
-            print '[%s] \033[91mNEVER above horizon at H.E.S.S. site, consider discarding this source from your source list...\033[0m' % self.src
+            # the source is basically NEVER visible at the site
+            print '[%s] \033[91mNEVER above horizon at the site, consider discarding this source from your source list...\033[0m' % self.src
             return False
 
         if thismaxZA<zaAtCulmin:
@@ -1079,39 +1072,36 @@ class autoLC:
         now      = datetime.datetime.utcnow()
         # tomorrow = now + datetime.timedelta(days=1)
         
-        hessSite.date  = now
+        site.date      = now
         sun            = ephem.Sun()
-        nextSunset     = hessSite.next_setting(sun)
-        nextSunrise    = hessSite.next_rising(sun)
+        nextSunset     = site.next_setting(sun)
+        nextSunrise    = site.next_rising(sun)
         # The Moon just needs to be below the horizon, not below astronomical twilight angle
-        hessSite.horizon = civilHorizon
+        site.horizon   = civilHorizon
         moon           = ephem.Moon()
-        nextMoonset    = hessSite.next_setting(moon)
-        nextMoonrise   = hessSite.next_rising(moon)
-        hessSite.horizon = astroHorizon
+        nextMoonset    = site.next_setting(moon)
+        nextMoonrise   = site.next_rising(moon)
+        site.horizon   = astroHorizon
         # so far, so good. All of this is OK if we execute the program during day time.
 
-        # However, the program is run during dark time, we should look at the ephemerids of next night (not current night):
+        # However, if the program is run during dark time, we should look at the ephemerids of next night (not current night):
         if nextSunrise < nextSunset:
             if VERBOSE:
                 print "INFO: looking at visibility for tomorrow"
             # we just put the current time at next sunrise + 10 min., to be sure to fall on tomorrow's morning day time
-            hessSite.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
-            nextSunset    = hessSite.next_setting(sun)
-            nextSunrise   = hessSite.next_rising(sun)
-            hessSite.horizon = civilHorizon
-            nextMoonset   = hessSite.next_setting(moon)
-            nextMoonrise  = hessSite.next_rising(moon)
-            hessSite.horizon = astroHorizon
+            site.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
+            nextSunset    = site.next_setting(sun)
+            nextSunrise   = site.next_rising(sun)
+            site.horizon = civilHorizon
+            nextMoonset   = site.next_setting(moon)
+            nextMoonrise  = site.next_rising(moon)
+            site.horizon = astroHorizon
 
-        ephemSrc.compute(hessSite)
-        srcTransitTime = hessSite.next_transit(ephemSrc)
+        ephemSrc.compute(site)
+        srcTransitTime = site.next_transit(ephemSrc)
         
-        #sep_from_sun = angsep((astCoords.hms2decimal(ephemSrc.ra,delimiter=':'),astCoords.dms2decimal(ephemSrc.dec,delimiter=':')),(astCoords.hms2decimal(sun.ra,delimiter=':'),astCoords.dms2decimal(sun.dec,delimiter=':')))
-        #sep_from_moon = angsep((astCoords.hms2decimal(ephemSrc.ra,delimiter=':'),astCoords.dms2decimal(ephemSrc.dec,delimiter=':')),(astCoords.hms2decimal(moon.ra,delimiter=':'),astCoords.dms2decimal(moon.dec,delimiter=':')))
-        
-        hessSite.date=srcTransitTime
-        ephemSrc.compute(hessSite)
+        site.date=srcTransitTime
+        ephemSrc.compute(site)
         srcAltAtTransit=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
         
         # If srcAltAtTransit is below thisminAlt, the source is just not correctly visible and we stop here
@@ -1135,12 +1125,12 @@ class autoLC:
             print "DEBUG: darkness ends=%s" % endDarkness
             print "DEBUG: darkness duration=%s minutes" % (darknessDuration*24.*60.)
 
-        hessSite.date=beginDarkness
-        ephemSrc.compute(hessSite)
+        site.date=beginDarkness
+        ephemSrc.compute(site)
         srcAltAtStartDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
         
-        hessSite.date=endDarkness
-        ephemSrc.compute(hessSite)
+        site.date=endDarkness
+        ephemSrc.compute(site)
         srcAltAtEndDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
         
         # check if source is visible, above minAlt, during this night
@@ -1187,7 +1177,7 @@ class autoLC:
         #srcGalLat=srcGalCoord[(1,0)]
         ## To be used later, for an additional cut on Gal Lat ?!
         
-        zaAtCulmin=zaAtCulmination(self.dec)
+        zaAtCulmin = self.zaAtCulmination()
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
         if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
@@ -1199,11 +1189,11 @@ class autoLC:
         #          z column               ZA column
         msk = (z<=grid[:,0])&(zaAtCulmin<=grid[:,1])
 
-        # Assess whether the source is currently visible at the H.E.S.S. site
+        # Assess whether the source is currently visible at the provided site
         if self.checkVisibility == 'True':
             self.visible = self.is_visible()
         else:
-            # The source is assumed to be visible in any case, i.e. we don't care about its visibility status at the H.E.S.S. site to send a potential alert
+            # The source is assumed to be visible in any case, i.e. we don't care about its visibility status at the provided site to send a potential alert
             self.visible = True
 
         # if the mask has at least one 'True' element, we should send an alert
