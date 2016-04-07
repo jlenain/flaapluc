@@ -55,6 +55,8 @@ Help can be found on the two individual scripts, by typing:
 ./processAllSources.py -h
 ```
 
-The pipeline uses an allsky file as input, which could easily be created using [`enrico`](http://enrico.readthedocs.org/en/latest/index.html). You'll also need the `make3FGLxml.py` script available at http://fermi.gsfc.nasa.gov/ssc/data/analysis/user/.
+The pipeline uses an allsky file as input, which could easily be created using [`enrico`](http://enrico.readthedocs.org/en/latest/index.html). `FLaapLUC` is actually using `enrico` and can use it to generate an allsky file on the fly for you.
+
+You'll also need the `make3FGLxml.py` script available at http://fermi.gsfc.nasa.gov/ssc/data/analysis/user/.
 
 `FLaapLUC` depends on the *Fermi* Science Tools, and it is assumed that you have a local installation of this software on your machine (for more details, see http://fermi.gsfc.nasa.gov/ssc/data/analysis/software/). In more details, the two Python scripts 'automaticLightCurve.py' and 'processAllSources.py' should be able to find the `gt_apps` Python modules provided in the *Fermi* Science Tools (be careful to have your shell variable `$PYTHONPATH` up-to-date !).
