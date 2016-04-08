@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-04-07 14:47:45 jlenain"
+# Time-stamp: "2016-04-08 11:54:06 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -352,11 +352,11 @@ class autoLC:
             r = os.system(cmd)
             assert (r==0), "Could not properly download the last spacecraft file."
             print 'Third, creating the allsky file with enrico...'
-            cmd = 'enrico_download --preprocess_data --steps=gtselect --event_classes=source --selections=month --emins=100'
+            cmd = 'enrico_download --preprocess_data --steps=gtselect --event_classes=source --selections=all --emins=100'
             r = os.system(cmd)
             assert (r==0), "Could not properly generate the allsky file."
             import enrico.data
-            self.allsky = enrico.data.PREPROCESSED_DIR+'/source/month/emin_000100/gtselect.fits'
+            self.allsky = enrico.data.PREPROCESSED_DIR+'/source/all/emin_000100/gtselect.fits'
             hdu=pyfits.open(self.allsky)
         header = hdu[0].header
 
