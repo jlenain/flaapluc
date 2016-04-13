@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-04-07 16:50:11 jlenain"
+# Time-stamp: "2016-04-13 13:53:56 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1707,7 +1707,7 @@ EOM
 
 \$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
 """ % (srcDir, int(emin), int(self.emax), self.mailSender, self.likelihoodRecipients, self.src, options)
-            if not nomailall and self.likelihoodRecipients is not None:
+            if self.likelihoodRecipients is not None:
                 script += "sendmail -t < \$LOG"
             script += """
 EOF
