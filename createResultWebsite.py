@@ -65,14 +65,14 @@ def createResultWebsite(configfile='default.cfg'):
 <head>
 <title>FLaapLUC results</title>
   <meta name="ROBOTS" content="NOINDEX, NOFOLLOW">
-  <!-- <link rel="stylesheet" href="../sty.css" type="text/css"> -->
+  <link rel="stylesheet" href="../sty.css" type="text/css">
 </head>
 <body>
 
 
 <div id="main">
 
-<h1>The FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) result page</h1>
+<h1>The FLaapLUC (Fermi/LAT automatic aperture photometry Light C&harr;Urve) result page</h1>
 
 <h2> Processing status</h2>
 
@@ -85,7 +85,7 @@ def createResultWebsite(configfile='default.cfg'):
 
 Light curves:
 <ul>
-  <li>Horizontal red dotted line in the lightcurves shows the thresholds fixed for each source. By default, this is set to 10<sup>-6</sup> ph cm<sup>-2</sup> s<sup>-1</sup>.
+  <li>Horizontal red dotted line in the lightcurves shows the thresholds fixed for each source. By default, this is set to 10<sup>-6</sup> ph cm<sup>-2</sup> s<sup>-1</sup>, or is defined as long-term flux average over the whole mission.
   <li>Horizontal blue solid line in some plots represents the flux long-term average of a source.
   <li>Horizontal blue dotted lines in some plots represent the RMS around the flux long-term average.
 </ul>
@@ -93,14 +93,16 @@ Light curves:
 All data products are available from two sources: 
 
 <ul> 
-<li>the most recent results for the last 70 (respectively 68) days of Fermi/LAT data, with weekly-binned (respectively 2-day binned) light curves.</li>
+<li>the most recent results for the last 30 days of Fermi/LAT data, with weekly-binned light curves, and daily-binned as well if activity is seen.</li>
 
 <li>a weekly-binned long-term light curve for the whole Fermi mission.</li>
 </ul>
 
+<!--
 <p>
 Moreover, if a source was on the ATOM schedule for last night, the most recent light curve will show both a weekly-binned light curve (blue data points) and a daily-binned light curve (red data points). If ATOM did not operate last night, the Fermi/LAT pipeline looks for ATOM schedule files up to 10 days in the past, in order to present here Fermi/LAT daily-binned light curves for the most recently observed ATOM sources.
 </p>
+-->
 <p>
 The ASCII data files
 include all data points.
@@ -112,20 +114,21 @@ include all data points.
     ### print table header
     f1.write( """
 <hr>
-<table border="1" style="font-size:70%">
-<tr>
-	<th rowspan="2">object name<br>(link to SIMBAD)</th>
-	<th rowspan="2">RA / Dec (degrees)</th>
-	<th colspan="3" style='background-color:#ccccff;'>most recent data</th>
 
-	<th colspan="2">long-term data</th>
+<div style="overflow-x:auto;">
+<table border="1" style="font-size:100%">
+<tr>
+	<th rowspan="2">Object name<br>(link to SIMBAD)</th>
+	<th rowspan="2">RA, Dec (degrees)</th>
+	<th colspan="2" style='background-color:#ccccff;'>Most recent data</th>
+
+	<th colspan="2">Long-term data</th>
 </tr>
 <tr>
-	<th style='background-color:#ccccff;'>LC</th>
+	<th style='background-color:#ccccff;'>Light Curve</th>
 	<th style='background-color:#ccccff;'>ASCII data</th>
-	<th style='background-color:#ccccff;'>(daily ASCII data)</th>
 
-	<th>LC</th>
+	<th>Light Curve</th>
 	<th>ASCII data</th>
 </tr>
 """)
@@ -137,6 +140,9 @@ include all data points.
     # create main table:
     
     for i in range(len(src)):
+        # Discard GPS sources
+        if 'GPS' in src[i]:
+            continue
 
         plotname         = src[i] + '_lc.png'
         dailyplotname    = src[i] + '_daily_lc.png'
@@ -177,20 +183,19 @@ include all data points.
         
         # most recent data
         # link the daily/weekly plot, if we have one (i.e. if the source was observed with ATOM last night)
+        thisplot = plotname
         if os.path.isfile(PATH_TO_FILES + dailyplotname):
-            f1.write( '    <td style="background-color:#ccccff;"> <a href="%s">PNG</a>(daily+weekly)</td>\n' % (dailyplotname) )
-        else:
-            f1.write( '    <td style="background-color:#ccccff;"> <a href="%s">PNG</a></td>\n' % (plotname) )
-        f1.write( '    <td style="background-color:#ccccff;"> <a href="%s"> data </a></td>\n' % (asciiname) )
+            thisplot = dailyplotname
+        f1.write( '    <td style="background-color:#ccccff;"> <a href="%s"><img src="%s" width="128" alt=""></a></td>\n' % (thisplot, thisplot))
 
+        txt = '    <td style="background-color:#ccccff;"> <a href="%s"> data </a>' % (asciiname)
         if os.path.isfile(PATH_TO_FILES + dailyasciiname):
-            f1.write( '    <td style="background-color:#ccccff;"> <a href="%s">data</a>(daily)</td>\n' % (dailyasciiname) )
-        else:
-            f1.write( '    <td style="background-color:#ccccff;"></td>\n')
-            
+            txt += '<br><a href="%s">daily data</a>' % (dailyasciiname)
+        txt += '</td>\n'
+        f1.write(txt)
         
         # long-term data
-        f1.write( '    <td> <a href="%s">PNG</a></td>\n' % (ltplotname) )
+        f1.write( '    <td> <a href="%s"><img src="%s" width="128" alt=""></a></td>\n' % (ltplotname, ltplotname) )
         f1.write( '    <td> <a href="%s"> data </a></td>\n' % (ltasciiname) )
         f1.write( '</tr>\n\n' )
 
@@ -199,21 +204,21 @@ include all data points.
     ### print table header
     f1.write( """
 <tr>
-	<th rowspan="2">object name<br>(link to SIMBAD)</th>
-	<th rowspan="2">RA / Dec (degrees)</th>
+	<th rowspan="2">Object name<br>(link to SIMBAD)</th>
+	<th rowspan="2">RA, Dec (degrees)</th>
+	<th colspan="2" style='background-color:#ccccff;'>Most recent data</th>
 
-	<th style='background-color:#ccccff;'>LC</th>
-	<th style='background-color:#ccccff;'>ASCII data</th>
-	<th style='background-color:#ccccff;'>(daily ASCII data)</th>
-
-	<th>LC</th>
-	<th>ASCII data</th>
+	<th colspan="2">Long-term data</th>
 </tr>
 <tr>
-	<th colspan="3" style='background-color:#ccccff;'>most recent data</th>
-	<th colspan="2">long-term data</th>
+	<th style='background-color:#ccccff;'>Light Curve</th>
+	<th style='background-color:#ccccff;'>ASCII data</th>
+
+	<th>Light Curve</th>
+	<th>ASCII data</th>
 </tr>
 </table>
+</div>
 
 <h3>Notes:</h3>
 <ul>
