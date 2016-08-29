@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-04-13 13:53:56 jlenain"
+# Time-stamp: "2016-07-13 13:36:25 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1721,7 +1721,7 @@ qsub ${tmpfile}
 
         if self.fglName is not None:
             options += " -c "
-        options += " -a std -m BINNED -e %i -E %i" % (int(self.emin), int(self.emax))
+        options += " -a std -l -m BINNED -e %i -E %i" % (int(self.emin), int(self.emax))
         if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None from asciidata to numpy to str
             # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
             options += ' -z %f' % self.z
@@ -1735,7 +1735,7 @@ qsub ${tmpfile}
 
             if self.fglName is not None:
                 options += " -c "
-            options += " -a std -m BINNED -e %i -E %i" % (int(float(self.likeHighEThresh)), int(self.emax))
+            options += " -a std -l -m BINNED -e %i -E %i" % (int(float(self.likeHighEThresh)), int(self.emax))
             if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None from asciidata to numpy to str
             # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
                 options += ' -z %f' % self.z
