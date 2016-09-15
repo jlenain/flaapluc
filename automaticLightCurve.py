@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-07-13 13:36:25 jlenain"
+# Time-stamp: "2016-09-15 22:10:59 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -53,6 +53,8 @@ except ImportError:
 DEBUG = False
 VERBOSE = False
 BATCH = True
+FORCE_ALERT=False
+FORCE_LIKELIHOOD=False
 # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA
 # or taken from the 3FGL.
 FLAGASSUMEDGAMMA = False
@@ -1318,7 +1320,7 @@ class autoLC:
             self.active=False
 
         # Combine killTrigger and flux above threshold criteria
-        if not self.triggerkilled and self.active:
+        if (not self.triggerkilled and self.active) or FORCE_ALERT:
             SENDALERT = True
         else:
             SENDALERT = False
@@ -1377,13 +1379,19 @@ class autoLC:
             else:
                 fhlmessage="No 2FHL counterpart found"
 
+            fglName=self.search3FGLcounterpart()
+            if fglName is not None:
+                fglmessage="3FGL counterpart is %s" % fglName
+            else:
+                fglmessage="No 3FGL counterpart found"
+
             # To whom the mail should be sent (cf. __init__ function of the class)
             if not nomailall:
                 recipient = self.usualRecipients
-                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s [2FHL: %s]' % (self.src,fhlName)
+                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s [2FHL counterpart: %s]' % (self.src,fhlName)
             else:
                 recipient = self.testRecipients
-                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s [2FHL: %s]' % (self.src, fhlName)
+                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s [2FHL counterpart: %s]' % (self.src, fhlName)
 
             msg['From'] = sender
             COMMASPACE = ', '
@@ -1395,9 +1403,9 @@ class autoLC:
             mailtext="""
      FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) report
 
-     *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s (%s) exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
+     *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s (%s, %s) exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
-     """%(self.emin,self.emax/1000.,self.src,fhlmessage,self.threshold)
+     """%(self.emin,self.emax/1000.,self.src,fhlmessage,fglmessage,self.threshold)
 
             if self.daily:
                 mailtext=mailtext+"""
@@ -1660,6 +1668,7 @@ Maximum Energy  =       %i MeV
         photonList.close()
 
         def writescript(emin,options=""):
+            # Content-Disposition: attachment; filename="\${FERMIUSER}/\${SRC}/VHEextrapolation/\${SRC}_SED.pdf"
             script = """#!/usr/local/bin/bash
 export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
 SRC=%s
@@ -1694,18 +1703,47 @@ cat > \$LOG << EOM
 From: %s
 Subject: [FLaapLUC likelihood] [\$SRC] Fermi likelihood analysis report (\$EMIN MeV - \$EMAX MeV)
 To: %s
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="-q1w2e3r4t5"
 
+---q1w2e3r4t5
+Content-Type: text/plain
 Source:  \$SRC
 E_min:   \$EMIN MeV
 E_max:   \$EMAX MeV
 
 A likelihood analysis was automatically launched by FLaapLUC after issuing an alert on %s, which log can be found below. You'll most probably be interested mainly in the lines beginning with 'INFO FINAL', giving the fitted flux and photon index for the source.
 
+Note that if the source has a known redshift, the Fermi/LAT spectrum computed from this likelihood analysis is extrapolated to very high energies, assuming a somewhat ad-hoc spectral break of Delta Gamma=1 at 100 GeV to account for intrinsic spectral curvature, absorbed by the EBL following the EBL model of Franceschini et al. (2008), and compared to the H.E.S.S. II differential sensitivity for 20h of observations (Model++ Stereo Std cuts, Zenith Angle of 18°). The resulting plot should be attached to this mail, otherwise please contact Jean-Philippe Lenain (<jlenain@in2p3.fr>).
+
 *********************************************************************************
 
 EOM
 
 \$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
+ATTACH="\${FERMIUSER}/\${SRC}/BINNED/VHEextrapolation/\${SRC}_SED.pdf"
+if [ -e \$ATTACH ]; then
+    BASENAME=\$(basename \${ATTACH})
+    cat >> \$LOG << EOP
+---q1w2e3r4t5
+Content-Type: application; name="\${BASENAME}"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="\${BASENAME}"
+EOP
+    uuencode -m \$ATTACH \$BASENAME >> \$LOG
+fi
+ATTACH="\${FERMIUSER}/\${SRC}/BINNED/\${SRC}_sanity_maps.png"
+if [ -e \$ATTACH ]; then
+    BASENAME=\$(basename \${ATTACH})
+    cat >> \$LOG << EOP
+---q1w2e3r4t5
+Content-Type: image/png; name="\${BASENAME}"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="\${BASENAME}"
+EOP
+    uuencode -m \$ATTACH \$BASENAME >> \$LOG
+fi
+echo "---q1w2e3r4t5--" >> \$LOG
 """ % (srcDir, int(emin), int(self.emax), self.mailSender, self.likelihoodRecipients, self.src, options)
             if self.likelihoodRecipients is not None:
                 script += "sendmail -t < \$LOG"
@@ -1894,7 +1932,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.createLCfig()
     auto.createEnergyTimeFig()
     alertSent=auto.sendAlert(nomailall=test,sendmail=mail)
-    if alertSent and auto.active and auto.launchLikeAna == 'True':
+    if (alertSent and auto.active and auto.launchLikeAna == 'True') or FORCE_LIKELIHOOD:
         auto.launchLikelihoodAnalysis(nomailall=test)
     
     return auto.active, auto.visible
@@ -1943,6 +1981,10 @@ Use '-h' to get the help message
                       help='verbose output.')
     parser.add_option("--debug", action="store_true", dest="debug", default=False,
                       help='debugging output.')
+    parser.add_option("--force-alert", action="store_true", dest="force_alert", default=False,
+                      help='force an alert to be issued. To be used along with --force-daily. For test purposes only.')
+    parser.add_option("--force-like", action="store_true", dest="force_like", default=False,
+                      help='force a likelihood follow-up analysis to be launched. To be used along with --force-daily. For test purposes only.')
     (opt, args) = parser.parse_args()
 
     CONFIGFILE=opt.CONFIGFILE
@@ -1958,6 +2000,21 @@ Use '-h' to get the help message
         DEBUG=True
     else:
         DEBUG=False
+
+    # If forcing an alert to be issued
+    global FORCE_ALERT
+    if opt.force_alert:
+        FORCE_ALERT=True
+    else:
+        FORCE_ALERT=False
+
+    # If forcing a likelihood analysis to be launched
+    global FORCE_LIKELIHOOD
+    if opt.force_like:
+        FORCE_LIKELIHOOD=True
+        FORCE_ALERT=True
+    else:
+        FORCE_LIKELIHOOD=False
 
     # If daily bins
     if opt.d:
