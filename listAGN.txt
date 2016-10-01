@@ -1,4 +1,4 @@
-# Time-stamp: "2016-08-29 13:53:02 jlenain"
+# Time-stamp: "2016-10-01 21:58:16 jlenain"
 #
 # Name			RA		Dec		z	3FGL name		Threshold(0=use the default threshold, which should be 1.e-6 ph cm^-2 s^-1)
 #########################################################################################
@@ -25,6 +25,7 @@ PMNJ1548-2251		237.2070	-22.8488	None	3FGLJ1548.8-2250	0
 # Yes, you can comment some lines out, it won't prevent the rest of the file to be read ! :-) See the example below:
 # NGC1068		040.669879	-0.013289	0.00379	3FGLJ0242.7-0001	0
 NGC1068			040.669879	-0.013289	0.00379	3FGLJ0242.7-0001	0
+PKS0524-485		081.5694637	-48.5102198	1.3041	3FGLJ0526.2-4829	0
 NGC4945			196.363663	-49.467900	0.00191	3FGLJ1305.4-4926	0
 SgrAstar		266.416817	-29.007825	0.	None			1.e-5
 PMNJ1936-4719		294.233800	-47.330619	0.265	3FGLJ1936.9-4719	0
