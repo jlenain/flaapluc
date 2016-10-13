@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-09-19 12:59:39 jlenain"
+# Time-stamp: "2016-10-13 08:46:57 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -903,7 +903,7 @@ class autoLC:
 
         # Plot Swift/BAT lightcurve
         if xray:
-            axbat.errorbar(batlc['TIME']+0.5,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
+            axbat.errorbar(batlc['TIME']+0.5,batlc['RATE'],batlc['ERROR'],fmt="none",capsize=0,elinewidth=1,ecolor='b',color='b')
             axbat.set_xlabel('MJD-'+str(TOFFSET))
             #axbat.set_xlabel('MJD')
             axbat.set_ylabel('F (15-50 keV) (count cm^-2 s^-1)',size='x-small')
@@ -1668,7 +1668,6 @@ Maximum Energy  =       %i MeV
         photonList.close()
 
         def writescript(emin,options=""):
-            # Content-Disposition: attachment; filename="\${FERMIUSER}/\${SRC}/VHEextrapolation/\${SRC}_SED.pdf"
             script = """#!/usr/local/bin/bash
 export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
 SRC=%s
@@ -1698,55 +1697,88 @@ source $FERMI_DIR/fermi-init.sh
 LOG=${tmpfile%%.sh}.log
 EMIN=%i
 EMAX=%i
+BOUNDARY=\`date +%%s | md5sum | cut -b1-32\`
 
 cat > \$LOG << EOM
 From: %s
 Subject: [FLaapLUC likelihood] [\$SRC] Fermi likelihood analysis report (\$EMIN MeV - \$EMAX MeV)
 To: %s
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="-q1w2e3r4t5"
+Content-Type: multipart/mixed; boundary="\$BOUNDARY"
 
----q1w2e3r4t5
-Content-Type: text/plain
+This is a MIME formatted message.  If you see this text it means that your email software does not support MIME formatted messages.
+
+--\$BOUNDARY
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
 Source:  \$SRC
 E_min:   \$EMIN MeV
 E_max:   \$EMAX MeV
 
 A likelihood analysis was automatically launched by FLaapLUC after issuing an alert on %s, which log can be found below. You'll most probably be interested mainly in the lines beginning with 'INFO FINAL', giving the fitted flux and photon index for the source.
 
-Note that if the source has a known redshift, the Fermi/LAT spectrum computed from this likelihood analysis is extrapolated to very high energies, assuming a somewhat ad-hoc spectral break of Delta Gamma=1 at 100 GeV to account for intrinsic spectral curvature, absorbed by the EBL following the EBL model of Franceschini et al. (2008), and compared to the H.E.S.S. II differential sensitivity for 20h of observations (Model++ Stereo Std cuts, Zenith Angle of 18°). The resulting plot should be attached to this mail, otherwise please contact Jean-Philippe Lenain (<jlenain@in2p3.fr>).
+Note that if the source has a known redshift, the Fermi/LAT spectrum computed from this likelihood analysis is extrapolated to very high energies, assuming a somewhat ad-hoc spectral break of Delta Gamma=1 at 100 GeV to account for intrinsic spectral curvature, absorbed by the EBL following the EBL model of Franceschini et al. (2008), and compared to the H.E.S.S. II differential sensitivity for 20h of observations (Model++ Stereo Std cuts, Zenith Angle of 18 deg.). The resulting plot should be attached to this mail, otherwise please contact Jean-Philippe Lenain (<jlenain@in2p3.fr>).
 
 *********************************************************************************
 
 EOM
 
+## Define the energy range \$ERANGE string
+a=\$EMIN
+b=\$EMAX
+c=1000.0 # Break energy of 1 GeV, between 'MeV' label and 'GeV' label
+case \`echo "a=\$a;c=\$c;r=-1;if(a==c)r=0;if(a>c)r=1;r"|bc\` in
+    0) ERANGEMIN="1GeV";;
+    1) a=\`echo "\$a/1000.0"|bc\`
+	ERANGEMIN=\${a}GeV;;
+    *) a=\`echo "\$a/1.0"|bc\`
+	ERANGEMIN=\${a}MeV;;
+esac
+case \`echo "b=\$b;c=\$c;r=-1;if(b==c)r=0;if(b>c)r=1;r"|bc\` in
+    0) ERANGEMAX="1GeV";;
+    1) b=\`echo "\$b/1000.0"|bc\`
+	ERANGEMAX=\${b}GeV;;
+    *) b=\`echo "\$b/1.0"|bc\`
+	ERANGEMAX=\${b}MeV;;
+esac
+# De-attribute a,b,c
+unset a b c
+ERANGE=\${ERANGEMIN}_\${ERANGEMAX}
+
 \$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
-ATTACH="\${FERMIUSER}/\${SRC}/BINNED/VHEextrapolation/\${SRC}_SED.pdf"
+ATTACH="\${FERMIUSER}/\${SRC}/BINNED/VHEextrapolation/\${SRC}_\${ERANGE}_SED.pdf"
 if [ -e \$ATTACH ]; then
     BASENAME=\$(basename \${ATTACH})
     cat >> \$LOG << EOP
----q1w2e3r4t5
-Content-Type: application; name="\${BASENAME}"
+--\$BOUNDARY
+Content-Type: application/pdf; name="\${BASENAME}"
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="\${BASENAME}"
+
 EOP
-    uuencode -m \$ATTACH \$BASENAME >> \$LOG
+    cat \$ATTACH | openssl base64 >> \$LOG
 fi
-ATTACH="\${FERMIUSER}/\${SRC}/BINNED/\${SRC}_sanity_maps.png"
+ATTACH="\${FERMIUSER}/\${SRC}/BINNED/\${SRC}_\${ERANGE}_sanity_maps.png"
 if [ -e \$ATTACH ]; then
     BASENAME=\$(basename \${ATTACH})
     cat >> \$LOG << EOP
----q1w2e3r4t5
+--\$BOUNDARY
 Content-Type: image/png; name="\${BASENAME}"
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="\${BASENAME}"
+
 EOP
-    uuencode -m \$ATTACH \$BASENAME >> \$LOG
+    cat \$ATTACH | openssl base64 >> \$LOG
 fi
-echo "---q1w2e3r4t5--" >> \$LOG
+echo "" >> \$LOG
+echo "" >> \$LOG
+echo "--\${BOUNDARY}--" >> \$LOG
+echo "" >> \$LOG
+echo "" >> \$LOG
 """ % (srcDir, int(emin), int(self.emax), self.mailSender, self.likelihoodRecipients, self.src, options)
             if self.likelihoodRecipients is not None:
-                script += "sendmail -t < \$LOG"
+                script += "cat \$LOG | sendmail -t"
             script += """
 EOF
 
@@ -1759,8 +1791,8 @@ qsub ${tmpfile}
 
         if self.fglName is not None:
             options += " -c "
-        options += " -a std -l -m BINNED -e %i -E %i" % (int(self.emin), int(self.emax))
-        if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None from asciidata to numpy to str
+        options += " -a std -q -l -m BINNED -e %i -E %i" % (int(self.emin), int(self.emax))
+        if str(self.z)!='--': # this is the result of the conversion of None from asciidata to numpy to str
             # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
             options += ' -z %f' % self.z
     
@@ -1773,7 +1805,7 @@ qsub ${tmpfile}
 
             if self.fglName is not None:
                 options += " -c "
-            options += " -a std -l -m BINNED -e %i -E %i" % (int(float(self.likeHighEThresh)), int(self.emax))
+            options += " -a std -q -l -m BINNED -e %i -E %i" % (int(float(self.likeHighEThresh)), int(self.emax))
             if str(self.z)!='--' and self.z != 0: # this is the result of the conversion of None from asciidata to numpy to str
             # pass the redshift as argument to myLATanalysis to trigger the generation of the EBL absorbed, VHE extrapolation of the Fermi/LAT likelihood spectral results
                 options += ' -z %f' % self.z
