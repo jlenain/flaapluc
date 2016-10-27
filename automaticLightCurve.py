@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-10-13 08:46:57 jlenain"
+# Time-stamp: "2016-10-27 11:27:35 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -836,7 +836,6 @@ class autoLC:
         if self.withhistory:
             (fluxAverage,fluxRMS) = self.dynamicalTrigger()
 
-
         fig=figure()
 
         if xray:
@@ -1227,7 +1226,9 @@ class autoLC:
 
         flux        = data[2].tonumpy()
         fluxErr     = data[3].tonumpy()
-        #lastFluxErr = fluxErr[-1:]
+        if VERBOSE:
+            from uncertainties import unumpy as unp
+            print('INFO: The long-term flux average is ', unp.uarray(flux, fluxErr).mean())
 
         # weighted average of the historical fluxes, weighted by their errors
         fluxAverage = average(flux, weights=1./fluxErr)
