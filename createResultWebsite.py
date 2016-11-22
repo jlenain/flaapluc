@@ -115,8 +115,9 @@ include all data points.
     f1.write( """
 <hr>
 
-<div style="overflow-x:auto;">
-<table border="1" style="font-size:100%">
+<div class="table-container">
+<table border="1">
+<thead border="1">
 <tr>
 	<th rowspan="2">Object name<br>(link to SIMBAD)</th>
 	<th rowspan="2">RA, Dec (degrees)</th>
@@ -131,6 +132,8 @@ include all data points.
 	<th>Light Curve</th>
 	<th>ASCII data</th>
 </tr>
+</thead>
+<tbody border="1">
 """)
     
     
@@ -217,6 +220,7 @@ include all data points.
 	<th>Light Curve</th>
 	<th>ASCII data</th>
 </tr>
+</tbody>
 </table>
 </div>
 
