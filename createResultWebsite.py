@@ -204,22 +204,7 @@ include all data points.
 
     
     ### static stuff at the end
-    ### print table header
     f1.write( """
-<tr>
-	<th rowspan="2">Object name<br>(link to SIMBAD)</th>
-	<th rowspan="2">RA, Dec (degrees)</th>
-	<th colspan="2" style='background-color:#ccccff;'>Most recent data</th>
-
-	<th colspan="2">Long-term data</th>
-</tr>
-<tr>
-	<th style='background-color:#ccccff;'>Light Curve</th>
-	<th style='background-color:#ccccff;'>ASCII data</th>
-
-	<th>Light Curve</th>
-	<th>ASCII data</th>
-</tr>
 </tbody>
 </table>
 </div>
