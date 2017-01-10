@@ -1,4 +1,4 @@
-# Time-stamp: "2017-01-07 16:21:30 jlenain"
+# Time-stamp: "2017-01-10 15:47:42 jlenain"
 #
 # Name			RA		Dec		z	3FGL name		Threshold(0=use the default threshold, which should be 1.e-6 ph cm^-2 s^-1)
 #########################################################################################
@@ -396,6 +396,12 @@ FermiJ1654-1055		248.19		-10.93		None	None			0
 PKSB1035-281		159.4269058	-28.3844750	1.066	3FGLJ1037.5-2821	0
 # cf. ATel 9285
 PKS2247-131		342.4983854	-12.8546736	None	None			0
+# cf. ATel 9590:
+B20748+33		117.9736383	33.2221719	1.936	None			0
+# cf. ATel 9854:
+PKS0438-43		070.0715538	-43.5523942	2.852	None			0
+# cf. ATel 9928:
+S51044+71		162.1151	+71.7266	1.15	3FGLJ1048.4+7144	0
 ##
 ## End of New Fermi sources
 ##
