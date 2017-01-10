@@ -1,4 +1,4 @@
-# Time-stamp: "2016-10-01 21:58:16 jlenain"
+# Time-stamp: "2017-01-07 16:21:30 jlenain"
 #
 # Name			RA		Dec		z	3FGL name		Threshold(0=use the default threshold, which should be 1.e-6 ph cm^-2 s^-1)
 #########################################################################################
@@ -405,6 +405,8 @@ PKS2247-131		342.4983854	-12.8546736	None	None			0
 ##
 # cf. ATel 7193:
 BZQJ0447-0322		71.977917	-03.378333	0.774	None			0
+# cf. ATel 9947:
+3FGLJ1037.2-6052	158.96		-60.92		None	3FGLJ1037.2-6052	0
 ##
 ## End of New Agile sources
 ##
