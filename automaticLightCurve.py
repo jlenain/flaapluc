@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-10-27 11:27:35 jlenain"
+# Time-stamp: "2017-01-31 15:52:07 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -989,7 +989,8 @@ class autoLC:
             idx = z.argsort()
             t, e, z = t[idx], e[idx], z[idx]
             pcm = ax.scatter(t, e, c=z, s=100, edgecolor='')
-            colorbar(pcm, ax=ax)
+            cbar = colorbar(pcm, ax=ax)
+            cbar.set_label('Kernel-density estimates (arb. unit)', rotation=90)
         except ImportError:
             ax.plot(t, e,  'bo')
         ax.set_yscale('log')
