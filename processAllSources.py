@@ -1,5 +1,7 @@
 #!/bin/env python
-
+#
+# Time-stamp: "2017-03-01 22:27:57 jlenain"
+#
 ## SGE parameters (this should work at CCIN2P3):
 #$ -N processAllSources
 #$ -e /sps/hess/lpnhe/jlenain/fermi/log
@@ -140,6 +142,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                       help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
     parser.add_option("-w", "--with-history", action="store_true", dest="history", default=False,
                       help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
+    parser.add_option("--stop-month", default=None, dest="STOPMONTH", metavar="<STOPMONTH>",
+                      help="in conjunction with --merge-long-term, defines the stop year/month (in the format YYYYMM) until which the long-term light curve is generated. '%default' by default.")
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send alert mails')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -230,10 +234,15 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         if opt.u:
             UPDATE=True
         else:
-            UPDATE=False        
+            UPDATE=False
+        if opt.STOPMONTH is not None:
+            STOPMONTH=str(opt.STOPMONTH)
+        else:
+            STOPMONTH=None
     else:
         MERGELONGTERM=False
-        UPDATE=False        
+        UPDATE=False
+        STOPMONTH = None
 
     # If dynamical flux trigger threshold based on source history
     if opt.history:
@@ -245,9 +254,9 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     if(len(args)!=0):
         file=args[0]
         print "\033[93mINFO\033[0m Overriding default list of source: using %s" % file
-        auto=autoLC(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
+        auto=autoLC(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
     else:
-        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
+        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
 
     ATOMsrcsInSchedule=readATOMschedule(configfile=CONFIGFILE)
     
@@ -301,6 +310,8 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
             autoOptions.append("-m")
             if UPDATE:
                 autoOptions.append("-u")
+            if STOPMONTH is not None:
+                autoOptions.append("--stop-month=%s" % STOPMONTH)
         if WITHHISTORY:
             autoOptions.append("--with-history")
 
@@ -332,16 +343,16 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
                 tmpDAILY=True
                 # We have to make sure that the corresponding weekly-binned data are created first (needed for daily PNG figure)
                 if not DRYRUN:
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
+                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,stopmonth=STOPMONTH)
                 else:
-                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+")"
+                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+",stopmonth="+str(STOPMONTH)+")"
             else:
                 tmpDAILY=DAILY
 
             if not DRYRUN:
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,stopmonth=STOPMONTH)
             else:
-                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+")"
+                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+",stopmonth="+str(STOPMONTH)+")"
             print
 
     return True

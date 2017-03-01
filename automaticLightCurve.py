@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-01-31 15:52:07 jlenain"
+# Time-stamp: "2017-03-01 22:29:48 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -246,7 +246,7 @@ class autoLC:
 
     def __init__(self, file=None, customThreshold=False, daily=False,
                  longTerm=False, yearmonth=None, mergelongterm=False,
-                 withhistory=False, configfile='default.cfg'):
+                 withhistory=False, stopmonth=None, configfile='default.cfg'):
         
         self.config = self.getConfig(configfile=configfile)
         self.allskyDir = self.config.get('InputDirs', 'AllskyDir')
@@ -372,6 +372,8 @@ class autoLC:
 
         self.threshold = 1.e-6 # ph cm^-2 s^-1
         self.customThreshold=customThreshold
+
+        self.stopmonth = stopmonth
         
         # Open allsky file to get the start and stop dates
         try:
@@ -425,7 +427,8 @@ class autoLC:
 
             if mergelongterm is True:
                 self.tstart = missionStart
-                self.tstop  = missionStop
+                self.tstop = missionStop
+                    
  
 
     def getConfig(self,configfile='./default.cfg'):
@@ -1819,7 +1822,7 @@ qsub ${tmpfile}
         return r
 
 
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False,stopmonth=None):
     """
     Process a given source.
     """
@@ -1841,7 +1844,8 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            mergelongterm=mergelongterm,
                                            withhistory=withhistory,
                                            update=update,
-                                           configfile=configfile)
+                                           configfile=configfile,
+                                           stopmonth=stopmonth)
         if longtermactive and visible:
             print "[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
         elif longtermactive and not visible:
@@ -1867,11 +1871,12 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            mergelongterm=mergelongterm,
                                            withhistory=withhistory,
                                            update=update,
-                                           configfile=configfile)        
+                                           configfile=configfile,
+                                           stopmonth=stopmonth)        
     else:
         print "[%s] Processing long time-binned light curve..." % mysrc
 
-    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile)
+    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth)
     auto.readSourceList(mysrc)
 
     if DEBUG:
@@ -1892,7 +1897,10 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         startyearmonth = '200808'
         # Hardcoded !!! Beurk, not good, ugly, bad !!!
 
-        thisyearmonth  = datetime.date.today().strftime('%Y%m')
+        if auto.stopmonth is not None:
+            thisyearmonth = auto.stopmonth
+        else:
+            thisyearmonth  = datetime.date.today().strftime('%Y%m')
         thisyear       = thisyearmonth[:-2]
         thismonth      = thisyearmonth[-2:]
         startyear      = startyearmonth[:-2]
@@ -1921,7 +1929,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                         for file in glob.glob(tmpworkdir+'/'+auto.src+'*daily*'):
                             os.remove(file)
 
-                processSrc(mysrc=auto.src,useThresh=useThresh,daily=auto.daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile)
+                processSrc(mysrc=auto.src,useThresh=useThresh,daily=auto.daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile,stopmonth=stopmonth)
 
                 
 
@@ -2005,6 +2013,8 @@ Use '-h' to get the help message
                       help='merge the month-by-month long-term light curves together. If those do not exist, they will be created on the fly.')
     parser.add_option("-u","--update",action="store_true",dest="u",default=False,
                       help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
+    parser.add_option("--stop-month", default=None, dest="STOPMONTH", metavar="<STOPMONTH>",
+                      help="in conjunction with --merge-long-term, defines the stop year/month (in the format YYYYMM) until which the long-term light curve is generated. '%default' by default.")
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send mail alerts')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -2116,10 +2126,15 @@ Use '-h' to get the help message
         if opt.u:
             UPDATE=True
         else:
-            UPDATE=False        
+            UPDATE=False
+        if opt.STOPMONTH is not None:
+            STOPMONTH = str(opt.STOPMONTH)
+        else:
+            STOPMONTH = None
     else:
         MERGELONGTERM=False
         UPDATE=False
+        STOPMONTH = None
 
     # If dynamical flux trigger threshold based on source history
     if opt.history:
@@ -2129,7 +2144,7 @@ Use '-h' to get the help message
 
     src=args[0]
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY, stopmonth=STOPMONTH)
 
     return True
 
