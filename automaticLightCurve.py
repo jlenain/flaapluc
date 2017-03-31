@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-03-01 22:29:48 jlenain"
+# Time-stamp: "2017-03-31 09:30:22 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -18,18 +18,19 @@ http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
 """
 
-import sys
-import os
-import asciidata
 import datetime
-import time
 import glob
+import os
+import sys
+import time
 from numpy import *
-import pyfits
-import ephem
-from astLib import astCoords
 from optparse import OptionParser
 from ConfigParser import ConfigParser
+
+import asciidata
+import ephem
+import pyfits
+from astLib import astCoords
 
 # Import some matplotlib modules
 try:
@@ -724,7 +725,6 @@ class autoLC:
         if os.path.isfile(outfile):
             return True
 
-        import pyfits
         try:
             hdu=pyfits.open(infile)
         except:
@@ -971,7 +971,8 @@ class autoLC:
         ylabel = 'Energy (MeV)'
         if eThresh > self.emin:
             ylable += ' -- only data above %.1f GeV are shown' % (eThresh/1.e3)
-        ax.set_ylabel(ylabel, size='x-small')
+        # ax.set_ylabel(ylabel, size='x-small')
+        ax.set_ylabel(ylabel)
 
         ## Make the x-axis ticks shifted by some value
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
@@ -1752,12 +1753,12 @@ unset a b c
 ERANGE=\${ERANGEMIN}_\${ERANGEMAX}
 
 \$FERMIUSER/myLATanalysis.sh -s \${SRC} %s >> \$LOG 2>&1
-ATTACH="\${FERMIUSER}/\${SRC}/BINNED/VHEextrapolation/\${SRC}_\${ERANGE}_SED.pdf"
+ATTACH="\${FERMIUSER}/\${SRC}/BINNED/VHEextrapolation/\${SRC}_\${ERANGE}_SED.png"
 if [ -e \$ATTACH ]; then
     BASENAME=\$(basename \${ATTACH})
     cat >> \$LOG << EOP
 --\$BOUNDARY
-Content-Type: application/pdf; name="\${BASENAME}"
+Content-Type: image/png; name="\${BASENAME}"
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename="\${BASENAME}"
 
