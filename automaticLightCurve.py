@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-03-31 09:30:22 jlenain"
+# Time-stamp: "2017-05-17 11:31:41 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1681,7 +1681,7 @@ tmpfile=`mktemp --tmpdir=\$FERMIUSER/tmp myLATanalysis_\${SRC}_XXXX.sh`
         
 cat > $tmpfile << EOF
 #!/usr/local/bin/bash
-#$ -S /bin/bash
+###$ -S /bin/bash
 #$ -N myLATanalysis
 #$ -e /sps/hess/lpnhe/jlenain/fermi/log
 #$ -o /sps/hess/lpnhe/jlenain/fermi/log
@@ -1696,9 +1696,9 @@ cat > $tmpfile << EOF
 #$ -P P_hess -cwd
 
 SRC=$SRC
-export FERMI_DIR=/sps/hess/users/lpnhe/jlenain/local/fermi/ScienceTools-v10r0p5-fssc-20150518-x86_64-unknown-linux-gnu-libc2.12/x86_64-unknown-linux-gnu-libc2.12
 export FERMIUSER=/sps/hess/users/lpnhe/jlenain/fermi
-source $FERMI_DIR/fermi-init.sh
+#source ~/etc/mymisc_env.sh
+#condainitfermi
 
 LOG=${tmpfile%%.sh}.log
 EMIN=%i
@@ -1788,7 +1788,7 @@ echo "" >> \$LOG
             script += """
 EOF
 
-qsub ${tmpfile}
+qsub -V ${tmpfile}
 """
             return script
 
