@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-05-17 11:31:41 jlenain"
+# Time-stamp: "2017-07-04 22:41:56 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -363,7 +363,7 @@ class autoLC:
             # Take 500 GeV by default
             self.emax      = 5.e5 # E max
             print '\033[93mCan not read Emax in config file, taking %.1g as default.\033[0m' % (self.emax)
-        self.zmax      = 100. # degrees
+        self.zmax      = 90. # degrees
         self.rockangle = 52.  # maximal allowed rocking angle
 
         if self.daily:
