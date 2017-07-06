@@ -1,4 +1,4 @@
-# Time-stamp: "2017-05-02 17:13:07 jlenain"
+# Time-stamp: "2017-07-06 09:32:34 jlenain"
 #
 # Name			RA		Dec		z	3FGL name		Threshold(0=use the default threshold, which should be 1.e-6 ph cm^-2 s^-1)
 #########################################################################################
@@ -380,7 +380,7 @@ PKS0502+049		076.34660300	+04.99520139	0.954	3FGLJ0505.3+0459	0
 # cf. ATel 6658:
 FermiJ0507-5641		76.89		-56.70		None	None			0
 # cf. VHE/Fermi mail (Gerd Puehlhofer, 16/12/2014 @ 12:30 CET)
-PKS0736+01	     	114.82514125    +01.61794942	0.191	3FGLJ0739.4+0137	0
+PKS0736+01	     	114.82514125    +01.61794942	0.189	3FGLJ0739.4+0137	0
 # cf. ATel 7445:
 PKSB2258-022		345.43		-01.99		0.778	None			0
 # cf. ATel 8595:
