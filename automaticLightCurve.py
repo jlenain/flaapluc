@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-04 22:41:56 jlenain"
+# Time-stamp: "2017-07-06 09:55:28 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -247,7 +247,7 @@ class autoLC:
 
     def __init__(self, file=None, customThreshold=False, daily=False,
                  longTerm=False, yearmonth=None, mergelongterm=False,
-                 withhistory=False, stopmonth=None, configfile='default.cfg'):
+                 withhistory=False, stopmonth=None, stopday=None, configfile='default.cfg'):
         
         self.config = self.getConfig(configfile=configfile)
         self.allskyDir = self.config.get('InputDirs', 'AllskyDir')
@@ -321,6 +321,10 @@ class autoLC:
             self.likelihoodRecipients = None
 
         today = datetime.date.today().strftime('%Y%m%d')
+        self.stopday = stopday
+        if self.stopday is not None:
+            today = self.stopday.replace('-','')
+            self.lastAllskyFile = self.allskyFile
 
         # Setting file names and directories
         if longTerm:
@@ -375,7 +379,7 @@ class autoLC:
         self.customThreshold=customThreshold
 
         self.stopmonth = stopmonth
-        
+
         # Open allsky file to get the start and stop dates
         try:
             hdu=pyfits.open(self.allsky)
@@ -387,6 +391,10 @@ class autoLC:
         if not longTerm:
             self.tstart = header['TSTART']
             self.tstop  = header['TSTOP']
+            if self.stopday is not None:
+                from astropy.time import Time
+                self.tstop = mjd2met(Time('%s 00:00:00' % self.stopday, format='iso', scale='utc').mjd)
+                self.tstart = self.tstop - 30*24*3600  # stop - 30 days
             
         else:
             missionStart = header['TSTART'] # in MET
@@ -861,7 +869,7 @@ class autoLC:
         
         # Force the y-axis ticks to use 1e-6 as a base exponent
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.2f')%(x*1e6)))
-        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (x 10^-6 ph cm^-2 s^-1)'%(self.emin,self.emax/1000.),size='x-small')
+        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (%s 10$^{-6}$ ph cm$^{-2}$ s$^{-1}$)'%(self.emin,self.emax/1000.,r'$\times$'),size='x-small')
 
         day=24.*60.*60.
 
@@ -1823,7 +1831,7 @@ qsub -V ${tmpfile}
         return r
 
 
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False,stopmonth=None):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False,stopmonth=None, stopday=None):
     """
     Process a given source.
     """
@@ -1846,7 +1854,8 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            withhistory=withhistory,
                                            update=update,
                                            configfile=configfile,
-                                           stopmonth=stopmonth)
+                                           stopmonth=stopmonth,
+                                           stopday=stopday)
         if longtermactive and visible:
             print "[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
         elif longtermactive and not visible:
@@ -1873,11 +1882,12 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            withhistory=withhistory,
                                            update=update,
                                            configfile=configfile,
-                                           stopmonth=stopmonth)        
+                                           stopmonth=stopmonth,
+                                           stopday=stopday)
     else:
         print "[%s] Processing long time-binned light curve..." % mysrc
 
-    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth)
+    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth, stopday=stopday)
     auto.readSourceList(mysrc)
 
     if DEBUG:
@@ -2016,6 +2026,8 @@ Use '-h' to get the help message
                       help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
     parser.add_option("--stop-month", default=None, dest="STOPMONTH", metavar="<STOPMONTH>",
                       help="in conjunction with --merge-long-term, defines the stop year/month (in the format YYYYMM) until which the long-term light curve is generated. '%default' by default.")
+    parser.add_option("--stop-day", default=None, dest="STOPDAY", metavar="<STOPDAY>",
+                      help="defines the stop year-month-day (in the format YYYY-MM-DD) until which the short-term light curve is generated. '%default' by default.")
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send mail alerts')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -2136,6 +2148,10 @@ Use '-h' to get the help message
         MERGELONGTERM=False
         UPDATE=False
         STOPMONTH = None
+        if opt.STOPDAY is not None:
+            STOPDAY = str(opt.STOPDAY)
+        else:
+            STOPDAY = None
 
     # If dynamical flux trigger threshold based on source history
     if opt.history:
@@ -2145,7 +2161,7 @@ Use '-h' to get the help message
 
     src=args[0]
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY, stopmonth=STOPMONTH)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY, stopmonth=STOPMONTH, stopday=STOPDAY)
 
     return True
 
