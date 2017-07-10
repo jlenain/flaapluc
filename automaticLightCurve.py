@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2016-04-08 11:54:06 jlenain"
+# Time-stamp: "2017-07-10 12:02:59 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -531,7 +531,7 @@ class autoLC:
             return True
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
-        maketime['filter'] = "LAT_CONFIG==1 && DATA_QUAL>0"
+        maketime['filter'] = "LAT_CONFIG==1 && DATA_QUAL>0 && (angsep("+str(self.ra)+","+str(self.dec)+",RA_SUN,DEC_SUN)>5.)"
         maketime['roicut'] = 'no'
         maketime['tstart'] = self.tstart
         maketime['tstop']  = self.tstop
