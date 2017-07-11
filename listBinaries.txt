@@ -1,4 +1,4 @@
-# Time-stamp: "2016-12-06 14:56:04 jlenain"
+# Time-stamp: "2017-07-11 21:54:59 jlenain"
 #
 # Cf. Pol Borads' mail, 13/12/2012 16:18
 #
@@ -63,3 +63,18 @@ RXJ170849.0-400910	257.19529167	-40.14790000	0	None			6.0e-6
 XTEJ1810-197		272.46283333	-19.73103889	0	None			6.0e-6
 1E1841-04.5		280.33059583	-04.93643333 	0	None			8.0e-6
 AXJ1845.0-0258		281.22783333	-02.94808333	0	None			8.0e-6
+#########################################################################################
+##
+## Interesting "southern" 2FGL sources, filtered from the 2FGL catalogue using the
+##   following criteria, which are not listed above:
+##
+##   - DEJ2000 < +20 degrees
+##   - Signif_Avg > 20 sigmas
+##   - Flux_Density > 1.e-12 ph cm^-2 MeV^-1 s^-1
+##   - PowerLaw_Index < 2.0
+##
+Geminga			098.4785	+17.7739	0	3FGLJ0633.9+1746	6.e-6
+Vela			128.839		-45.1792	0	3FGLJ0835.3-4510	15.e-6
+PSRJ1231-1411		187.815		-14.1868	0	3FGLJ1231.2-1411	0
+PSRJ2017+0603		304.35		+6.05396	0	3FGLJ2017.3+0602	0
+PSRJ2124-3358		321.16		-33.9654	0	3FGLJ2124.7-3358	0
