@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-10 11:55:07 jlenain"
+# Time-stamp: "2017-07-12 15:43:16 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -869,7 +869,7 @@ class autoLC:
         
         # Force the y-axis ticks to use 1e-6 as a base exponent
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.2f')%(x*1e6)))
-        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (%s 10$^{-6}$ ph cm$^{-2}$ s$^{-1}$)'%(self.emin, self.emax/1000., r'$\times$'), size='x-small')
+        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (%s 10$^{-6}$ ph cm$^{-2}$ s$^{-1}$)'%(self.emin, self.emax/1000., r'$\times$'))  #, size='x-small')
 
         day=24.*60.*60.
 
@@ -2135,6 +2135,7 @@ Use '-h' to get the help message
         #DAILY=False
         MAIL=False
         TEST=False
+        STOPDAY = None
         # If update long term light curves with brand new data
         if opt.u:
             UPDATE=True
