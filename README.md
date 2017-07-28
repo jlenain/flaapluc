@@ -6,7 +6,7 @@ This pipeline can be used to quickly generate short- or long-term Fermi/LAT ligh
 
 Thus, it is meant to have a rough feeling about the variability of a source, but is absolutely not reliable enough to obtain publication-ready results.
 
-The pipeline can be used to assess the variability of a particular source, using the script `automaticLightCurve.py`, or to process all the sources included in a "master" list of sources `listSources.txt` using the script `processAllSources.py`. Basically, `processAllSources.py` just calls an instance of the `autoLC` class in `automaticLightCurve.py` for each entry in the list of sources.
+The pipeline can be used to assess the variability of a particular source, using the script `flaapluc`, or to process all the sources included in a "master" list of sources `listSources.txt` using the script `flaapluc-allsources`.
 
 
 ## Principle
