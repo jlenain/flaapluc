@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-28 20:22:19 jlenain"
+# Time-stamp: "2017-07-28 22:30:13 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1291,7 +1291,7 @@ class automaticLightCurve:
             self.active=True
         else:
             self.active=False
-
+        
         # Combine killTrigger and flux above threshold criteria
         if (not self.triggerkilled and self.active) or self.forcealert:
             SENDALERT = True
@@ -1318,12 +1318,12 @@ class automaticLightCurve:
         @return True
         @rtype bool
         '''
-
+        
         # Import modules
         try:
             # Import smtplib to send mails
             import smtplib
-
+            
             # Here are the email package modules we'll need
             from email.MIMEImage import MIMEImage
             from email.MIMEMultipart import MIMEMultipart
