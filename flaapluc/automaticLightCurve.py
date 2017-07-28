@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-28 16:09:04 jlenain"
+# Time-stamp: "2017-07-28 16:38:40 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1498,7 +1498,7 @@ class automaticLightCurve:
             cat2FHLfile = self.catalogFile.replace('/3FGL/','/2FHL/').replace('psc_v08','psch_v08').replace('psc_v16','psch_v08')
             try:
                 hdulist = pyfits.open(cat2FHLfile)
-            except IOErrror:
+            except IOError:
                 if VERBOSE:
                     print 'INFO: 2FHL catalog file not found'
                 return None
