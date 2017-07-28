@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-27 23:12:46 jlenain"
+# Time-stamp: "2017-07-28 15:55:50 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -53,6 +53,7 @@ except ImportError:
 DEBUG = False
 VERBOSE = False
 BATCH = True
+FORCE_ALERT=False
 # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA
 # or taken from the 3FGL.
 FLAGASSUMEDGAMMA = False
@@ -1282,7 +1283,7 @@ class automaticLightCurve:
             self.active=False
 
         # Combine killTrigger and flux above threshold criteria
-        if not self.triggerkilled and self.active:
+        if (not self.triggerkilled and self.active) or FORCE_ALERT:
             SENDALERT = True
         else:
             SENDALERT = False
@@ -1683,6 +1684,8 @@ Use '-h' to get the help message
                       help='use daily bins for the light curves (defaulted to long time-binned)')
     parser.add_option("--force-daily", action="store_true", dest="force_daily", default=False,
                       help='force daily bins for the light curves')
+    parser.add_option("--force-alert", action="store_true", dest="force_alert", default=False,
+                      help='force an alert to be issued. To be used along with --force-daily. For test purposes only.')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
                       help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
     parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
@@ -1718,6 +1721,13 @@ Use '-h' to get the help message
         DEBUG=True
     else:
         DEBUG=False
+
+    # If forcing an alert to be issued
+    global FORCE_ALERT
+    if opt.force_alert:
+        FORCE_ALERT=True
+    else:
+        FORCE_ALERT=False
 
     # If daily bins
     if opt.d:
