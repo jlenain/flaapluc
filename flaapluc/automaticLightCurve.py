@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-28 16:38:40 jlenain"
+# Time-stamp: "2017-07-28 20:22:19 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -50,10 +50,7 @@ except ImportError:
     sys.exit(1)
 
 # Flags
-DEBUG = False
-VERBOSE = False
 BATCH = True
-FORCE_ALERT=False
 # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA
 # or taken from the 3FGL.
 FLAGASSUMEDGAMMA = False
@@ -234,7 +231,8 @@ class automaticLightCurve:
 
     def __init__(self, file=None, customThreshold=False, daily=False,
                  longTerm=False, yearmonth=None, mergelongterm=False,
-                 withhistory=False, stopmonth=None, configfile='default.cfg'):
+                 withhistory=False, stopmonth=None, verbose=False,
+                 debug=False, configfile='default.cfg', forcealert=False):
 
         self.config = self.getConfig(configfile=configfile)
         self.allskyDir = self.config.get('InputDirs', 'AllskyDir')
@@ -249,7 +247,10 @@ class automaticLightCurve:
         self.allskyFile = self.allskyDir + "/" + self.config.get('InputFiles', 'WholeAllskyFile')
         self.lastAllskyFile = self.allskyDir + "/"+self.config.get('InputFiles', 'LastAllskyFile')
         self.spacecraftFile = self.allskyDir + "/" + self.config.get('InputFiles', 'SpacecraftFile')
-
+        self.verbose = verbose
+        self.debug = debug
+        self.forcealert = forcealert
+        
         try:
             self.longtimebin = float(self.config.get('AlertTrigger', 'LongTimeBin'))
         except:
@@ -390,7 +391,7 @@ class automaticLightCurve:
                 tmptstart = mjd2met(unixtime2mjd(yearmonthStart))
                 tmptstop  = mjd2met(unixtime2mjd(yearmonthStop))
 
-                if DEBUG:
+                if self.debug:
                     print 'DEBUG: INIT yearmonthStart=',yearmonthStart
                     print 'DEBUG: INIT yearmonthStop=',yearmonthStop
 
@@ -587,7 +588,7 @@ class automaticLightCurve:
         filter['tmax']    = self.tstop
         filter['zmax']    = self.zmax
         filter['evclass'] = 128
-        if VERBOSE:
+        if self.verbose:
             print 'INFO Running gtmktime'
         filter.run()
 
@@ -615,7 +616,7 @@ class automaticLightCurve:
             sys.exit(1)
 
         mymodel=make3FGLxml.srcList(self.catalogFile,evfile,modelfile)
-        if VERBOSE:
+        if self.verbose:
             print 'INFO Running makeModel'
         mymodel.makeModel(GDfile=self.fermiDir+'/refdata/fermi/galdiffuse/gll_iem_v06.fits',GDname='GalDiffuse',ISOfile=self.fermiDir+'/refdata/fermi/galdiffuse/iso_P8R2_SOURCE_V6_v06.txt',ISOname='IsotropicDiffuse',extDir=self.templatesDir,makeRegion=False)
 
@@ -643,7 +644,7 @@ class automaticLightCurve:
         evtbin['tstart']    = self.tstart
         evtbin['tstop']     = self.tstop
         evtbin['dtime']     = self.tbin
-        if VERBOSE:
+        if self.verbose:
             print 'INFO Running gtbin'
         evtbin.run()
 
@@ -674,13 +675,13 @@ class automaticLightCurve:
         options='infile='+infile+' scfile='+scfile+' irfs='+irfs+' rad='+rad
         if self.fglName is not None:
             target=self.fglName.replace('3FGLJ','3FGL J')
-            if DEBUG:
+            if self.debug:
                 print 'DEBUG: exposure: target=%s' % target
             options+=' srcmdl='+srcmdl+' target="'+target+'"'
         else:
             options+=' srcmdl="none" specin='+str(gamma)
         cmd='time -p '+self.fermiDir+'/bin/gtexposure '+options
-        if VERBOSE:
+        if self.verbose:
             print 'INFO Running %s' % cmd
         os.system(cmd)
 
@@ -1066,7 +1067,7 @@ class automaticLightCurve:
 
         # However, if the program is run during dark time, we should look at the ephemerids of next night (not current night):
         if nextSunrise < nextSunset:
-            if VERBOSE:
+            if self.verbose:
                 print "INFO: looking at visibility for tomorrow"
             # we just put the current time at next sunrise + 10 min., to be sure to fall on tomorrow's morning day time
             site.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
@@ -1099,7 +1100,7 @@ class automaticLightCurve:
         else:
             endDarkness=nextSunrise
 
-        if DEBUG:
+        if self.debug:
             darknessDuration = endDarkness-beginDarkness
             print "DEBUG: darkness begin=%s" % beginDarkness
             print "DEBUG: darkness ends=%s" % endDarkness
@@ -1117,7 +1118,7 @@ class automaticLightCurve:
         if (srcTransitTime > beginDarkness and srcTransitTime < endDarkness and srcAltAtTransit > thisminAlt) or srcAltAtStartDarkTime > thisminAlt or srcAltAtEndDarkTime > thisminAlt:
             visibleFlag=True
 
-        if VERBOSE:
+        if self.verbose:
             print "INFO: is_visible: "+str(visibleFlag)
         return visibleFlag
 
@@ -1205,7 +1206,7 @@ class automaticLightCurve:
 
         flux        = data[2].tonumpy()
         fluxErr     = data[3].tonumpy()
-        if VERBOSE:
+        if self.verbose:
             try:
                 from uncertainties import unumpy as unp
                 print('INFO: The long-term flux average is ', unp.uarray(flux, fluxErr).mean())
@@ -1279,7 +1280,7 @@ class automaticLightCurve:
 
         self.energyTimeFig=self.workDir+'/'+str(self.src)+'_energyTime.png'
 
-        if DEBUG:
+        if self.debug:
             print 'DEBUG %s, threshold=%g, lastFlux=%g, lastFluxErr=%g' % (self.src,self.threshold,self.lastFlux,self.lastFluxErr)
 
         # Do we kill potential trigger due to (ra, dec, z) cut ?
@@ -1292,18 +1293,18 @@ class automaticLightCurve:
             self.active=False
 
         # Combine killTrigger and flux above threshold criteria
-        if (not self.triggerkilled and self.active) or FORCE_ALERT:
+        if (not self.triggerkilled and self.active) or self.forcealert:
             SENDALERT = True
         else:
             SENDALERT = False
 
-        if VERBOSE:
+        if self.verbose:
             print "INFO: triggerkilled="+str(self.triggerkilled)
             print "INFO: active="+str(self.active)
             print "INFO: visible="+str(self.visible)
             print "INFO: SENDALERT="+str(SENDALERT)
 
-        if DEBUG:
+        if self.debug:
             print "DEBUG %s, dec=%f, z=%f, maxZA=[%s], maxz=[%s], triggerkilled=%s, sendalert=%s" % (str(self.src),self.dec,self.z,', '.join(map(str,self.maxZA)),', '.join(map(str,self.maxz)),self.triggerkilled,SENDALERT)
 
         return SENDALERT
@@ -1464,21 +1465,21 @@ class automaticLightCurve:
             cat3FGLfile = self.catalogFile.replace('gll_psc_v08','gll_psc_v16')
             hdulist = pyfits.open(cat3FGLfile)
             cat=hdulist[1].data
-            if DEBUG:
+            if self.debug:
                 print 'DEBUG: 2FGL name is %s' % self.fglName.replace('_2FGLJ','2FGL J').replace('2FGLJ','2FGL J')
 
             found=False
             for stuff in cat:
                 if stuff.field('2FGL_Name') == self.fglName.replace('_2FGLJ','2FGL J').replace('2FGLJ','2FGL J'):
                     threefglName=stuff.field('Source_Name')
-                    if VERBOSE:
+                    if self.verbose:
                         print 'INFO: Found the 3FGL counterpart of %s: %s' % (self.fglName,threefglName)
                     found=True
                     break
 
             if not found:
                 threefglName=None
-                if VERBOSE:
+                if self.verbose:
                     print 'INFO: No 3FGL counterpart found for %s' % self.fglName
 
             hdulist.close()
@@ -1499,7 +1500,7 @@ class automaticLightCurve:
             try:
                 hdulist = pyfits.open(cat2FHLfile)
             except IOError:
-                if VERBOSE:
+                if self.verbose:
                     print 'INFO: 2FHL catalog file not found'
                 return None
             cat=hdulist[1].data
@@ -1509,341 +1510,17 @@ class automaticLightCurve:
             for stuff in cat:
                 if stuff.field('3FGL_Name') == self.fglName.replace('_3FGLJ','3FGL J').replace('3FGLJ','3FGL J') or stuff.field('3FGL_Name') == str(threefglName).replace('3FGLJ','3FGL J'):
                     fhlName=stuff.field('Source_Name')
-                    if VERBOSE:
+                    if self.verbose:
                         print 'INFO: Found the 2FHL counterpart of %s: %s' % (self.fglName,fhlName)
                     found=True
                     break
 
             if not found:
                 fhlName=None
-                if VERBOSE:
+                if self.verbose:
                     print 'INFO: No 2FHL counterpart found for %s' % self.fglName
 
             hdulist.close()
             return fhlName
         else:
             return None
-
-
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False,stopmonth=None):
-    """
-    Process a given source.
-    """
-
-    if mysrc is None:
-        print "ERROR Missing input source !"
-        sys.exit(1)
-
-    # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
-    # We automatically recreate here any missing long time-binned data.
-    if daily and not longTerm and not force_daily:
-        print "[%s] Daily light curve asked for, I will first process the long time-binned one" % mysrc
-        longtermactive, visible=processSrc(mysrc=mysrc,
-                                           useThresh=useThresh,
-                                           daily=False,
-                                           mail=False,
-                                           longTerm=longTerm,
-                                           yearmonth=yearmonth,
-                                           mergelongterm=mergelongterm,
-                                           withhistory=withhistory,
-                                           update=update,
-                                           configfile=configfile,
-                                           stopmonth=stopmonth)
-        if longtermactive and visible:
-            print "[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
-        elif longtermactive and not visible:
-            print "[%s] \033[91mSource %s is active but not visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
-            return False
-        elif not longtermactive and visible:
-            print "[%s] \033[91mSource %s is visible but not active. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
-            return False
-        elif not longtermactive and not visible:
-            print "[%s] \033[91mSource %s is neither active nor visible. Daily-binned light curve aborted...\033[0m" % (mysrc, mysrc)
-            return False
-        else:
-            print "[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m" % (mysrc, mysrc)
-            return False
-    elif force_daily:
-        print "[%s] Forcing daily light curve, I will first process the long time-binned one" % mysrc
-        longtermactive, visible=processSrc(mysrc=mysrc,
-                                           useThresh=useThresh,
-                                           daily=False,
-                                           mail=False,
-                                           longTerm=longTerm,
-                                           yearmonth=yearmonth,
-                                           mergelongterm=mergelongterm,
-                                           withhistory=withhistory,
-                                           update=update,
-                                           configfile=configfile,
-                                           stopmonth=stopmonth)
-    else:
-        print "[%s] Processing long time-binned light curve..." % mysrc
-
-    auto=automaticLightCurve(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth)
-    auto.readSourceList(mysrc)
-
-    if DEBUG:
-        print '2FHL counterpart is ', auto.search2FHLcounterpart()
-
-    if longTerm is True and mergelongterm is True:
-
-        # Remove all the old merged file for this source, before reprocessing the merged data
-        if not auto.daily:
-            for file in glob.glob(auto.workDir+'/'+auto.src+'*'):
-                os.remove(file)
-        if auto.daily:
-            for file in glob.glob(auto.workDir+'/'+auto.src+'*daily*'):
-                os.remove(file)
-
-
-        # TO BE CHANGED !!!
-        startyearmonth = '200808'
-        # Hardcoded !!! Beurk, not good, ugly, bad !!!
-
-        if auto.stopmonth is not None:
-            thisyearmonth = auto.stopmonth
-        else:
-            thisyearmonth  = datetime.date.today().strftime('%Y%m')
-        thisyear       = thisyearmonth[:-2]
-        thismonth      = thisyearmonth[-2:]
-        startyear      = startyearmonth[:-2]
-        startmonth     = startyearmonth[-2:]
-
-
-        # First make sure that all the month-by-month long-term data have been processed
-        #
-        # Loop on month from 2008/08 to this month
-        for year in range(int(startyear),int(thisyear)+1):
-            for month in range(1,12+1):
-                # To retrieve the correct results directories, 'month' should be made of 2 digits
-                month='%02d'%month
-                tmpyearmonth=str(year)+str(month)
-                if (year==int(startyear) and int(month) < int(startmonth)) or (year==int(thisyear) and int(month) > int(thismonth)):
-                    continue
-
-                # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
-                # BUT only if update=True
-                if year==int(thisyear) and int(month)==int(thismonth) and update is True:
-                    tmpworkdir=auto.baseOutDir+"/longTerm/"+str(year)+str(month)
-                    if not auto.daily:
-                        for file in glob.glob(tmpworkdir+'/'+auto.src+'*'):
-                            os.remove(file)
-                    if auto.daily:
-                        for file in glob.glob(tmpworkdir+'/'+auto.src+'*daily*'):
-                            os.remove(file)
-
-                processSrc(mysrc=auto.src,useThresh=useThresh,daily=auto.daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile,stopmonth=stopmonth)
-
-
-
-        # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT, createLCfig, createEnergyTimeFig. No mail is sent here.
-        auto.mergeGTIfiles()
-        if auto.fglName is not None:
-            auto.createXML()
-            mygamma=None
-        else:
-            mygamma=ASSUMEDGAMMA
-            print '[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
-        auto.photoLC()
-        auto.exposure(gamma=mygamma)
-        auto.createDAT()
-        auto.createLCfig()
-        auto.createEnergyTimeFig()
-        # Exit here
-        return False
-    # End mergelongterm
-
-
-    # When mergelongterm is False, we do the following:
-    auto.selectSrc()
-    auto.makeTime()
-
-    # If we are in --long-term mode, but not in --merge-long-term mode, we can stop here, since the --merge-long-term mode then starts at the mergeGTIfiles level
-    if longTerm:
-        return False
-
-    global FLAGASSUMEDGAMMA
-    if auto.fglName is not None:
-        auto.createXML()
-        mygamma=None
-        FLAGASSUMEDGAMMA=False
-    else:
-        mygamma=ASSUMEDGAMMA
-        print '[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (auto.src, mygamma)
-        FLAGASSUMEDGAMMA=True
-    auto.photoLC()
-    auto.exposure(gamma=mygamma)
-    auto.createDAT()
-    auto.createLCfig()
-    auto.createEnergyTimeFig()
-    alertSent=auto.sendAlert(nomailall=test,sendmail=mail)
-
-    return auto.active, auto.visible
-
-
-def main(argv=None):
-    """
-    Main procedure
-    """
-
-    # options parser:
-    helpmsg="""%prog [options] <source> [<optional YYYYMM>]
-
-This is the version $Id$
-
-If you call %prog using the -l option, you need to provide a year and a month in input, in the format YYYYMM.
-
-Use '-h' to get the help message
-
-"""
-
-    parser = OptionParser(version="$Id$",
-                          usage=helpmsg)
-
-    parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
-                      help='use daily bins for the light curves (defaulted to long time-binned)')
-    parser.add_option("--force-daily", action="store_true", dest="force_daily", default=False,
-                      help='force daily bins for the light curves')
-    parser.add_option("--force-alert", action="store_true", dest="force_alert", default=False,
-                      help='force an alert to be issued. To be used along with --force-daily. For test purposes only.')
-    parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
-                      help='use custom trigger thresholds from the master list of sources (defaulted to 1.e-6 ph cm^-2 s^-1)')
-    parser.add_option("-l", "--long-term", action="store_true", dest="l", default=False,
-                      help='generate a long term light curve, for one given month (defaulted to False). With this option, one should provide a source name as usual, but also a month for which the data should be processed, in the format YYYYMM.')
-    parser.add_option("-w", "--with-history", action="store_true", dest="history", default=False,
-                      help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
-    parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
-                      help='merge the month-by-month long-term light curves together. If those do not exist, they will be created on the fly.')
-    parser.add_option("-u","--update",action="store_true",dest="u",default=False,
-                      help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
-    parser.add_option("--stop-month", default=None, dest="STOPMONTH", metavar="<STOPMONTH>",
-                      help="in conjunction with --merge-long-term, defines the stop year/month (in the format YYYYMM) until which the long-term light curve is generated. '%default' by default.")
-    parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
-                      help='do not send mail alerts')
-    parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
-                      help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to test recipients (by default, mail alerts are sent to everybody, cf. the configuration files).')
-    parser.add_option("-f", "--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
-                      help="provide a configuration file. Using '%default' by default.")
-    parser.add_option("-v", "--verbose", action="store_true", dest="v", default=False,
-                      help='verbose output.')
-    parser.add_option("--debug", action="store_true", dest="debug", default=False,
-                      help='debugging output.')
-    (opt, args) = parser.parse_args()
-
-    CONFIGFILE=opt.CONFIGFILE
-
-    global VERBOSE
-    if opt.v:
-        VERBOSE=True
-    else:
-        VERBOSE=False
-
-    global DEBUG
-    if opt.debug:
-        DEBUG=True
-    else:
-        DEBUG=False
-
-    # If forcing an alert to be issued
-    global FORCE_ALERT
-    if opt.force_alert:
-        FORCE_ALERT=True
-    else:
-        FORCE_ALERT=False
-
-    # If daily bins
-    if opt.d:
-        DAILY=True
-    else:
-        DAILY=False
-
-    if opt.force_daily:
-        FORCE_DAILY=True
-        DAILY=True
-    else:
-        FORCE_DAILY=False
-
-    # If custom thresholds
-    if opt.c:
-        USECUSTOMTHRESHOLD=True
-    else:
-        USECUSTOMTHRESHOLD=False
-
-    # If no mail is sent
-    if opt.n:
-        MAIL=False
-    else:
-        MAIL=True
-
-    # If test mode
-    if opt.t:
-        TEST=True
-    else:
-        TEST=False
-
-    if TEST and not MAIL:
-        print "ERROR You asked for both the --test and --no-mail options."
-        print "      These options are mutually exclusive."
-        sys.exit(1)
-
-    # If long term
-    if opt.l:
-        LONGTERM=True
-        # Check that we provided the mandatory argument: a source to process, and a month for which the long-term data should be produced !
-        if len(args) != 2:
-            print "ERROR Main: wrong number of arguments"
-            print "            With the --long-term option, you should provide:"
-            print "              - a source name"
-            print "              - a yearmonth for which the long term data should be produced"
-            sys.exit(1)
-        yearmonth=args[1]
-
-    else:
-        LONGTERM=False
-        # Check that we provided the mandatory argument: a source to process !
-        if len(args) != 1:
-            print "ERROR Main: wrong number of arguments"
-            sys.exit(1)
-        yearmonth=None
-
-    # If merge long term light curves
-    if opt.m:
-        MERGELONGTERM=True
-        LONGTERM=True
-        #DAILY=False
-        MAIL=False
-        TEST=False
-        # If update long term light curves with brand new data
-        if opt.u:
-            UPDATE=True
-        else:
-            UPDATE=False
-        if opt.STOPMONTH is not None:
-            STOPMONTH = str(opt.STOPMONTH)
-        else:
-            STOPMONTH = None
-    else:
-        MERGELONGTERM=False
-        UPDATE=False
-        STOPMONTH = None
-
-
-    # If dynamical flux trigger threshold based on source history
-    if opt.history:
-        WITHHISTORY=True
-    else:
-        WITHHISTORY=False
-
-    src=args[0]
-
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY, stopmonth=STOPMONTH)
-
-    return True
-
-
-if __name__ == '__main__':
-    """
-    Execute main()
-    """
-
-    main()

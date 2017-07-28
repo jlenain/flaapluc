@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-28 16:21:49 jlenain"
+# Time-stamp: "2017-07-28 20:23:42 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -34,10 +34,7 @@ from flaapluc import automaticLightCurve
 
 
 # Flags
-DEBUG = False
-VERBOSE = False
 BATCH = True
-FORCE_ALERT = False
 # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA
 # or taken from the 3FGL.
 FLAGASSUMEDGAMMA = False
@@ -48,7 +45,7 @@ TOFFSET = 54000.  # offset in MJD for plot creation
 ASSUMEDGAMMA = -2.5
 
 
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False,stopmonth=None):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False,stopmonth=None, verbose=False, debug=False, forcealert=False):
     """
     Process a given source.
     """
@@ -71,7 +68,10 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            withhistory=withhistory,
                                            update=update,
                                            configfile=configfile,
-                                           stopmonth=stopmonth)
+                                           stopmonth=stopmonth,
+                                           verbose=verbose,
+                                           debug=debug,
+                                           forcealert=forcealert)
         if longtermactive and visible:
             print "[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
         elif longtermactive and not visible:
@@ -98,15 +98,18 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            withhistory=withhistory,
                                            update=update,
                                            configfile=configfile,
-                                           stopmonth=stopmonth)
+                                           stopmonth=stopmonth,
+                                           verbose=verbose,
+                                           debug=debug,
+                                           forcealert=forcealert)
     else:
         print "[%s] Processing long time-binned light curve..." % mysrc
 
-    auto=automaticLightCurve(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth)
+    auto=automaticLightCurve(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth, verbose=verbose, debug=debug)
     auto.readSourceList(mysrc)
 
-    if DEBUG:
-        print '2FHL counterpart is ', auto.search2FHLcounterpart()
+    if debug:
+        print 'DEBUG: 2FHL counterpart is ', auto.search2FHLcounterpart()
 
     if longTerm is True and mergelongterm is True:
 
@@ -155,7 +158,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                         for file in glob.glob(tmpworkdir+'/'+auto.src+'*daily*'):
                             os.remove(file)
 
-                processSrc(mysrc=auto.src,useThresh=useThresh,daily=auto.daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile,stopmonth=stopmonth)
+                processSrc(mysrc=auto.src,useThresh=useThresh,daily=auto.daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile,stopmonth=stopmonth, verbose=verbose,debug=debug, forcealert=forcealert)
 
                 
 
@@ -255,24 +258,21 @@ Use '-h' to get the help message
 
     CONFIGFILE=opt.CONFIGFILE
 
-    global VERBOSE
     if opt.v:
         VERBOSE=True
     else:
         VERBOSE=False
 
-    global DEBUG
     if opt.debug:
         DEBUG=True
     else:
         DEBUG=False
 
     # If forcing an alert to be issued
-    global FORCE_ALERT
     if opt.force_alert:
-        FORCE_ALERT=True
+        FORCEALERT=True
     else:
-        FORCE_ALERT=False
+        FORCEALERT=False
 
     # If daily bins
     if opt.d:
@@ -358,7 +358,7 @@ Use '-h' to get the help message
 
     src=args[0]
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY, stopmonth=STOPMONTH)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY, stopmonth=STOPMONTH, verbose=VERBOSE, debug=DEBUG, forcealert=FORCEALERT)
 
     return True
 
