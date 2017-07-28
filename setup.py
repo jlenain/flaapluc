@@ -5,7 +5,7 @@ if sys.version_info >= (3,0):
     sys.exit('Sorry, Python >= 3.0 is not supported')
 
 setup(name='flaapluc',
-      version='1.0',
+      version='1.1',
       description='Quick generation of alerts from Fermi-LAT data',
       url='',
       author='Jean-Philippe Lenain',
