@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-28 22:27:00 jlenain"
+# Time-stamp: "2017-07-29 00:00:18 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -20,14 +20,8 @@ http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 
 import sys
 import os
-import asciidata
 import datetime
-import time
 import glob
-from numpy import *
-import pyfits
-import ephem
-from astLib import astCoords
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 from flaapluc import automaticLightCurve
