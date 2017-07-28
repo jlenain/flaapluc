@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-28 15:55:50 jlenain"
+# Time-stamp: "2017-07-28 16:09:04 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -234,8 +234,8 @@ class automaticLightCurve:
 
     def __init__(self, file=None, customThreshold=False, daily=False,
                  longTerm=False, yearmonth=None, mergelongterm=False,
-                 withhistory=False, configfile='default.cfg'):
-        
+                 withhistory=False, stopmonth=None, configfile='default.cfg'):
+
         self.config = self.getConfig(configfile=configfile)
         self.allskyDir = self.config.get('InputDirs', 'AllskyDir')
         self.archiveDir = self.config.get('InputDirs', 'ArchiveDir')
@@ -270,7 +270,7 @@ class automaticLightCurve:
             # Take 2 sigma by default
             self.sigmaLT = 1.5
             print '\033[93mCan not read SigmaLT in config file, taking %.1f as default.\033[0m' % (self.sigmaLT)
-     
+
         # Read maxz and maxZA as lists, not as single floats
         self.maxz = [float(i) for i in getConfigList(self.config.get('AlertTrigger', 'MaxZ'))]
         self.maxZA = [float(i) for i in getConfigList(self.config.get('AlertTrigger', 'MaxZA'))]
@@ -282,7 +282,7 @@ class automaticLightCurve:
         except:
             # Don't check the source visibility, by default
             self.checkVisibility = False
-            
+
         self.daily = daily
         self.withhistory = withhistory
 
@@ -310,7 +310,7 @@ class automaticLightCurve:
 	        os.makedirs(self.workDir)
 	    except OSError:
 		pass
-        
+
         self.fermiDir   = os.getenv('FERMI_DIR')
 
         # Setting default parameters
@@ -327,7 +327,7 @@ class automaticLightCurve:
             # Take 500 GeV by default
             self.emax      = 5.e5 # E max
             print '\033[93mCan not read Emax in config file, taking %.1g as default.\033[0m' % (self.emax)
-        self.zmax      = 100. # degrees
+        self.zmax      = 90. # degrees
         self.rockangle = 52.  # maximal allowed rocking angle
 
         if self.daily:
@@ -337,6 +337,8 @@ class automaticLightCurve:
 
         self.threshold = 1.e-6 # ph cm^-2 s^-1
         self.customThreshold=customThreshold
+
+        self.stopmonth = stopmonth
         
         # Open allsky file to get the start and stop dates
         try:
@@ -364,7 +366,7 @@ class automaticLightCurve:
         if not longTerm:
             self.tstart = header['TSTART']
             self.tstop  = header['TSTOP']
-            
+
         else:
             missionStart = header['TSTART'] # in MET
             missionStop  = header['TSTOP']  # in MET
@@ -383,7 +385,7 @@ class automaticLightCurve:
                     yearmonthStop  = time.mktime(datetime.datetime(  int(year), int(month)+1,   1,     0,       0,      0,           0).timetuple())
                 else:
                     yearmonthStop  = time.mktime(datetime.datetime(int(year)+1,            1,   1,     0,       0,      0,           0).timetuple())
-            
+
                 # Convert these from UNIX time to MET
                 tmptstart = mjd2met(unixtime2mjd(yearmonthStart))
                 tmptstop  = mjd2met(unixtime2mjd(yearmonthStop))
@@ -406,7 +408,7 @@ class automaticLightCurve:
             if mergelongterm is True:
                 self.tstart = missionStart
                 self.tstop  = missionStop
- 
+
 
     def getConfig(self,configfile='./default.cfg'):
         """Get configuration from a configuration file."""
@@ -443,7 +445,7 @@ class automaticLightCurve:
         if self.customThreshold:
             myThreshold=srcList[5].tonumpy()
 
-    
+
         # If we ask for a particular source, return the parameters for that source
         if mysrc != None:
             # Find our input src in the list of sources
@@ -466,7 +468,7 @@ class automaticLightCurve:
                     self.z       = z[i]
                     self.fglName = fglName[i]
                     return
-            
+
             # If we end up without any found source, print out a WARNING
             print 'WARNING Can\'t find your source %s in the list of sources !' % str(mysrc)
             self.src     = None
@@ -475,12 +477,12 @@ class automaticLightCurve:
             self.z       = None
             self.fglName = None
             return
-        
+
         # Otherwise, return the whole list of parameters for all the sources
         else:
             return src,ra,dec,z,fglName
 
-        
+
     def selectSrc(self):
         """
         Filter a given source, running gtselect
@@ -496,7 +498,7 @@ class automaticLightCurve:
         else:
             outfile=self.workDir+'/'+str(self.src)+'.fits'
         filter['outfile']=outfile
-        
+
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
@@ -526,7 +528,7 @@ class automaticLightCurve:
             maketime['evfile']=self.workDir+'/'+str(self.src)+'.fits'
             outfile=self.workDir+'/'+str(self.src)+'_gti.fits'
         maketime['outfile']=outfile
-        
+
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
@@ -564,14 +566,14 @@ class automaticLightCurve:
         for item in list:
             filelist.write(item+'\n')
         filelist.close()
-        
+
         filter['infile']='@'+listname
         if not self.daily:
             outfile=self.workDir+'/'+str(self.src)+'_gti.fits'
         else:
             outfile=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
         filter['outfile']=outfile
-        
+
         # If outfile already exists, we re-create it
         if os.path.isfile(outfile):
             os.remove(outfile)
@@ -594,7 +596,7 @@ class automaticLightCurve:
         """
         Create an XML model file based on the 3FGL catalogue
         """
-        
+
         if self.daily:
             evfile=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
             modelfile=self.workDir+'/'+str(self.src)+'_daily.xml'
@@ -611,7 +613,7 @@ class automaticLightCurve:
         except ImportError:
             print "ERROR Can't import make3FGLxml."
             sys.exit(1)
-        
+
         mymodel=make3FGLxml.srcList(self.catalogFile,evfile,modelfile)
         if VERBOSE:
             print 'INFO Running makeModel'
@@ -664,7 +666,7 @@ class automaticLightCurve:
         hdu=pyfits.open(infile)
         if hdu[1].header.get('TTYPE5')=='EXPOSURE':
             return True
- 
+
         scfile=self.spacecraft
         irfs='P8R2_SOURCE_V6'
         rad=str(self.roi)
@@ -720,7 +722,7 @@ class automaticLightCurve:
 
         timeMjd=met2mjd(time)
         # We can do this because time is NOT a list, but a numpy.array
-        
+
         for i in range(len(time)):
             # Exposure can be 0 if longTerm=True and TSTOP in photon file > TSTOP in spacecraft file, or if Fermi operated in pointed mode for a while.
             if exposure[i] != 0.:
@@ -776,7 +778,7 @@ class automaticLightCurve:
         return True,batlc
 
 
-        
+
     def createLCfig(self):
         """
         Create a PNG figure with the light curve of a given source. Any existing PNG file is overwritten !
@@ -835,10 +837,10 @@ class automaticLightCurve:
 
         ax.set_title(title)
 
-        
+
         # Force the y-axis ticks to use 1e-6 as a base exponent
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: ('%.2f')%(x*1e6)))
-        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (x 10^-6 ph cm^-2 s^-1)'%(self.emin,self.emax/1000.),size='x-small')
+        ax.set_ylabel('F (%.0f MeV-%.0f GeV) (%s 10$^{-6}$ ph cm$^{-2}$ s$^{-1}$)'%(self.emin, self.emax/1000., r'$\times$'))  #, size='x-small')
 
         day=24.*60.*60.
 
@@ -877,7 +879,7 @@ class automaticLightCurve:
 
         # Plot Swift/BAT lightcurve
         if xray:
-            axbat.errorbar(batlc['TIME']+0.5,batlc['RATE'],batlc['ERROR'],fmt=None,capsize=0,elinewidth=1,ecolor='b',color='b')
+            axbat.errorbar(batlc['TIME']+0.5,batlc['RATE'],batlc['ERROR'],fmt="none",capsize=0,elinewidth=1,ecolor='b',color='b')
             axbat.set_xlabel('MJD-'+str(TOFFSET))
             #axbat.set_xlabel('MJD')
             axbat.set_ylabel('F (15-50 keV) (count cm^-2 s^-1)',size='x-small')
@@ -898,7 +900,7 @@ class automaticLightCurve:
                 ax.set_ylim(ymin=-1.e-7,ymax=maxy)
             else:
                 ax.set_ylim(ymin=-1.e-7,ymax=self.threshold)
-        
+
         # Don't show the figure in batch mode
         if not BATCH:
             show()
@@ -943,7 +945,8 @@ class automaticLightCurve:
         ylabel = 'Energy (MeV)'
         if eThresh > self.emin:
             ylable += ' -- only data above %.1f GeV are shown' % (eThresh/1.e3)
-        ax.set_ylabel(ylabel, size='x-small')
+        # ax.set_ylabel(ylabel, size='x-small')
+        ax.set_ylabel(ylabel)
 
         ## Make the x-axis ticks shifted by some value
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f'%(x-TOFFSET)))
@@ -964,7 +967,8 @@ class automaticLightCurve:
             idx = z.argsort()
             t, e, z = t[idx], e[idx], z[idx]
             pcm = ax.scatter(t, e, c=z, s=100, edgecolor='')
-            colorbar(pcm, ax=ax)
+            cbar = colorbar(pcm, ax=ax)
+            cbar.set_label('Kernel-density estimates (arb. unit)', rotation=90)
         except ImportError:
             ax.plot(t, e,  'bo')
         ax.set_yscale('log')
@@ -977,7 +981,7 @@ class automaticLightCurve:
                 rotation='vertical',
                 size='xx-small'
                 )
-        
+
         # Don't show the figure in batch mode
         if not BATCH:
             show()
@@ -996,7 +1000,7 @@ class automaticLightCurve:
         '''
         Check whether the current source is visible at the site provided.
         '''
-        
+
         # Define site for pyephem
         site    = ephem.Observer()
         site.pressure = 0
@@ -1025,11 +1029,11 @@ class automaticLightCurve:
 
         # Convert ZA to Alt
         thisminAlt=abs(90.-thismaxZA)
-        
+
         ephemSrc = ephem.FixedBody()
         ephemSrc._ra=astCoords.decimal2hms(self.ra,delimiter=':')
         ephemSrc._dec=astCoords.decimal2dms(self.dec,delimiter=':')
-        
+
         visibleFlag=False
 
         zaAtCulmin = self.zaAtCulmination()
@@ -1042,12 +1046,12 @@ class automaticLightCurve:
             # the source is never above maxZA set by 2D mask on Dec/z
             print '[%s]\033[91m Never above allowed max ZA, consider relaxing the Dec/z cuts or discarding this source from your source list...\033[0m' % self.src
             return False
-        
-        
+
+
         # All times are handled here in UTC (pyEphem only uses UTC)
         now      = datetime.datetime.utcnow()
         # tomorrow = now + datetime.timedelta(days=1)
-        
+
         site.date      = now
         sun            = ephem.Sun()
         nextSunset     = site.next_setting(sun)
@@ -1075,11 +1079,11 @@ class automaticLightCurve:
 
         ephemSrc.compute(site)
         srcTransitTime = site.next_transit(ephemSrc)
-        
+
         site.date=srcTransitTime
         ephemSrc.compute(site)
         srcAltAtTransit=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
-        
+
         # If srcAltAtTransit is below thisminAlt, the source is just not correctly visible and we stop here
         if srcAltAtTransit < thisminAlt:
             return False
@@ -1104,11 +1108,11 @@ class automaticLightCurve:
         site.date=beginDarkness
         ephemSrc.compute(site)
         srcAltAtStartDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
-        
+
         site.date=endDarkness
         ephemSrc.compute(site)
         srcAltAtEndDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
-        
+
         # check if source is visible, above minAlt, during this night
         if (srcTransitTime > beginDarkness and srcTransitTime < endDarkness and srcAltAtTransit > thisminAlt) or srcAltAtStartDarkTime > thisminAlt or srcAltAtEndDarkTime > thisminAlt:
             visibleFlag=True
@@ -1133,7 +1137,7 @@ class automaticLightCurve:
         # combination of acceptable
         #                        z         ZA@culmination
         grid = array(zip(self.maxz,self.maxZA))
-    
+
         try:
             # import Kapteyn module for WCS
             from kapteyn import wcs
@@ -1142,7 +1146,7 @@ class automaticLightCurve:
             sys.exit(1)
 
 
-        
+
         # ******** FOR THE FUTURE *********
         ## Equatorial coordinates -> Galactic coordinates transformation
         #equat2gal = wcs.Transformation((wcs.equatorial, wcs.fk5,'J2000.0'),wcs.galactic)
@@ -1152,7 +1156,7 @@ class automaticLightCurve:
         ## Retrieve the Galactic latitude
         #srcGalLat=srcGalCoord[(1,0)]
         ## To be used later, for an additional cut on Gal Lat ?!
-        
+
         zaAtCulmin = self.zaAtCulmination()
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
@@ -1188,7 +1192,7 @@ class automaticLightCurve:
         @return (fluxAverage,fluxRMS)
         @rtype tuple
         '''
-        
+
         # Read the longterm .dat LC file
         infile = self.baseOutDir+'/longTerm/merged/'+str(self.src)+'_lc.dat'
         try:
@@ -1201,7 +1205,12 @@ class automaticLightCurve:
 
         flux        = data[2].tonumpy()
         fluxErr     = data[3].tonumpy()
-        #lastFluxErr = fluxErr[-1:]
+        if VERBOSE:
+            try:
+                from uncertainties import unumpy as unp
+                print('INFO: The long-term flux average is ', unp.uarray(flux, fluxErr).mean())
+            except:
+                pass
 
         # weighted average of the historical fluxes, weighted by their errors
         fluxAverage = average(flux, weights=1./fluxErr)
@@ -1214,7 +1223,7 @@ class automaticLightCurve:
             self.threshold = fluxAverage + self.sigmaLT*fluxRMS
 
         return (fluxAverage,fluxRMS)
-        
+
 
     def Triggered(self):
         '''
@@ -1269,7 +1278,7 @@ class automaticLightCurve:
         self.lastFluxErr = fluxErr[-1:]
 
         self.energyTimeFig=self.workDir+'/'+str(self.src)+'_energyTime.png'
-            
+
         if DEBUG:
             print 'DEBUG %s, threshold=%g, lastFlux=%g, lastFluxErr=%g' % (self.src,self.threshold,self.lastFlux,self.lastFluxErr)
 
@@ -1341,13 +1350,19 @@ class automaticLightCurve:
             else:
                 fhlmessage="No 2FHL counterpart found"
 
+            fglName=self.search3FGLcounterpart()
+            if fglName is not None:
+                fglmessage="3FGL counterpart is %s" % fglName
+            else:
+                fglmessage="No 3FGL counterpart found"
+
             # To whom the mail should be sent (cf. __init__ function of the class)
             if not nomailall:
                 recipient = self.usualRecipients
-                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s [2FHL: %s]' % (self.src,fhlName)
+                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s [2FHL counterpart: %s]' % (self.src,fhlName)
             else:
                 recipient = self.testRecipients
-                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s [2FHL: %s]' % (self.src, fhlName)
+                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s [2FHL counterpart: %s]' % (self.src, fhlName)
 
             msg['From'] = sender
             COMMASPACE = ', '
@@ -1355,13 +1370,13 @@ class automaticLightCurve:
             msg.preamble = 'You will not see this in a MIME-aware mail reader.\n'
             # Guarantees the message ends in a newline
             msg.epilogue = ''
-                       
+
             mailtext="""
      FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) report
 
-     *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s (%s) exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
+     *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s (%s, %s) exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
-     """%(self.emin,self.emax/1000.,self.src,fhlmessage,self.threshold)
+     """%(self.emin,self.emax/1000.,self.src,fhlmessage,fglmessage,self.threshold)
 
             if self.daily:
                 mailtext=mailtext+"""
@@ -1405,10 +1420,10 @@ class automaticLightCurve:
       Cheers,
       FLaapLUC.
 """
- 
+
             txt = MIMEText(mailtext)
             msg.attach(txt)
-            
+
             # Attach the figures
             for fig  in [self.pngFig, self.energyTimeFig]:
                 try:
@@ -1510,7 +1525,7 @@ class automaticLightCurve:
             return None
 
 
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False,stopmonth=None):
     """
     Process a given source.
     """
@@ -1532,7 +1547,8 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            mergelongterm=mergelongterm,
                                            withhistory=withhistory,
                                            update=update,
-                                           configfile=configfile)
+                                           configfile=configfile,
+                                           stopmonth=stopmonth)
         if longtermactive and visible:
             print "[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve..." % (mysrc, mysrc)
         elif longtermactive and not visible:
@@ -1558,11 +1574,12 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            mergelongterm=mergelongterm,
                                            withhistory=withhistory,
                                            update=update,
-                                           configfile=configfile)        
+                                           configfile=configfile,
+                                           stopmonth=stopmonth)
     else:
         print "[%s] Processing long time-binned light curve..." % mysrc
 
-    auto=automaticLightCurve(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile)
+    auto=automaticLightCurve(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth)
     auto.readSourceList(mysrc)
 
     if DEBUG:
@@ -1583,7 +1600,10 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
         startyearmonth = '200808'
         # Hardcoded !!! Beurk, not good, ugly, bad !!!
 
-        thisyearmonth  = datetime.date.today().strftime('%Y%m')
+        if auto.stopmonth is not None:
+            thisyearmonth = auto.stopmonth
+        else:
+            thisyearmonth  = datetime.date.today().strftime('%Y%m')
         thisyear       = thisyearmonth[:-2]
         thismonth      = thisyearmonth[-2:]
         startyear      = startyearmonth[:-2]
@@ -1612,9 +1632,9 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                         for file in glob.glob(tmpworkdir+'/'+auto.src+'*daily*'):
                             os.remove(file)
 
-                processSrc(mysrc=auto.src,useThresh=useThresh,daily=auto.daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile)
+                processSrc(mysrc=auto.src,useThresh=useThresh,daily=auto.daily,mail=False,longTerm=True,test=False,yearmonth=tmpyearmonth,mergelongterm=False,update=update,configfile=configfile,stopmonth=stopmonth)
 
-                
+
 
         # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT, createLCfig, createEnergyTimeFig. No mail is sent here.
         auto.mergeGTIfiles()
@@ -1657,7 +1677,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     auto.createLCfig()
     auto.createEnergyTimeFig()
     alertSent=auto.sendAlert(nomailall=test,sendmail=mail)
-    
+
     return auto.active, auto.visible
 
 
@@ -1696,6 +1716,8 @@ Use '-h' to get the help message
                       help='merge the month-by-month long-term light curves together. If those do not exist, they will be created on the fly.')
     parser.add_option("-u","--update",action="store_true",dest="u",default=False,
                       help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
+    parser.add_option("--stop-month", default=None, dest="STOPMONTH", metavar="<STOPMONTH>",
+                      help="in conjunction with --merge-long-term, defines the stop year/month (in the format YYYYMM) until which the long-term light curve is generated. '%default' by default.")
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send mail alerts')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -1763,7 +1785,7 @@ Use '-h' to get the help message
         print "ERROR You asked for both the --test and --no-mail options."
         print "      These options are mutually exclusive."
         sys.exit(1)
-    
+
     # If long term
     if opt.l:
         LONGTERM=True
@@ -1795,10 +1817,16 @@ Use '-h' to get the help message
         if opt.u:
             UPDATE=True
         else:
-            UPDATE=False        
+            UPDATE=False
+        if opt.STOPMONTH is not None:
+            STOPMONTH = str(opt.STOPMONTH)
+        else:
+            STOPMONTH = None
     else:
         MERGELONGTERM=False
         UPDATE=False
+        STOPMONTH = None
+
 
     # If dynamical flux trigger threshold based on source history
     if opt.history:
@@ -1808,7 +1836,7 @@ Use '-h' to get the help message
 
     src=args[0]
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY, stopmonth=STOPMONTH)
 
     return True
 
