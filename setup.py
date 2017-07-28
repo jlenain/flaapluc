@@ -15,10 +15,8 @@ setup(name='flaapluc',
       install_requires=[
           'astropy',
           'asciidata',
-          'kapteyn',
           'matplotlib',
           'astLib',
-          'pyfits',
           'ephem'
       ],
       scripts=[
