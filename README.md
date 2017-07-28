@@ -35,12 +35,15 @@ To download the pipeline, type in a terminal:
 git clone https://github.com/jlenain/flaapluc.git
 ```
 
+Information on installation and setup can be found in `INSTALL`.
+
+
 ## Implementation
 
 The pipeline includes:
 
-- automaticLightCurve.py: to process a single source.
-- processAllSources.py: to process a bunch of sources, which actually calls the script `automaticLightCurve.py` for each individual source.
+- flaapluc: to process a single source.
+- flaapluc-allsources: to process a bunch of sources, which actually calls the class `automaticLightCurve` for each individual source.
 - listSources.txt: an example of a list of sources.
 - dummy.cfg: a configuration file where the user enters the configuration to make the pipeline work, such as file paths for inputs and outputs. You can of course have use several configuration files in one site.
 - README.md: this file.
@@ -48,15 +51,13 @@ The pipeline includes:
 Help can be found on the two individual scripts, by typing:
 
 ```sh
-./automaticLightCurve.py -h
+flaapluc -h
 ```
 
 ```sh
-./processAllSources.py -h
+flaapluc-allsources -h
 ```
 
 The pipeline uses an allsky file as input, which could easily be created using [`enrico`](http://enrico.readthedocs.org/en/latest/index.html). `FLaapLUC` is actually using `enrico` and can use it to generate an allsky file on the fly for you.
 
-You'll also need the `make3FGLxml.py` script available at http://fermi.gsfc.nasa.gov/ssc/data/analysis/user/.
-
-`FLaapLUC` depends on the *Fermi* Science Tools, and it is assumed that you have a local installation of this software on your machine (for more details, see http://fermi.gsfc.nasa.gov/ssc/data/analysis/software/). In more details, the two Python scripts 'automaticLightCurve.py' and 'processAllSources.py' should be able to find the `gt_apps` Python modules provided in the *Fermi* Science Tools (be careful to have your shell variable `$PYTHONPATH` up-to-date !).
+`FLaapLUC` depends on the *Fermi* Science Tools, and it is assumed that you have a local installation of this software on your machine (for more details, see http://fermi.gsfc.nasa.gov/ssc/data/analysis/software/). In more details, the 'automaticLightCurve' class should be able to find the `gt_apps` Python modules provided in the *Fermi* Science Tools (be careful to have your shell variable `$PYTHONPATH` up-to-date, if applicable !).
