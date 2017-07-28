@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-28 22:30:13 jlenain"
+# Time-stamp: "2017-07-29 00:06:13 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -18,25 +18,27 @@ http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
 """
 
-import sys
-import os
-import asciidata
 import datetime
 import time
 import glob
-from numpy import *
-import pyfits
-import ephem
-from astLib import astCoords
+import numpy as np
+import sys
+import os
 from optparse import OptionParser
 from ConfigParser import ConfigParser
+
+import asciidata
+# import pyfits
+from astropy.io import fits as pyfits
+import ephem
+from astLib import astCoords
 
 # Import some matplotlib modules
 try:
     import matplotlib
     matplotlib.use('Agg')
 
-    from matplotlib.pyplot import *
+    from matplotlib import pyplot as plt
     from matplotlib.ticker import FuncFormatter
 except ImportError:
     print "ERROR Can't import matplotlib"
@@ -771,7 +773,7 @@ class automaticLightCurve:
         localfile.close()
         # read local file with pyfits into batlc
         batfits=pyfits.open(file)
-        batlc=array(batfits[1].data)
+        batlc=np.array(batfits[1].data)
         batfits.close()
         # delete local file
         os.unlink(file)
@@ -819,7 +821,7 @@ class automaticLightCurve:
             (fluxAverage,fluxRMS) = self.dynamicalTrigger()
 
 
-        fig=figure()
+        fig=plt.figure()
 
         if xray:
             ax    = fig.add_subplot(211)
@@ -871,12 +873,12 @@ class automaticLightCurve:
 
         # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
-        figtext(0.98, 0.95,
-                'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
-                horizontalalignment="right",
-                rotation='vertical',
-                size='xx-small'
-                )
+        plt.figtext(0.98, 0.95,
+                    'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
+                    horizontalalignment="right",
+                    rotation='vertical',
+                    size='xx-small'
+        )
 
         # Plot Swift/BAT lightcurve
         if xray:
@@ -904,7 +906,7 @@ class automaticLightCurve:
 
         # Don't show the figure in batch mode
         if not BATCH:
-            show()
+            plt.show()
         # Save the figure
         fig.savefig(outfig)
 
@@ -929,7 +931,7 @@ class automaticLightCurve:
         t=met2mjd(datac['TIME'])
         e=datac['ENERGY']
 
-        fig=figure()
+        fig=plt.figure()
         ax = fig.add_subplot(111)
 
         if self.fglName is not None:
@@ -961,14 +963,14 @@ class automaticLightCurve:
         try:
             # cf. http://stackoverflow.com/questions/20105364/how-can-i-make-a-scatter-plot-colored-by-density-in-matplotlib
             from scipy.stats import gaussian_kde
-            xy = vstack([t, e])
+            xy = np.vstack([t, e])
             z = gaussian_kde(xy)(xy)
             # Re-normalize the density
             z = z/max(z)
             idx = z.argsort()
             t, e, z = t[idx], e[idx], z[idx]
             pcm = ax.scatter(t, e, c=z, s=100, edgecolor='')
-            cbar = colorbar(pcm, ax=ax)
+            cbar = plt.colorbar(pcm, ax=ax)
             cbar.set_label('Kernel-density estimates (arb. unit)', rotation=90)
         except ImportError:
             ax.plot(t, e,  'bo')
@@ -976,16 +978,16 @@ class automaticLightCurve:
 
         # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
-        figtext(0.98, 0.95,
-                'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
-                horizontalalignment="right",
-                rotation='vertical',
-                size='xx-small'
-                )
+        plt.figtext(0.98, 0.95,
+                    'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
+                    horizontalalignment="right",
+                    rotation='vertical',
+                    size='xx-small'
+        )
 
         # Don't show the figure in batch mode
         if not BATCH:
-            show()
+            plt.show()
         # Save the figure
         fig.savefig(outfig)
 
@@ -994,7 +996,7 @@ class automaticLightCurve:
         """
         Returns the zenith angle of a source at culmination, for the provided site.
         """
-        return abs(self.dec-self.siteLat)
+        return np.abs(self.dec-self.siteLat)
 
 
     def is_visible(self):
@@ -1019,17 +1021,17 @@ class automaticLightCurve:
             z = self.z
 
         # We also want the max allowed ZA for the given z of the source
-        maxz = array(self.maxz)
-        maxZA = array(self.maxZA)
-        if z > max(maxz):
-            thismaxZA = min(maxZA)
+        maxz = np.array(self.maxz)
+        maxZA = np.array(self.maxZA)
+        if z > np.max(maxz):
+            thismaxZA = np.min(maxZA)
         else:
-            msk = where(z<maxz)
+            msk = np.where(z<maxz)
             # Get the first item in the mask, to get the corresponding ZA:
             thismaxZA = maxZA[msk[0][0]]
 
         # Convert ZA to Alt
-        thisminAlt=abs(90.-thismaxZA)
+        thisminAlt=np.abs(90.-thismaxZA)
 
         ephemSrc = ephem.FixedBody()
         ephemSrc._ra=astCoords.decimal2hms(self.ra,delimiter=':')
@@ -1136,8 +1138,8 @@ class automaticLightCurve:
 
         # Numpy array
         # combination of acceptable
-        #                        z         ZA@culmination
-        grid = array(zip(self.maxz,self.maxZA))
+        #                           z         ZA@culmination
+        grid = np.array(zip(self.maxz,self.maxZA))
 
         try:
             # import Kapteyn module for WCS
