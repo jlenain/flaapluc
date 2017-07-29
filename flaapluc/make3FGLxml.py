@@ -69,7 +69,7 @@ class srcList:
 		else:
 			addSrcsFITS(self,GDfile,GDname,ISOfile,ISOname,oldNames)
 	
-import pyfits
+from astropy.io import fits
 import os
 from xml.dom import minidom
 from xml.dom.minidom import parseString as pS
@@ -233,7 +233,7 @@ def addSrcsXML(sL,GD,GDn,ISO,ISOn,oldNames=False):
 #function to cycle through the source list and add point source entries
 def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 	model=open(sL.out,'w') #open file in write mode, overwrites other files of same name
-	file=pyfits.open(sL.srcs) #open source list file and access necessary fields, requires LAT source catalog definitions and names
+	file=fits.open(sL.srcs) #open source list file and access necessary fields, requires LAT source catalog definitions and names
 	#mask=file[1].data.field('Signif_Avg')>=sL.sig
 	#data=file[1].data[mask]
 	data=file['LAT_Point_Source_Catalog'].data
@@ -621,7 +621,7 @@ def LPspec(sL,f,i,p,b,dist,TS,vi):
 
 #this function searches the header of the ft1 to find the Position keyword and extract the ra and dec values
 def getPos(ft1):
-	file=pyfits.open(ft1)
+	file=fits.open(ft1)
 	num=file[1].header['NDSKEYS']
 	header=file[1].header
 	right='POS(RA,DEC)'
