@@ -16,7 +16,6 @@ setup(name='flaapluc',
           'astropy',
           'asciidata',
           'matplotlib',
-          'astLib',
           'ephem'
       ],
       scripts=[

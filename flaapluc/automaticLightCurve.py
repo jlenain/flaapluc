@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-29 00:27:13 jlenain"
+# Time-stamp: "2017-07-29 14:46:17 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -28,10 +28,13 @@ from optparse import OptionParser
 from ConfigParser import ConfigParser
 
 import asciidata
-# import pyfits
-from astropy.io import fits as fits
 import ephem
-from astLib import astCoords
+from astropy.io import fits as fits
+from astropy.coordinates import Angle
+from astropy.coordinates import SkyCoord as Coords
+from astropy.coordinates import Longitude as Lon
+from astropy.coordinates import Latitude as Lat
+from astropy import units as u
 
 # Import some matplotlib modules
 try:
@@ -995,7 +998,8 @@ class automaticLightCurve:
         """
         Returns the zenith angle of a source at culmination, for the provided site.
         """
-        return np.abs(self.dec-self.siteLat)
+        za = np.abs(self.dec-self.siteLat)
+        return za
 
 
     def is_visible(self):
@@ -1009,10 +1013,12 @@ class automaticLightCurve:
         astroHorizon = '-18:00' # astronomical twilight
         civilHorizon = '-0:34'
         site.horizon = astroHorizon
-        site.lon = astCoords.decimal2dms(self.siteLon, delimiter=':')
-        site.lat = astCoords.decimal2dms(self.siteLat, delimiter=':')
-        site.elev = self.siteAlt
+        site.lon = Lon(self.siteLon, u.degree).to_string(unit=u.degree, sep=':')
+        site.lat = Lat(self.siteLat, u.degree) .to_string(unit=u.degree, sep=':')
+        site.elev = self.siteAlt  # meters
 
+        srcCoords = Coords(ra=self.ra*u.degree, dec=self.dec*u.degree, frame='icrs')
+        
         # If input z is None, make it believe it is 0, otherwise msk crashes:
         if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
             z = 0.
@@ -1033,8 +1039,8 @@ class automaticLightCurve:
         thisminAlt=np.abs(90.-thismaxZA)
 
         ephemSrc = ephem.FixedBody()
-        ephemSrc._ra=astCoords.decimal2hms(self.ra,delimiter=':')
-        ephemSrc._dec=astCoords.decimal2dms(self.dec,delimiter=':')
+        ephemSrc._ra = srcCoords.ra.to_string(unit=u.degree, sep=':')
+        ephemSrc._dec = srcCoords.dec.to_string(unit=u.degree, sep=':')
 
         visibleFlag=False
 
@@ -1051,7 +1057,7 @@ class automaticLightCurve:
 
 
         # All times are handled here in UTC (pyEphem only uses UTC)
-        now      = datetime.datetime.utcnow()
+        now = datetime.datetime.utcnow()
         # tomorrow = now + datetime.timedelta(days=1)
 
         site.date      = now
@@ -1074,20 +1080,20 @@ class automaticLightCurve:
             site.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
             nextSunset    = site.next_setting(sun)
             nextSunrise   = site.next_rising(sun)
-            site.horizon = civilHorizon
+            site.horizon  = civilHorizon
             nextMoonset   = site.next_setting(moon)
             nextMoonrise  = site.next_rising(moon)
-            site.horizon = astroHorizon
+            site.horizon  = astroHorizon
 
         ephemSrc.compute(site)
         srcTransitTime = site.next_transit(ephemSrc)
 
         site.date=srcTransitTime
         ephemSrc.compute(site)
-        srcAltAtTransit=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
+        srcAltAtTransit = Angle(ephemSrc.alt, unit=u.degree)
 
         # If srcAltAtTransit is below thisminAlt, the source is just not correctly visible and we stop here
-        if srcAltAtTransit < thisminAlt:
+        if srcAltAtTransit.to_string(unit=u.degree, sep=':') < thisminAlt:
             return False
 
         # Compute start and end of darkness time
@@ -1109,14 +1115,23 @@ class automaticLightCurve:
 
         site.date=beginDarkness
         ephemSrc.compute(site)
-        srcAltAtStartDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
+        srcAltAtStartDarkTime = Angle(ephemSrc.alt, unit=u.degree)
 
         site.date=endDarkness
         ephemSrc.compute(site)
-        srcAltAtEndDarkTime=astCoords.dms2decimal(ephemSrc.alt,delimiter=':')
+        srcAltAtEndDarkTime = Angle(ephemSrc.alt, unit=u.degree)
 
+        if self.debug:
+            print "DEBUG: srcAltAtStartDarkTime=", srcAltAtStartDarkTime
+            print "DEBUG: srcAltAtTransit=", srcAltAtTransit
+            print "DEBUG: srcAltAtEndDarkTime=", srcAltAtEndDarkTime
+        
         # check if source is visible, above minAlt, during this night
-        if (srcTransitTime > beginDarkness and srcTransitTime < endDarkness and srcAltAtTransit > thisminAlt) or srcAltAtStartDarkTime > thisminAlt or srcAltAtEndDarkTime > thisminAlt:
+        if ((srcTransitTime > beginDarkness
+             and srcTransitTime < endDarkness
+             and srcAltAtTransit.to_string(unit=u.degree, sep=':') > thisminAlt)
+            or srcAltAtStartDarkTime.to_string(unit=u.degree, sep=':') > thisminAlt
+            or srcAltAtEndDarkTime.to_string(unit=u.degree, sep=':') > thisminAlt):
             visibleFlag=True
 
         if self.verbose:
