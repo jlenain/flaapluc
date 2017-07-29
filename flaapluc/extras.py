@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-29 22:22:51 jlenain"
+# Time-stamp: "2017-07-29 22:44:55 jlenain"
 
 """
 Extras functions for FLaapLUC
@@ -128,41 +128,3 @@ def mjd2gd(time):
     """
 
     return jd2gd(time+2400000.5)
-
-
-def rad2deg(angle):
-    """
-    Convert an angle from radians to degrees.
-
-    @param angle in radians
-    """
-    return angle*180./pi
-
-
-def deg2rad(angle):
-    """
-    Convert an angle from degrees to radians.
-
-    @param angle in degrees
-    """
-    return angle*pi/180.
-
-
-def angsep((ra1,dec1), (ra2,dec2), deg=True):
-    """
-    Calculates the angular separation between two points on the sky.
-
-    @param (ra1,dec1) coordinates of 1st source
-    @param (ra2,dec2) coordinates of 2nd source
-    @param deg flag whether inputs/outputs are in degrees or radians
-    """
-    if deg:
-        ra1 = deg2rad(ra1)
-        dec1 = deg2rad(dec1)
-        ra2 = deg2rad(ra2)
-        dec2 = deg2rad(dec2)
-
-    SEP = np.arccos(np.cos(dec1)*np.cos(dec2)*np.cos(ra1-ra2)+np.sin(dec1)*np.sin(dec2))
-    if deg:
-        SEP = rad2deg(SEP)
-    return SEP

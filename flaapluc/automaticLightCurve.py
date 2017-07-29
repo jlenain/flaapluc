@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-29 22:23:55 jlenain"
+# Time-stamp: "2017-07-29 23:20:05 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -238,8 +238,8 @@ class automaticLightCurve:
                     yearmonthStop  = time.mktime(datetime.datetime(int(year)+1,            1,   1,     0,       0,      0,           0).timetuple())
 
                 # Convert these from UNIX time to MET
-                tmptstart = mjd2met(unixtime2mjd(yearmonthStart))
-                tmptstop  = mjd2met(unixtime2mjd(yearmonthStop))
+                tmptstart = extras.mjd2met(extras.unixtime2mjd(yearmonthStart))
+                tmptstop  = extras.mjd2met(extras.unixtime2mjd(yearmonthStop))
 
                 if self.debug:
                     print 'DEBUG: INIT yearmonthStart=',yearmonthStart
@@ -565,7 +565,7 @@ class automaticLightCurve:
         flux      = counts/exposure        # approximate flux in ph cm^-2 s^-1
         fluxErr   = countsErr/exposure     # approximate flux error in ph cm^-2 s^-1
 
-        timeMjd=met2mjd(time)
+        timeMjd=extras.met2mjd(time)
         # We can do this because time is NOT a list, but a numpy.array
 
         for i in range(len(time)):
@@ -770,7 +770,7 @@ class automaticLightCurve:
             print '[%s] \033[92mWARNING Empty energy vs time plot above %0.f GeV\033[0m' % (self.src, eThresh/1.e3)
             return
 
-        t=met2mjd(datac['TIME'])
+        t=extras.met2mjd(datac['TIME'])
         e=datac['ENERGY']
 
         fig=plt.figure()
@@ -932,10 +932,13 @@ class automaticLightCurve:
 
         site.date=srcTransitTime
         ephemSrc.compute(site)
-        srcAltAtTransit = Angle(ephemSrc.alt, unit=u.degree)
+        srcAltAtTransit = Angle(ephemSrc.alt, unit=u.rad).degree
 
         # If srcAltAtTransit is below thisminAlt, the source is just not correctly visible and we stop here
-        if srcAltAtTransit.to_string(unit=u.degree, sep=':') < thisminAlt:
+        if self.debug:
+            print "srcAltAtTransit = ", srcAltAtTransit
+            print "thisminAlt", thisminAlt
+        if srcAltAtTransit < thisminAlt:
             return False
 
         # Compute start and end of darkness time
@@ -957,11 +960,11 @@ class automaticLightCurve:
 
         site.date=beginDarkness
         ephemSrc.compute(site)
-        srcAltAtStartDarkTime = Angle(ephemSrc.alt, unit=u.degree)
+        srcAltAtStartDarkTime = Angle(ephemSrc.alt, unit=u.rad).degree
 
         site.date=endDarkness
         ephemSrc.compute(site)
-        srcAltAtEndDarkTime = Angle(ephemSrc.alt, unit=u.degree)
+        srcAltAtEndDarkTime = Angle(ephemSrc.alt, unit=u.rad).degree
 
         if self.debug:
             print "DEBUG: srcAltAtStartDarkTime=", srcAltAtStartDarkTime
@@ -971,9 +974,9 @@ class automaticLightCurve:
         # check if source is visible, above minAlt, during this night
         if ((srcTransitTime > beginDarkness
              and srcTransitTime < endDarkness
-             and srcAltAtTransit.to_string(unit=u.degree, sep=':') > thisminAlt)
-            or srcAltAtStartDarkTime.to_string(unit=u.degree, sep=':') > thisminAlt
-            or srcAltAtEndDarkTime.to_string(unit=u.degree, sep=':') > thisminAlt):
+             and srcAltAtTransit > thisminAlt)
+            or srcAltAtStartDarkTime > thisminAlt
+            or srcAltAtEndDarkTime > thisminAlt):
             visibleFlag=True
 
         if self.verbose:
@@ -1226,13 +1229,13 @@ class automaticLightCurve:
 
 """ % (self.lastFlux,
        self.lastFluxErr,
-       self.lastTime, met2mjd(self.lastTime), str(mjd2gd(met2mjd(self.lastTime))),
-       self.arrivalTimeLastPhoton, met2mjd(self.arrivalTimeLastPhoton), str(mjd2gd(met2mjd(self.arrivalTimeLastPhoton))),
+       self.lastTime, extras.met2mjd(self.lastTime), str(extras.mjd2gd(extras.met2mjd(self.lastTime))),
+       self.arrivalTimeLastPhoton, extras.met2mjd(self.arrivalTimeLastPhoton), str(extras.mjd2gd(extras.met2mjd(self.arrivalTimeLastPhoton))),
        self.longtimebin,
        self.lastFluxLongTimeBin,
        self.lastFluxErrLongTimeBin,
-       self.lastTimeLongTimeBin, met2mjd(self.lastTimeLongTimeBin), str(mjd2gd(met2mjd(self.lastTimeLongTimeBin))),
-       self.arrivalTimeLastPhotonLongTimeBin, met2mjd(self.arrivalTimeLastPhotonLongTimeBin), str(mjd2gd(met2mjd(self.arrivalTimeLastPhotonLongTimeBin))))
+       self.lastTimeLongTimeBin, extras.met2mjd(self.lastTimeLongTimeBin), str(extras.mjd2gd(extras.met2mjd(self.lastTimeLongTimeBin))),
+       self.arrivalTimeLastPhotonLongTimeBin, extras.met2mjd(self.arrivalTimeLastPhotonLongTimeBin), str(extras.mjd2gd(extras.met2mjd(self.arrivalTimeLastPhotonLongTimeBin))))
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned in red, and %.0f-day binned in blue) is attached."%(self.tbin/24./60./60.,self.longtimebin)
             else:
                 mailtext=mailtext+"""
@@ -1242,8 +1245,8 @@ class automaticLightCurve:
 """ % (self.longtimebin,
        self.lastFlux,
        self.lastFluxErr,
-       self.lastTime, met2mjd(self.lastTime), str(mjd2gd(met2mjd(self.lastTime))),
-       self.arrivalTimeLastPhoton, met2mjd(self.arrivalTimeLastPhoton), str(mjd2gd(met2mjd(self.arrivalTimeLastPhoton))))
+       self.lastTime, extras.met2mjd(self.lastTime), str(extras.mjd2gd(extras.met2mjd(self.lastTime))),
+       self.arrivalTimeLastPhoton, extras.met2mjd(self.arrivalTimeLastPhoton), str(extras.mjd2gd(extras.met2mjd(self.arrivalTimeLastPhoton))))
                 mailtext=mailtext+"The most recent lightcurve (%.0f-day binned) is attached."%(self.tbin/24./60./60.)
 
             if FLAGASSUMEDGAMMA is True:
