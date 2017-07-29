@@ -1,6 +1,5 @@
-conda create -n flaapluc python=2.7 astropy matplotlib astlib ephem
+conda create -n flaapluc python=2.7 astropy matplotlib ephem
 source activate flaapluc
-[Install asciidata]
 python setup.py install
 
 

@@ -14,7 +14,6 @@ setup(name='flaapluc',
       packages=find_packages(),
       install_requires=[
           'astropy',
-          'asciidata',
           'matplotlib',
           'ephem'
       ],

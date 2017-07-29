@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-29 14:46:17 jlenain"
+# Time-stamp: "2017-07-29 16:10:33 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -27,9 +27,9 @@ import os
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 
-import asciidata
 import ephem
-from astropy.io import fits as fits
+from astropy.io import ascii
+from astropy.io import fits
 from astropy.coordinates import Angle
 from astropy.coordinates import SkyCoord as Coords
 from astropy.coordinates import Longitude as Lon
@@ -431,25 +431,19 @@ class automaticLightCurve:
         """
 
         try:
-            import asciidata
-        except ImportError:
-            print "ERROR Can't import asciidata, needed to read the list of sources. Aborting..."
-            sys.exit(1)
-
-        try:
-            srcList=asciidata.open(self.file)
+            srcList=ascii.read(self.file)
         except IOError:
             print "ERROR Can't open "+self.file
             sys.exit(1)
 
-        src = srcList[0]
-        ra  = srcList[1].tonumpy()
-        dec = srcList[2].tonumpy()
-        z   = srcList[3].tonumpy()
-        fglName=srcList[4]
+        src = srcList['Name']
+        ra  = srcList['RA']
+        dec = srcList['Dec']
+        z   = srcList['z']
+        fglName=srcList['3FGLname']
         # Read the threshold for the source from the source list, if we asked to process with custom thresholds when instanciating the class
         if self.customThreshold:
-            myThreshold=srcList[5].tonumpy()
+            myThreshold=srcList['Threshold']
 
 
         # If we ask for a particular source, return the parameters for that source
@@ -717,7 +711,8 @@ class automaticLightCurve:
 
 
         file=open(outfile,'w')
-        file.write("# Time[MET]\tTime[MJD]\tFlux[ph.cm^-2.s^-1]\tFluxError[ph.cm^-2.s^-1]\n")
+        file.write("MET\tMJD\tFlux\tFluxError\n")
+        file.write("#[MET]\t[MJD]\t[ph cm^-2 s^-1]\t[ph cm^-2 s^-1]\n")
         time      = data.field('TIME')     # MET
         counts    = data.field('COUNTS')
         countsErr = data.field('ERROR')    # error on counts
@@ -800,18 +795,18 @@ class automaticLightCurve:
             outfig=self.workDir+'/'+str(self.src)+'_lc.png'
             duration = self.longtimebin # duration of a time bin, in days
 
-        data    = asciidata.open(infile)
+        data    = ascii.read(infile)
         # the times are already read as MJD, cf createDAT function.
-        timelc  = data[1].tonumpy()
-        flux    = data[2].tonumpy()
-        fluxErr = data[3].tonumpy()
+        timelc  = data['MJD']
+        flux    = data['Flux']
+        fluxErr = data['FluxError']
 
         if self.daily:
-            dataLongTimeBin    = asciidata.open(infileLongTimeBin)
+            dataLongTimeBin    = ascii.read(infileLongTimeBin)
             # the times are already read as MJD, cf createDAT function.
-            timeLongTimeBin    = dataLongTimeBin[1].tonumpy()
-            fluxLongTimeBin    = dataLongTimeBin[2].tonumpy()
-            fluxErrLongTimeBin = dataLongTimeBin[3].tonumpy()
+            timeLongTimeBin    = dataLongTimeBin['MJD']
+            fluxLongTimeBin    = dataLongTimeBin['Flux']
+            fluxErrLongTimeBin = dataLongTimeBin['FluxError']
             durationLongTimeBin= self.longtimebin # duration of a time bin, in days
 
         # Download Swift/BAT data if available
@@ -835,7 +830,7 @@ class automaticLightCurve:
             title=str(self.src)+', '+str(self.fglName).replace('_2FGLJ','2FGL J').replace('3FGLJ','3FGL J')
         else:
             title=str(self.src)+', no known 3FGL counterpart'
-        if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
+        if self.z=='None':
             title=title+' (z unknown)'
         else:
             title=title+' (z='+str(self.z)+')'
@@ -940,7 +935,7 @@ class automaticLightCurve:
             title=str(self.src)+', '+str(self.fglName).replace('_2FGLJ','2FGL J').replace('3FGLJ','3FGL J')
         else:
             title=str(self.src)+', no known 3FGL counterpart'
-        if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
+        if self.z=='None':
             title=title+' (z unknown)'
         else:
             title=title+' (z='+str(self.z)+')'
@@ -1020,7 +1015,7 @@ class automaticLightCurve:
         srcCoords = Coords(ra=self.ra*u.degree, dec=self.dec*u.degree, frame='icrs')
         
         # If input z is None, make it believe it is 0, otherwise msk crashes:
-        if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
+        if self.z=='None':
             z = 0.
         else:
             z = self.z
@@ -1053,6 +1048,8 @@ class automaticLightCurve:
         if thismaxZA<zaAtCulmin:
             # the source is never above maxZA set by 2D mask on Dec/z
             print '[%s]\033[91m Never above allowed max ZA, consider relaxing the Dec/z cuts or discarding this source from your source list...\033[0m' % self.src
+            if self.debug:
+                print "DEBUG: [%s] thismaxZA=%f, zaAtCulmin=%f" % (self.src, thismaxZA, zaAtCulmin)
             return False
 
 
@@ -1158,7 +1155,7 @@ class automaticLightCurve:
         zaAtCulmin = self.zaAtCulmination()
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
-        if str(self.z)=='--': # this is the result of the conversion of None from asciidata to numpy to str
+        if self.z=='None':
             z = 0.
         else:
             z = self.z
@@ -1194,15 +1191,15 @@ class automaticLightCurve:
         # Read the longterm .dat LC file
         infile = self.baseOutDir+'/longTerm/merged/'+str(self.src)+'_lc.dat'
         try:
-            data    = asciidata.open(infile)
+            data    = ascii.read(infile)
         except IOError:
             print '[%s] \033[95m* Long term data file unavailable for source %s\033[0m' % (self.src, self.src)
             # Falling back to default fixed trigger threshold
             self.withhistory=False
             return (False,False)
 
-        flux        = data[2].tonumpy()
-        fluxErr     = data[3].tonumpy()
+        flux        = data['Flux']
+        fluxErr     = data['FluxError']
         if self.verbose:
             try:
                 from uncertainties import unumpy as unp
@@ -1238,10 +1235,10 @@ class automaticLightCurve:
 
             # Also take a look in the long time-binned data
             infileLongTimeBin=self.workDir+'/'+str(self.src)+'_lc.dat'
-            dataLongTimeBin=asciidata.open(infileLongTimeBin)
-            timeLongTimeBin=dataLongTimeBin[0].tonumpy()
-            fluxLongTimeBin=dataLongTimeBin[2].tonumpy()
-            fluxErrLongTimeBin=dataLongTimeBin[3].tonumpy()
+            dataLongTimeBin=ascii.read(infileLongTimeBin)
+            timeLongTimeBin=dataLongTimeBin['MET']
+            fluxLongTimeBin=dataLongTimeBin['Flux']
+            fluxErrLongTimeBin=dataLongTimeBin['FluxError']
             # Catch the last flux point
             self.lastTimeLongTimeBin=timeLongTimeBin[-1:]
             self.lastFluxLongTimeBin=fluxLongTimeBin[-1:]
@@ -1265,10 +1262,10 @@ class automaticLightCurve:
             photons               = fits.open(photonfile)
             photonsTime           = photons[1].data.field('TIME')
             self.arrivalTimeLastPhoton = photonsTime[-1:]
-        data    = asciidata.open(infile)
-        time    = data[0].tonumpy()
-        flux    = data[2].tonumpy()
-        fluxErr = data[3].tonumpy()
+        data    = ascii.read(infile)
+        time    = data['MET']
+        flux    = data['Flux']
+        fluxErr = data['FluxError']
 
         # Catch the last flux point
         self.lastTime    = time[-1:]
@@ -1302,7 +1299,7 @@ class automaticLightCurve:
             print "INFO: SENDALERT="+str(SENDALERT)
 
         if self.debug:
-            print "DEBUG %s, dec=%f, z=%f, maxZA=[%s], maxz=[%s], triggerkilled=%s, sendalert=%s" % (str(self.src),self.dec,self.z,', '.join(map(str,self.maxZA)),', '.join(map(str,self.maxz)),self.triggerkilled,SENDALERT)
+            print "DEBUG %s, dec=%f, z=%s, maxZA=[%s], maxz=[%s], triggerkilled=%s, sendalert=%s" % (str(self.src),self.dec,self.z,', '.join(map(str,self.maxZA)),', '.join(map(str,self.maxz)),self.triggerkilled,SENDALERT)
 
         return SENDALERT
 

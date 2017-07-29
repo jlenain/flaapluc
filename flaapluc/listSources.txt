@@ -1,4 +1,5 @@
-# Name			RA (deg.)	Dec (deg.)	z	3FGL name		Threshold(0=use the default threshold, which should be 1.e-6 ph cm^-2 s^-1)
+Name			RA		Dec		z	3FGLname		Threshold
+#			(deg.)		(deg.)			     			(0=use the default threshold, which should be 1.e-6 ph cm^-2 s^-1)
 #########################################################################################
 ##
 ## My interesting sources
