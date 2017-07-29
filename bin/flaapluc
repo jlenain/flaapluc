@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-29 00:00:18 jlenain"
+# Time-stamp: "2017-07-29 15:02:54 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -24,7 +24,14 @@ import datetime
 import glob
 from optparse import OptionParser
 from ConfigParser import ConfigParser
-from flaapluc import automaticLightCurve
+
+
+# Import custom module
+try:
+    from flaapluc import automaticLightCurve as alc
+except ImportError:
+    print "\033[91mERROR\033[0m Can't import automaticLightCurve"
+    sys.exit(1)
 
 
 # Flags
@@ -34,7 +41,6 @@ BATCH = True
 FLAGASSUMEDGAMMA = False
 
 # Global variables
-TOFFSET = 54000.  # offset in MJD for plot creation
 # assumed photon index for a source not belonging to the 3FGL
 ASSUMEDGAMMA = -2.5
 
@@ -99,7 +105,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     else:
         print "[%s] Processing long time-binned light curve..." % mysrc
 
-    auto=automaticLightCurve(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth, verbose=verbose, debug=debug, forcealert=forcealert)
+    auto=alc(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth, verbose=verbose, debug=debug, forcealert=forcealert)
     auto.readSourceList(mysrc)
 
     if debug:
