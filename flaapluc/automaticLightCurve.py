@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-29 23:20:05 jlenain"
+# Time-stamp: "2017-07-31 18:04:44 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -100,7 +100,7 @@ class automaticLightCurve:
         self.verbose = verbose
         self.debug = debug
         self.forcealert = forcealert
-        
+
         try:
             self.longtimebin = float(self.config.get('AlertTrigger', 'LongTimeBin'))
         except:
@@ -158,9 +158,9 @@ class automaticLightCurve:
         self.spacecraft = self.spacecraftFile
         if not os.path.isdir(self.workDir):
             try:
-	        os.makedirs(self.workDir)
-	    except OSError:
-		pass
+                os.makedirs(self.workDir)
+            except OSError:
+                pass
 
         self.fermiDir   = os.getenv('FERMI_DIR')
 
@@ -190,7 +190,7 @@ class automaticLightCurve:
         self.customThreshold=customThreshold
 
         self.stopmonth = stopmonth
-        
+
         # Open allsky file to get the start and stop dates
         try:
             hdu=fits.open(self.allsky)
@@ -310,7 +310,7 @@ class automaticLightCurve:
                     self.src     = src[i]
                     self.ra      = ra[i]
                     self.dec     = dec[i]
-                    self.z       = z[i]
+                    self.z = z[i]
                     self.fglName = fglName[i]
                     return
 
@@ -849,27 +849,28 @@ class automaticLightCurve:
 
         # Define site for pyephem
         site    = ephem.Observer()
-        site.pressure = 0
-        astroHorizon = '-18:00' # astronomical twilight
-        civilHorizon = '-0:34'
+        astroHorizon = ephem.degrees('-18:00') # astronomical twilight
+        civilHorizon = ephem.degrees('-0:34')
         site.horizon = astroHorizon
-        site.lon = Lon(self.siteLon, u.degree).to_string(unit=u.degree, sep=':')
-        site.lat = Lat(self.siteLat, u.degree) .to_string(unit=u.degree, sep=':')
+        site.lon = ephem.degrees(str(self.siteLon))  # ephem needs this as string
+        site.lat = ephem.degrees(str(self.siteLat))  # ephem needs this as string
         site.elev = self.siteAlt  # meters
-
+        site.compute_pressure()
+        
         srcCoords = Coords(ra=self.ra*u.degree, dec=self.dec*u.degree, frame='icrs')
         
         # If input z is None, make it believe it is 0, otherwise msk crashes:
         if self.z=='None':
             z = 0.
         else:
-            z = self.z
+            z = float(self.z)
 
         # We also want the max allowed ZA for the given z of the source
         maxz = np.array(self.maxz)
         maxZA = np.array(self.maxZA)
         if z > np.max(maxz):
             thismaxZA = np.min(maxZA)
+            print 'WARNING: z is greater than maxz !'
         else:
             msk = np.where(z<maxz)
             # Get the first item in the mask, to get the corresponding ZA:
@@ -879,9 +880,9 @@ class automaticLightCurve:
         thisminAlt=np.abs(90.-thismaxZA)
 
         ephemSrc = ephem.FixedBody()
-        ephemSrc._ra = srcCoords.ra.to_string(unit=u.degree, sep=':')
-        ephemSrc._dec = srcCoords.dec.to_string(unit=u.degree, sep=':')
-
+        ephemSrc._ra = ephem.hours(str(srcCoords.ra.to_string(unit=u.hourangle, sep=':')))  # Careful: ephem should be given hours here, but only for RA !
+        ephemSrc._dec = ephem.degrees(str(srcCoords.dec.to_string(unit=u.degree, sep=':')))
+        
         visibleFlag=False
 
         zaAtCulmin = self.zaAtCulmination()
@@ -934,10 +935,9 @@ class automaticLightCurve:
         ephemSrc.compute(site)
         srcAltAtTransit = Angle(ephemSrc.alt, unit=u.rad).degree
 
-        # If srcAltAtTransit is below thisminAlt, the source is just not correctly visible and we stop here
+        # If srcAltAtTransit is below thisminAlt, the source is just not optimally visible and we stop here
         if self.debug:
-            print "srcAltAtTransit = ", srcAltAtTransit
-            print "thisminAlt", thisminAlt
+            print "DEBUG: thisminAlt =", thisminAlt
         if srcAltAtTransit < thisminAlt:
             return False
 
@@ -952,12 +952,6 @@ class automaticLightCurve:
         else:
             endDarkness=nextSunrise
 
-        if self.debug:
-            darknessDuration = endDarkness-beginDarkness
-            print "DEBUG: darkness begin=%s" % beginDarkness
-            print "DEBUG: darkness ends=%s" % endDarkness
-            print "DEBUG: darkness duration=%s minutes" % (darknessDuration*24.*60.)
-
         site.date=beginDarkness
         ephemSrc.compute(site)
         srcAltAtStartDarkTime = Angle(ephemSrc.alt, unit=u.rad).degree
@@ -966,18 +960,36 @@ class automaticLightCurve:
         ephemSrc.compute(site)
         srcAltAtEndDarkTime = Angle(ephemSrc.alt, unit=u.rad).degree
 
+        darknessDuration = (endDarkness-beginDarkness)*24.*60.  # day to minutes
         if self.debug:
+            print "DEBUG: darkness begin=%s" % beginDarkness
             print "DEBUG: srcAltAtStartDarkTime=", srcAltAtStartDarkTime
+            print "DEBUG: srcTransitTime=", srcTransitTime
             print "DEBUG: srcAltAtTransit=", srcAltAtTransit
+            print "DEBUG: darkness ends=%s" % endDarkness
             print "DEBUG: srcAltAtEndDarkTime=", srcAltAtEndDarkTime
-        
+            print "DEBUG: darkness duration=%s minutes" % darknessDuration
+
         # check if source is visible, above minAlt, during this night
-        if ((srcTransitTime > beginDarkness
-             and srcTransitTime < endDarkness
-             and srcAltAtTransit > thisminAlt)
-            or srcAltAtStartDarkTime > thisminAlt
-            or srcAltAtEndDarkTime > thisminAlt):
-            visibleFlag=True
+        # if ((srcTransitTime > beginDarkness
+        #      and srcTransitTime < endDarkness
+        #      and srcAltAtTransit > thisminAlt)
+        #     or srcAltAtStartDarkTime > thisminAlt
+        #     or srcAltAtEndDarkTime > thisminAlt):
+        #     visibleFlag=True
+
+        # check if source is visible, above minAlt, during this night
+        for step in range(0, np.int(darknessDuration)):
+            site.date = beginDarkness.datetime()+datetime.timedelta(minutes=step)
+            ephemSrc.compute(site)
+            srcAlt = Angle(ephemSrc.alt, unit=u.rad).degree
+            if self.debug:
+                print "DEBUG LOOPING: it is ", site.date, " and ", self.src, " is at alt. of ", srcAlt
+            if srcAlt > thisminAlt:
+                visibleFlag = True
+                if self.verbose:
+                    print "INFO: {0} starts to be optimally visible, above {1}°, at {2}".format(self.src, thisminAlt, site.date)
+                break
 
         if self.verbose:
             print "INFO: is_visible: "+str(visibleFlag)
@@ -1006,7 +1018,7 @@ class automaticLightCurve:
         if self.z=='None':
             z = 0.
         else:
-            z = self.z
+            z = float(self.z)
 
         # Mask on both (z, ZA at culmin)
         #          z column               ZA column
@@ -1133,7 +1145,7 @@ class automaticLightCurve:
             self.active=True
         else:
             self.active=False
-        
+
         # Combine killTrigger and flux above threshold criteria
         if (not self.triggerkilled and self.active) or self.forcealert:
             SENDALERT = True
@@ -1147,7 +1159,7 @@ class automaticLightCurve:
             print "INFO: SENDALERT="+str(SENDALERT)
 
         if self.debug:
-            print "DEBUG %s, dec=%f, z=%s, maxZA=[%s], maxz=[%s], triggerkilled=%s, sendalert=%s" % (str(self.src),self.dec,self.z,', '.join(map(str,self.maxZA)),', '.join(map(str,self.maxz)),self.triggerkilled,SENDALERT)
+            print "DEBUG %s, dec=%f, z=%f, maxZA=[%s], maxz=[%s], triggerkilled=%s, sendalert=%s" % (str(self.src),self.dec,self.z,', '.join(map(str,self.maxZA)),', '.join(map(str,self.maxz)),self.triggerkilled,SENDALERT)
 
         return SENDALERT
 
@@ -1160,12 +1172,12 @@ class automaticLightCurve:
         @return True
         @rtype bool
         '''
-        
+
         # Import modules
         try:
             # Import smtplib to send mails
             import smtplib
-            
+
             # Here are the email package modules we'll need
             from email.MIMEImage import MIMEImage
             from email.MIMEMultipart import MIMEMultipart
