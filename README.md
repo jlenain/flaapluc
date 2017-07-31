@@ -1,8 +1,8 @@
 # FLaapLUC
 
-Welcome to the FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) pipeline !
+Welcome to the FLaapLUC (Fermi-LAT automatic aperture photometry Light C<->Urve) pipeline !
 
-This pipeline can be used to quickly generate short- or long-term Fermi/LAT light curves. It relies on the Fermi/LAT aperture photometric analysis (cf. e.g. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html), which basically assumes that the data set, within 1 degree around the source, is background-free.
+This pipeline can be used to quickly generate short- or long-term Fermi-LAT light curves. It relies on the Fermi-LAT aperture photometric analysis (cf. e.g. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html), which basically assumes that the data set, within 1 degree around the source, is background-free.
 
 Thus, it is meant to have a rough feeling about the variability of a source, but is absolutely not reliable enough to obtain publication-ready results.
 
@@ -11,7 +11,7 @@ The pipeline can be used to assess the variability of a particular source, using
 
 ## Principle
 
-The pipeline generates light curves from Fermi/LAT data, using an unusually small "region of interest" of 1 degree, in which the data set is assumed to be background-free. No likelihood fit is performed with the aperture photometry method. If you want a reliable result, please consider performing a standard Fermi/LAT data analysis (cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/).
+The pipeline generates light curves from Fermi-LAT data, using an unusually small "region of interest" of 1 degree, in which the data set is assumed to be background-free. No likelihood fit is performed with the aperture photometry method. If you want a reliable result, please consider performing a standard Fermi-LAT data analysis (cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/).
 
 For a given source, the pipeline first looks whether the source of interest has a counterpart in the 3FGL catalogue. This is done by scanning the "master" list of sources `listSources.txt`, which includes a column with the 3FGL name, if any, for a given source.
 
