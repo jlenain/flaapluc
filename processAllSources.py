@@ -1,6 +1,6 @@
 #!/bin/env python
 #
-# Time-stamp: "2017-03-01 22:27:57 jlenain"
+# Time-stamp: "2017-08-01 14:20:24 jlenain"
 #
 ## SGE parameters (this should work at CCIN2P3):
 #$ -N processAllSources
@@ -23,9 +23,11 @@ Process all sources for automatic aperture photometry of interesting high energy
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
 """
 
-import sys, os, datetime
+import sys
+import os
+import datetime
 from optparse import OptionParser
-from ConfigParser import ConfigParser
+
 
 # Import custom module
 try:
@@ -33,80 +35,6 @@ try:
 except ImportError:
     print "\033[91mERROR\033[0m Can't import automaticLightCurve"
     sys.exit(1)
-
-
-def getConfig(configfile='./default.cfg'):
-    config = ConfigParser()
-    config.readfp(open(configfile))
-    return config
-
-
-def readATOMschedule(configfile='default.cfg'):
-    """
-    Read the ATOM schedule file for observations of tonight, automatically put on hess-lsw@lsw.uni-heidelberg.de by "copy_schedule_to_attel.sh" in ATOM pipeline.
-
-    By default, it takes as argument the schedule file of today.
-    """
-
-    # Read configuration file
-    config = getConfig(configfile=configfile)
-
-    ATOMSchedulesDir = config.get('InputDirs','ATOMSchedulesDir')
-    ATOMScheduleFile = datetime.date.today().strftime('%y%m%d')+'.sched'
-
-    infile=ATOMSchedulesDir+'/'+ATOMScheduleFile
-
-    print 'First, we look for the ATOM schedule for today: %s' % infile
-    if not os.path.isfile(infile):
-        print "\033[93mWARNING\033[0m readATOMschedule: %s does not exist. I will try to see if there is any ATOM schedule file for the last 10 days." % infile
-    
-        found=False
-        # scan of ATOM schedues over the last 10 days
-        for i in range(1,10):
-            infile=ATOMSchedulesDir+'/'+(datetime.date.today()-datetime.timedelta(i)).strftime('%y%m%d')+'.sched'
-            if os.path.isfile(infile):
-                found=True
-                print 'INFO readATOMschedule: I found an ATOM schedule ! I will use the file: %s' % infile
-                print
-            if found:
-                break
-
-        if not found:
-            print '\033[93mWARNING\033[0m readATOMschedule: I could not find any ATOM schedule file for the last 10 days. I will not process any daily-binned data...'
-            # Return an empty list
-            return []
-        
-
-    f=open(infile,'r')
-    ATOMsrcs=[]
-    for line in f:
-        ATOMsrcs.append(
-            (
-                (
-                    (
-                        line.replace('\t','')
-                        ).replace(' ','')
-                    ).replace('\n','')
-                )
-            )
-
-
-    # Now, we check that all the ATOM sources are known to the "master" list of sources
-    FermiSrcInATOMSchedule=[]
-    auto=autoLC(configfile=configfile)
-    for i in range(len(ATOMsrcs)):
-        ATOMsrc=ATOMsrcs[i]
-        print 'Searching for the ATOM source %s in the master list of sources...' % ATOMsrc
-        tmpsrc,tmpra,tmpdec,tmpz,tmpfglName=auto.readSourceList(ATOMsrc)
-        # Check if the ATOM source is in the master list of sources.
-        if tmpsrc is None:
-            print "\033[93mYour source can't be found in the master list of sources, skipping it.\033[0m" % ATOMsrc
-            print
-            continue
-        FermiSrcInATOMSchedule.append(tmpsrc)
-    
-    # Return a list of sources observed with ATOM last night, which are also known to the "master" list of sources
-    return FermiSrcInATOMSchedule
 
 
 def main(argv=None):
@@ -128,8 +56,6 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     parser = OptionParser(version="$Id$",
                           usage=helpmsg)
 
-    parser.add_option("-a", "--atom", action="store_true", dest="a", default=False,
-                      help='only process those sources which are in the current ATOM schedule, forcing daily-binned data to be processed (this will also automatically create long time-binned data).')
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
                       help='use daily bins for the light curves (defaulted to weekly).')
     parser.add_option("-c", "--custom-threshold", action="store_true", dest="c", default=False,
@@ -149,7 +75,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to test recipients (by default, mail alerts are sent to everybody, cf. the configuration files).')
     parser.add_option("--dry-run", action="store_true", dest="dryRun", default=False,
-                      help='only simulate what the pipeline would do, forcing the use of ATOM sources, without actually processing any Fermi/LAT event. This is useful to see if the master list of sources is up-to-date with the ATOM sources in the current schedule.')
+                      help='only simulate what the pipeline would do, without actually processing any Fermi/LAT event.')
     parser.add_option("--use-parallel", action="store_true", default=False, dest="parallel",
                       help="use the linux program 'parallel' to use multiple threads on a local server.")
     parser.add_option("--max-cpu", default=1, dest="MAXCPU", metavar="<MAXCPU>",
@@ -258,26 +184,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
     else:
         auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
 
-    ATOMsrcsInSchedule=readATOMschedule(configfile=CONFIGFILE)
-    
-    # If process only sources which are in ATOM schedule
-    if opt.a:
-        src=[]
-        ra=[]
-        dec=[]
-        z=[]
-        fglName=[]
-        for i in range(len(ATOMsrcsInSchedule)):
-            ATOMsrc=ATOMsrcsInSchedule[i]
-            tmpsrc,tmpra,tmpdec,tmpz,tmpfglName=auto.readSourceList(ATOMsrc)
-            src.append(tmpsrc)
-            ra.append(tmpra)
-            dec.append(tmpdec)
-            z.append(tmpz)
-            fglName.append(tmpfglName)
-        
-    else:
-        src,ra,dec,z,fglName=auto.readSourceList()
+    src,ra,dec,z,fglName=auto.readSourceList()
 
 
     # Total number of sources to process
@@ -317,12 +224,7 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
 
         # Loop on sources
         for i in range(nbSrc):
-            # If source is in ATOM schedule and DAILY is False, force the creation of a daily-binned light curve
-            if src[i] in ATOMsrcsInSchedule and DAILY is False and LONGTERM is False and MERGELONGTERM is False:
-                # Put the -d option only for this source
-                options.append('\"/bin/nice -n 10 ./automaticLightCurve.py -d '+' '.join(autoOptions)+' '+str(src[i])+'\"')
-            else:
-                options.append('\"/bin/nice -n 10 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
+            options.append('\"/bin/nice -n 10 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
         cmd="parallel -j "+str(MAXCPU)+" ::: "+" ".join(options)
         # use --dry-run just to test the parallel command
         if not DRYRUN:
@@ -338,21 +240,11 @@ If called with '-a', the list of sources will be taken from the last ATOM schedu
         # Loop on sources
         for i in range(nbSrc):
             print 'Starting process %i for source %s' % (i,src[i])
-            # If source is in the ATOM schedule and DAILY is False, force the creation of a daily-binned light curve.
-            if src[i] in ATOMsrcsInSchedule and not DAILY and not LONGTERM and not MERGELONGTERM:
-                tmpDAILY=True
-                # We have to make sure that the corresponding weekly-binned data are created first (needed for daily PNG figure)
-                if not DRYRUN:
-                    processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=False,mail=False,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,stopmonth=STOPMONTH)
-                else:
-                    print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily=False,mail=False,longTerm="+str(LONGTERM)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+",stopmonth="+str(STOPMONTH)+")"
-            else:
-                tmpDAILY=DAILY
 
             if not DRYRUN:
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=tmpDAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,stopmonth=STOPMONTH)
+                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
             else:
-                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(tmpDAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+",stopmonth="+str(STOPMONTH)+")"
+                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(DAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+")"
             print
 
     return True
