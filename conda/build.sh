@@ -1,1 +1,1 @@
-python $RECIPE_DIR/setup.py install
+python setup.py install

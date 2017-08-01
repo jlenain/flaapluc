@@ -8,11 +8,23 @@ source:
 requirements:
   build:
     - python 2.7*
-    - astropy
-    - matplotlib
+    - email
+    - numpy 1.13*
+    - scipy
+    - astropy >=2.*
+    - matplotlib >=2.*
     - ephem
-run:
-    - python
+    - uncertainties
+
+  run:
+    - python 2.7*
+    - email
+    - numpy 1.13*
+    - scipy
+    - astropy >=2.*
+    - matplotlib >=2.*
+    - ephem
+    - uncertainties
 
 about:
   home: https://github.com/jlenain/flaapluc
