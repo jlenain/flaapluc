@@ -145,7 +145,7 @@ Use '-h' to get the help message
             UPDATE=False
         if opt.STOPMONTH is not None:
             STOPMONTH=str(opt.STOPMONTH)
-                    else:
+        else:
             STOPMONTH=None
     else:
         MERGELONGTERM=False
