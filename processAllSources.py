@@ -1,6 +1,6 @@
 #!/bin/env python
 #
-# Time-stamp: "2017-08-01 14:37:43 jlenain"
+# Time-stamp: "2017-08-01 15:16:18 jlenain"
 #
 ## SGE parameters (this should work at CCIN2P3):
 #$ -N processAllSources
@@ -31,7 +31,7 @@ from optparse import OptionParser
 
 # Import custom module
 try:
-    from flaapluc import automaticLightCurve as alc
+    from automaticLightCurve import *
 except ImportError:
     print "\033[91mERROR\033[0m Can't import automaticLightCurve"
     sys.exit(1)
@@ -176,9 +176,9 @@ Use '-h' to get the help message
     if(len(args)!=0):
         file=args[0]
         print "\033[93mINFO\033[0m Overriding default list of source: using %s" % file
-        auto=alc(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
+        auto=automaticLightCurve(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
     else:
-        auto=alc(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
+        auto=automaticLightCurve(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
 
     src,ra,dec,z,fglName=auto.readSourceList()
 
