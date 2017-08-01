@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 14:31:45 jlenain"
+# Time-stamp: "2017-08-01 15:02:26 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1167,7 +1167,7 @@ class automaticLightCurve:
             print "INFO: SENDALERT="+str(SENDALERT)
 
         if self.debug:
-            print "DEBUG %s, dec=%f, z=%f, maxZA=[%s], maxz=[%s], triggerkilled=%s, sendalert=%s" % (str(self.src),self.dec,self.z,', '.join(map(str,self.maxZA)),', '.join(map(str,self.maxz)),self.triggerkilled,SENDALERT)
+            print "DEBUG {0}, dec={1}, z={2}, maxZA={3}, maxz={4}, triggerkilled={5}, sendalert={6}".format(self.src, self.dec, self.z, self.maxZA, self.maxz, self.triggerkilled, SENDALERT)
 
         return SENDALERT
 
