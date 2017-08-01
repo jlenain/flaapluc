@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 12:23:13 jlenain"
+# Time-stamp: "2017-08-01 12:31:38 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -45,7 +45,7 @@ except ImportError:
 
 # Import the Science Tools modules
 try:
-    from gt_apps import *
+    from gt_apps import fermi
 except ImportError:
     print "ERROR Can't import the Fermi Science tools"
     sys.exit(1)
@@ -519,57 +519,57 @@ class autoLC:
         # Do we have to deal with a FITS file or an ASCII list of FITS file ?
         allskyext = os.path.splitext(self.allsky)[1]
         if allskyext in [".fit", ".fits"]:
-            filter['infile'] = self.allsky
+            fermi.filter['infile'] = self.allsky
         else:
-            filter['infile'] = '@%s' % self.allsky
+            fermi.filter['infile'] = '@%s' % self.allsky
         if self.daily:
             outfile=self.workDir+'/'+str(self.src)+'_daily.fits'
         else:
             outfile=self.workDir+'/'+str(self.src)+'.fits'
-        filter['outfile']=outfile
+        fermi.filter['outfile']=outfile
         
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
 
-        filter['ra']      = self.ra
-        filter['dec']     = self.dec
-        filter['rad']     = self.roi
-        filter['emin']    = self.emin
-        filter['emax']    = self.emax
-        filter['tmin']    = self.tstart
-        filter['tmax']    = self.tstop
-        filter['zmax']    = self.zmax
-        filter['evclass'] = 128
-        filter.run()
+        fermi.filter['ra']      = self.ra
+        fermi.filter['dec']     = self.dec
+        fermi.filter['rad']     = self.roi
+        fermi.filter['emin']    = self.emin
+        fermi.filter['emax']    = self.emax
+        fermi.filter['tmin']    = self.tstart
+        fermi.filter['tmax']    = self.tstop
+        fermi.filter['zmax']    = self.zmax
+        fermi.filter['evclass'] = 128
+        fermi.filter.run()
 
 
     def makeTime(self):
         """
         Filter the GTI for a given source
         """
-        maketime['scfile']=self.spacecraft
+        fermi.maketime['scfile']=self.spacecraft
 
         if self.daily:
-            maketime['evfile']=self.workDir+'/'+str(self.src)+'_daily.fits'
+            fermi.maketime['evfile']=self.workDir+'/'+str(self.src)+'_daily.fits'
             outfile=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
         else:
-            maketime['evfile']=self.workDir+'/'+str(self.src)+'.fits'
+            fermi.maketime['evfile']=self.workDir+'/'+str(self.src)+'.fits'
             outfile=self.workDir+'/'+str(self.src)+'_gti.fits'
-        maketime['outfile']=outfile
+        fermi.maketime['outfile']=outfile
         
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
-        #maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.) && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
-        #maketime['filter'] = "IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<"+str(self.rockangle)+" && (angsep(RA_ZENITH,DEC_ZENITH,"+str(self.ra)+","+str(self.dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(self.ra)+","+str(self.dec)+",RA_SUN,DEC_SUN)>5.)"
-        maketime['filter'] = "LAT_CONFIG==1 && DATA_QUAL>0 && (angsep("+str(self.ra)+","+str(self.dec)+",RA_SUN,DEC_SUN)>5.)"
-        maketime['roicut'] = 'no'
-        maketime['tstart'] = self.tstart
-        maketime['tstop']  = self.tstop
-        maketime.run()
+        #fermi.maketime['filter']="IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && (angsep(RA_ZENITH,DEC_ZENITH,"+str(ra)+","+str(dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(ra)+","+str(dec)+",RA_SCZ,DEC_SCZ)<180.) && (angsep("+str(ra)+","+str(dec)+",RA_SUN,DEC_SUN)>5.)"
+        #fermi.maketime['filter'] = "IN_SAA!=T && LAT_CONFIG==1 && DATA_QUAL==1 && ABS(ROCK_ANGLE)<"+str(self.rockangle)+" && (angsep(RA_ZENITH,DEC_ZENITH,"+str(self.ra)+","+str(self.dec)+")+"+str(self.roi)+" <"+str(self.zmax)+") && (angsep("+str(self.ra)+","+str(self.dec)+",RA_SUN,DEC_SUN)>5.)"
+        fermi.maketime['filter'] = "LAT_CONFIG==1 && DATA_QUAL>0 && (angsep("+str(self.ra)+","+str(self.dec)+",RA_SUN,DEC_SUN)>5.)"
+        fermi.maketime['roicut'] = 'no'
+        fermi.maketime['tstart'] = self.tstart
+        fermi.maketime['tstop']  = self.tstop
+        fermi.maketime.run()
 
 
     def mergeGTIfiles(self):
@@ -598,29 +598,29 @@ class autoLC:
             filelist.write(item+'\n')
         filelist.close()
         
-        filter['infile']='@'+listname
+        fermi.filter['infile']='@'+listname
         if not self.daily:
             outfile=self.workDir+'/'+str(self.src)+'_gti.fits'
         else:
             outfile=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
-        filter['outfile']=outfile
+        fermi.filter['outfile']=outfile
         
         # If outfile already exists, we re-create it
         if os.path.isfile(outfile):
             os.remove(outfile)
 
-        filter['ra']      = self.ra
-        filter['dec']     = self.dec
-        filter['rad']     = self.roi
-        filter['emin']    = self.emin
-        filter['emax']    = self.emax
-        filter['tmin']    = self.tstart
-        filter['tmax']    = self.tstop
-        filter['zmax']    = self.zmax
-        filter['evclass'] = 128
+        fermi.filter['ra']      = self.ra
+        fermi.filter['dec']     = self.dec
+        fermi.filter['rad']     = self.roi
+        fermi.filter['emin']    = self.emin
+        fermi.filter['emax']    = self.emax
+        fermi.filter['tmin']    = self.tstart
+        fermi.filter['tmax']    = self.tstop
+        fermi.filter['zmax']    = self.zmax
+        fermi.filter['evclass'] = 128
         if VERBOSE:
             print 'INFO Running gtmktime'
-        filter.run()
+        fermi.filter.run()
 
 
     def createXML(self):
@@ -657,26 +657,26 @@ class autoLC:
         """
 
         if self.daily:
-            evtbin['evfile']=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
+            fermi.evtbin['evfile']=self.workDir+'/'+str(self.src)+'_daily_gti.fits'
             outfile=self.workDir+'/'+str(self.src)+'_daily_lc.fits'
         else:
-            evtbin['evfile']=self.workDir+'/'+str(self.src)+'_gti.fits'
+            fermi.evtbin['evfile']=self.workDir+'/'+str(self.src)+'_gti.fits'
             outfile=self.workDir+'/'+str(self.src)+'_lc.fits'
 
         # If outfile already exists, we don't do anything
         if os.path.isfile(outfile):
             return True
 
-        evtbin['outfile']   = outfile
-        evtbin['scfile']    = self.spacecraft
-        evtbin['algorithm'] = 'LC'
-        evtbin['tbinalg']   = 'LIN'
-        evtbin['tstart']    = self.tstart
-        evtbin['tstop']     = self.tstop
-        evtbin['dtime']     = self.tbin
+        fermi.evtbin['outfile']   = outfile
+        fermi.evtbin['scfile']    = self.spacecraft
+        fermi.evtbin['algorithm'] = 'LC'
+        fermi.evtbin['tbinalg']   = 'LIN'
+        fermi.evtbin['tstart']    = self.tstart
+        fermi.evtbin['tstop']     = self.tstop
+        fermi.evtbin['dtime']     = self.tbin
         if VERBOSE:
             print 'INFO Running gtbin'
-        evtbin.run()
+        fermi.evtbin.run()
 
 
     def exposure(self,gamma=None):
