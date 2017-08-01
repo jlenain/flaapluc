@@ -206,7 +206,7 @@ Use '-h' to get the help message
         # Loop on sources
         for i in range(nbSrc):
             options.append('\"/bin/nice -n 10 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
-        cmd="parallel --jobs "+str(MAXCPU)+" ::: "+" ".join(options)
+        cmd="parallel -j "+str(MAXCPU)+" ::: "+" ".join(options)
         # use --dry-run just to test the parallel command
         if not DRYRUN:
             os.system(cmd)
