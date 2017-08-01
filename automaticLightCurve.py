@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 14:31:52 jlenain"
+# Time-stamp: "2017-08-01 15:09:28 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -29,7 +29,7 @@ from ConfigParser import ConfigParser
 
 import asciidata
 import ephem
-import pyfits
+from astropy.io import fits
 from astLib import astCoords
 
 # Import some matplotlib modules
@@ -378,7 +378,7 @@ class automaticLightCurve:
 
         # Open allsky file to get the start and stop dates
         try:
-            hdu=pyfits.open(self.allsky)
+            hdu=fits.open(self.allsky)
         except IOError as e:
             print 'I/O error ({0}): can not open file {1}: {2}'.format(e.errno, self.allsky, e.strerror)
             raise
@@ -690,7 +690,7 @@ class automaticLightCurve:
             srcmdl=self.workDir+'/'+str(self.src)+'.xml'
 
         # If infile already contains an EXPOSURE column, we don't do anything
-        hdu=pyfits.open(infile)
+        hdu=fits.open(infile)
         if hdu[1].header.get('TTYPE5')=='EXPOSURE':
             return True
  
@@ -730,7 +730,7 @@ class automaticLightCurve:
             return True
 
         try:
-            hdu=pyfits.open(infile)
+            hdu=fits.open(infile)
         except:
             print 'Exception: can not open file '+infile
             raise
@@ -794,8 +794,8 @@ class automaticLightCurve:
         localfile.write(webfile.read())
         webfile.close()
         localfile.close()
-        # read local file with pyfits into batlc
-        batfits=pyfits.open(file)
+        # read local file with astropy.io.fits into batlc
+        batfits=fits.open(file)
         batlc=np.array(batfits[1].data)
         batfits.close()
         # delete local file
@@ -947,7 +947,7 @@ class automaticLightCurve:
         infile=self.workDir+'/'+str(self.src)+'_gti.fits'
         outfig=self.workDir+'/'+str(self.src)+'_energyTime.png'
 
-        hdu   = pyfits.open(infile)
+        hdu   = fits.open(infile)
         data  = hdu[1].data
         mask  = data.field('ENERGY')>eThresh
         datac = data[mask]
@@ -1278,12 +1278,12 @@ class automaticLightCurve:
 
             # Get the arrival time of the last photon analysed
             photonfileLongTimeBin            = self.workDir+'/'+str(self.src)+'_gti.fits'
-            photonsLongTimeBin               = pyfits.open(photonfileLongTimeBin)
+            photonsLongTimeBin               = fits.open(photonfileLongTimeBin)
             photonsLongTimeBinTime           = photonsLongTimeBin[1].data.field('TIME')
             self.arrivalTimeLastPhotonLongTimeBin = photonsLongTimeBinTime[-1:]
 
             photonfile                  = self.workDir+'/'+str(self.src)+'_daily_gti.fits'
-            photons                     = pyfits.open(photonfile)
+            photons                     = fits.open(photonfile)
             photonsTime                 = photons[1].data.field('TIME')
             self.arrivalTimeLastPhoton       = photonsTime[-1:]
         else:
@@ -1291,7 +1291,7 @@ class automaticLightCurve:
             self.pngFig=self.workDir+'/'+str(self.src)+'_lc.png'
 
             photonfile            = self.workDir+'/'+str(self.src)+'_gti.fits'
-            photons               = pyfits.open(photonfile)
+            photons               = fits.open(photonfile)
             photonsTime           = photons[1].data.field('TIME')
             self.arrivalTimeLastPhoton = photonsTime[-1:]
         data    = asciidata.open(infile)
@@ -1570,7 +1570,7 @@ class automaticLightCurve:
                 return self.fglName.replace('_3FGLJ','3FGL J').replace('3FGLJ','3FGL J')
 
             cat3FGLfile = self.catalogFile.replace('gll_psc_v08','gll_psc_v16')
-            hdulist = pyfits.open(cat3FGLfile)
+            hdulist = fits.open(cat3FGLfile)
             cat=hdulist[1].data
             if DEBUG:
                 print 'DEBUG: 2FGL name is %s' % self.fglName.replace('_2FGLJ','2FGL J').replace('2FGLJ','2FGL J')
@@ -1605,7 +1605,7 @@ class automaticLightCurve:
 
             cat2FHLfile = self.catalogFile.replace('/3FGL/','/2FHL/').replace('psc_v08','psch_v08').replace('psc_v16','psch_v08')
             try:
-                hdulist = pyfits.open(cat2FHLfile)
+                hdulist = fits.open(cat2FHLfile)
             except IOErrror:
                 if VERBOSE:
                     print 'INFO: 2FHL catalog file not found'
