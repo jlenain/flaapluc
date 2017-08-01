@@ -234,7 +234,7 @@ def getConfigList(option, sep=','):
     return [stuff for stuff in option.split(sep)]
 
 
-class autoLC:
+class automaticLightCurve:
     """
     FLaapLUC
 
@@ -1883,7 +1883,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
     else:
         print "[%s] Processing long time-binned light curve..." % mysrc
 
-    auto=autoLC(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth, stopday=stopday)
+    auto=automaticLightCurve(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth, stopday=stopday)
     auto.readSourceList(mysrc)
 
     if DEBUG:
