@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 14:25:21 jlenain"
+# Time-stamp: "2017-08-01 14:31:52 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1240,8 +1240,8 @@ class autoLC:
             print('INFO: The long-term flux average is ', unp.uarray(flux, fluxErr).mean())
 
         # weighted average of the historical fluxes, weighted by their errors
-        fluxAverage = average(flux, weights=1./fluxErr)
-        fluxRMS     = std(flux, dtype=float64)
+        fluxAverage = np.average(flux, weights=1./fluxErr)
+        fluxRMS     = np.std(flux, dtype=np.float64)
 
         # Dynamically redefine the flux trigger threshold, using a 2-level criteria depending on whether we are currently looking at short- or long-term data
         if self.daily:
