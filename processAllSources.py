@@ -1,6 +1,6 @@
 #!/bin/env python
 #
-# Time-stamp: "2017-08-01 14:20:24 jlenain"
+# Time-stamp: "2017-08-01 14:37:43 jlenain"
 #
 ## SGE parameters (this should work at CCIN2P3):
 #$ -N processAllSources
@@ -45,15 +45,11 @@ def main(argv=None):
     # options parser:
     helpmsg="""%prog [options] <optional list of sources>
 
-This is the version $Id$
-
 Use '-h' to get the help message
-
-If called with '-a', the list of sources will be taken from the last ATOM schedule file.
 
 """
 
-    parser = OptionParser(version="$Id$",
+    parser = OptionParser(version="%prog v1.2",
                           usage=helpmsg)
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
