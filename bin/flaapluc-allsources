@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 14:18:33 jlenain"
+# Time-stamp: "2017-08-01 14:40:47 jlenain"
 
 """
 Process all sources for automatic aperture photometry of interesting high energy sources.
@@ -35,7 +35,7 @@ Use '-h' to get the help message
 
 """
 
-    parser = OptionParser(version="$Id$",
+    parser = OptionParser(version="%prog v1.2",
                           usage=helpmsg)
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
@@ -50,6 +50,8 @@ Use '-h' to get the help message
                       help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
     parser.add_option("-w", "--with-history", action="store_true", dest="history", default=False,
                       help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
+    parser.add_option("--stop-month", default=None, dest="STOPMONTH", metavar="<STOPMONTH>",
+                      help="in conjunction with --merge-long-term, defines the stop year/month (in the format YYYYMM) until which the long-term light curve is generated. '%default' by default.")
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send alert mails')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -140,10 +142,15 @@ Use '-h' to get the help message
         if opt.u:
             UPDATE=True
         else:
-            UPDATE=False        
+            UPDATE=False
+        if opt.STOPMONTH is not None:
+            STOPMONTH=str(opt.STOPMONTH)
+                    else:
+            STOPMONTH=None
     else:
         MERGELONGTERM=False
-        UPDATE=False        
+        UPDATE=False
+        STOPMONTH = None
 
     # If dynamical flux trigger threshold based on source history
     if opt.history:
@@ -155,9 +162,9 @@ Use '-h' to get the help message
     if(len(args)!=0):
         file=args[0]
         print "\033[93mINFO\033[0m Overriding default list of source: using %s" % file
-        auto=alc(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
+        auto=alc(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
     else:
-        auto=alc(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE)
+        auto=alc(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
 
     src,ra,dec,z,fglName=auto.readSourceList()
 
