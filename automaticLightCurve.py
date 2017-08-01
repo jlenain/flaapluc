@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-12 15:43:16 jlenain"
+# Time-stamp: "2017-08-01 11:33:50 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -23,7 +23,7 @@ import glob
 import os
 import sys
 import time
-from numpy import *
+import numpy as np
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 
@@ -800,7 +800,7 @@ class autoLC:
         localfile.close()
         # read local file with pyfits into batlc
         batfits=pyfits.open(file)
-        batlc=array(batfits[1].data)
+        batlc=np.array(batfits[1].data)
         batfits.close()
         # delete local file
         os.unlink(file)
@@ -994,7 +994,7 @@ class autoLC:
         try:
             # cf. http://stackoverflow.com/questions/20105364/how-can-i-make-a-scatter-plot-colored-by-density-in-matplotlib
             from scipy.stats import gaussian_kde
-            xy = vstack([t, e])
+            xy = np.vstack([t, e])
             z = gaussian_kde(xy)(xy)
             # Re-normalize the density
             z = z/max(z)
@@ -1027,7 +1027,7 @@ class autoLC:
         """
         Returns the zenith angle of a source at culmination, for the provided site.
         """
-        return abs(self.dec-self.siteLat)
+        return np.abs(self.dec-self.siteLat)
 
 
     def is_visible(self):
@@ -1052,17 +1052,17 @@ class autoLC:
             z = self.z
 
         # We also want the max allowed ZA for the given z of the source
-        maxz = array(self.maxz)
-        maxZA = array(self.maxZA)
-        if z > max(maxz):
-            thismaxZA = min(maxZA)
+        maxz = np.array(self.maxz)
+        maxZA = np.array(self.maxZA)
+        if z > np.max(maxz):
+            thismaxZA = np.min(maxZA)
         else:
-            msk = where(z<maxz)
+            msk = np.where(z<maxz)
             # Get the first item in the mask, to get the corresponding ZA:
             thismaxZA = maxZA[msk[0][0]]
 
         # Convert ZA to Alt
-        thisminAlt=abs(90.-thismaxZA)
+        thisminAlt=np.abs(90.-thismaxZA)
         
         ephemSrc = ephem.FixedBody()
         ephemSrc._ra=astCoords.decimal2hms(self.ra,delimiter=':')
@@ -1170,7 +1170,7 @@ class autoLC:
         # Numpy array
         # combination of acceptable
         #                        z         ZA@culmination
-        grid = array(zip(self.maxz,self.maxZA))
+        grid = np.array(zip(self.maxz,self.maxZA))
     
         try:
             # import Kapteyn module for WCS
