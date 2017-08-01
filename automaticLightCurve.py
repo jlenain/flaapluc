@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 11:33:50 jlenain"
+# Time-stamp: "2017-08-01 12:23:13 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -37,7 +37,7 @@ try:
     import matplotlib
     matplotlib.use('Agg')
 
-    from matplotlib.pyplot import *
+    from matplotlib.pyplot import plt
     from matplotlib.ticker import FuncFormatter
 except ImportError:
     print "ERROR Can't import matplotlib"
@@ -847,7 +847,7 @@ class autoLC:
         if self.withhistory:
             (fluxAverage,fluxRMS) = self.dynamicalTrigger()
 
-        fig=figure()
+        fig=plt.figure()
 
         if xray:
             ax    = fig.add_subplot(211)
@@ -904,7 +904,7 @@ class autoLC:
 
         # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
         # x,y in relative 0-1 coords in figure
-        figtext(0.98, 0.95,
+        plt.figtext(0.98, 0.95,
                 'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
                 horizontalalignment="right",
                 rotation='vertical',
@@ -937,7 +937,7 @@ class autoLC:
         
         # Don't show the figure in batch mode
         if not BATCH:
-            show()
+            plt.show()
         # Save the figure
         fig.savefig(outfig)
 
@@ -962,7 +962,7 @@ class autoLC:
         t=met2mjd(datac['TIME'])
         e=datac['ENERGY']
 
-        fig=figure()
+        fig=plt.figure()
         ax = fig.add_subplot(111)
 
         if self.fglName is not None:
@@ -1001,7 +1001,7 @@ class autoLC:
             idx = z.argsort()
             t, e, z = t[idx], e[idx], z[idx]
             pcm = ax.scatter(t, e, c=z, s=100, edgecolor='')
-            cbar = colorbar(pcm, ax=ax)
+            cbar = plt.colorbar(pcm, ax=ax)
             cbar.set_label('Kernel-density estimates (arb. unit)', rotation=90)
         except ImportError:
             ax.plot(t, e,  'bo')
@@ -1009,7 +1009,7 @@ class autoLC:
 
         # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
         # x,y in relative 0-1 coords in figure
-        figtext(0.98, 0.95,
+        plt.figtext(0.98, 0.95,
                 'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
                 horizontalalignment="right",
                 rotation='vertical',
@@ -1018,7 +1018,7 @@ class autoLC:
         
         # Don't show the figure in batch mode
         if not BATCH:
-            show()
+            plt.show()
         # Save the figure
         fig.savefig(outfig)
 
