@@ -1,7 +1,7 @@
 #!/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 12:31:38 jlenain"
+# Time-stamp: "2017-08-01 14:25:21 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -37,7 +37,7 @@ try:
     import matplotlib
     matplotlib.use('Agg')
 
-    from matplotlib.pyplot import plt
+    from matplotlib import pyplot as plt
     from matplotlib.ticker import FuncFormatter
 except ImportError:
     print "ERROR Can't import matplotlib"
@@ -45,7 +45,7 @@ except ImportError:
 
 # Import the Science Tools modules
 try:
-    from gt_apps import fermi
+    import gt_apps as fermi
 except ImportError:
     print "ERROR Can't import the Fermi Science tools"
     sys.exit(1)
@@ -97,9 +97,6 @@ def mjd2met(mjd):
 def unixtime2mjd(unixtime):
     """
     Converts a UNIX time stamp in Modified Julian Day
-
-    Highly inspired from the function 'mjd_now()' from
-    Marcus Hauser's ADRAS/ATOM pipeline
 
     Input:  time in UNIX seconds
     Output: time in MJD (fraction of a day)
@@ -253,7 +250,6 @@ class autoLC:
         self.allskyDir = self.config.get('InputDirs', 'AllskyDir')
         self.archiveDir = self.config.get('InputDirs', 'ArchiveDir')
         self.templatesDir = self.config.get('InputDirs', 'TemplatesDir')
-        self.ATOMSchedulesDir = self.config.get('InputDirs', 'ATOMSchedulesDir')
         self.catalogFile = self.config.get('InputFiles', 'CatalogFile')
         if file is None:
             self.file = self.config.get('InputFiles', 'SourceList')
@@ -902,7 +898,7 @@ class autoLC:
         # Plot a line at flux=0, for visibility/readibility
         ax.axhline(y=0.,color='k')
 
-        # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
+        # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
         plt.figtext(0.98, 0.95,
                 'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
@@ -1007,7 +1003,7 @@ class autoLC:
             ax.plot(t, e,  'bo')
         ax.set_yscale('log')
 
-        # Add a label for the creation date of this figure (highly inspired from Marcus Hauser's ADRAS/ATOM pipeline)
+        # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
         plt.figtext(0.98, 0.95,
                 'plot creation date: %s (UTC)'%(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
