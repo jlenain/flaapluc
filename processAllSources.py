@@ -31,7 +31,7 @@ from optparse import OptionParser
 
 # Import custom module
 try:
-    from automaticLightCurve import *
+    from flaapluc import automaticLightCurve as alc
 except ImportError:
     print "\033[91mERROR\033[0m Can't import automaticLightCurve"
     sys.exit(1)
@@ -176,9 +176,9 @@ Use '-h' to get the help message
     if(len(args)!=0):
         file=args[0]
         print "\033[93mINFO\033[0m Overriding default list of source: using %s" % file
-        auto=autoLC(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
+        auto=alc(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
     else:
-        auto=autoLC(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
+        auto=alc(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
 
     src,ra,dec,z,fglName=auto.readSourceList()
 
@@ -190,7 +190,6 @@ Use '-h' to get the help message
     print "I will process %i sources." % nbSrc
     print
     
-
 
     # Use the shell command "parallel"
     if PARALLEL:
