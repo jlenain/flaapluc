@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-31 18:04:44 jlenain"
+# Time-stamp: "2017-08-01 12:00:56 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -81,8 +81,9 @@ class automaticLightCurve:
 
     def __init__(self, file=None, customThreshold=False, daily=False,
                  longTerm=False, yearmonth=None, mergelongterm=False,
-                 withhistory=False, stopmonth=None, verbose=False,
-                 debug=False, configfile='default.cfg', forcealert=False):
+                 withhistory=False, stopmonth=None, stopday=None,
+                 verbose=False, debug=False, configfile='default.cfg',
+                 forcealert=False):
 
         self.config = self.getConfig(configfile=configfile)
         self.allskyDir = self.config.get('InputDirs', 'AllskyDir')
@@ -143,6 +144,10 @@ class automaticLightCurve:
         self.mailSender = self.config.get('MailConfig', 'MailSender')
 
         today = datetime.date.today().strftime('%Y%m%d')
+        self.stopday = stopday
+        if self.stopday is not None:
+            today = self.stopday.replace('-','')
+            self.lastAllskyFile = self.allskyFile
 
         # Setting file names and directories
         if longTerm:
@@ -217,7 +222,10 @@ class automaticLightCurve:
         if not longTerm:
             self.tstart = header['TSTART']
             self.tstop  = header['TSTOP']
-
+            if self.stopday is not None:
+                from astropy.time import Time
+                self.tstop = mjd2met(Time('%s 00:00:00' % self.stopday, format='iso', scale='utc').mjd)
+                self.tstart = self.tstop - 30*24*3600  # stop - 30 days
         else:
             missionStart = header['TSTART'] # in MET
             missionStop  = header['TSTOP']  # in MET

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-29 15:02:54 jlenain"
+# Time-stamp: "2017-08-01 12:04:02 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -45,7 +45,7 @@ FLAGASSUMEDGAMMA = False
 ASSUMEDGAMMA = -2.5
 
 
-def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False,stopmonth=None, verbose=False, debug=False, forcealert=False):
+def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,test=False, yearmonth=None, mergelongterm=False,withhistory=False,update=False,configfile='default.cfg',force_daily=False,stopmonth=None, stopday=None, verbose=False, debug=False, forcealert=False):
     """
     Process a given source.
     """
@@ -69,6 +69,7 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            update=update,
                                            configfile=configfile,
                                            stopmonth=stopmonth,
+                                           stopday=stopday,
                                            verbose=verbose,
                                            debug=debug,
                                            forcealert=forcealert)
@@ -99,13 +100,14 @@ def processSrc(mysrc=None,useThresh=False,daily=False,mail=True,longTerm=False,t
                                            update=update,
                                            configfile=configfile,
                                            stopmonth=stopmonth,
+                                           stopday=stopday,
                                            verbose=verbose,
                                            debug=debug,
                                            forcealert=forcealert)
     else:
         print "[%s] Processing long time-binned light curve..." % mysrc
 
-    auto=alc(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth, verbose=verbose, debug=debug, forcealert=forcealert)
+    auto=alc(customThreshold=useThresh,daily=daily,longTerm=longTerm,yearmonth=yearmonth,mergelongterm=mergelongterm,withhistory=withhistory,configfile=configfile,stopmonth=stopmonth, stopday=stopday, verbose=verbose, debug=debug, forcealert=forcealert)
     auto.readSourceList(mysrc)
 
     if debug:
@@ -244,6 +246,8 @@ Use '-h' to get the help message
                       help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
     parser.add_option("--stop-month", default=None, dest="STOPMONTH", metavar="<STOPMONTH>",
                       help="in conjunction with --merge-long-term, defines the stop year/month (in the format YYYYMM) until which the long-term light curve is generated. '%default' by default.")
+    parser.add_option("--stop-day", default=None, dest="STOPDAY", metavar="<STOPDAY>",
+                      help="defines the stop year-month-day (in the format YYYY-MM-DD) until which the short-term light curve is generated. '%default' by default.")
     parser.add_option("-n", "--no-mail", action="store_true", dest="n", default=False,
                       help='do not send mail alerts')
     parser.add_option("-t", "--test", action="store_true", dest="t", default=False,
@@ -336,6 +340,7 @@ Use '-h' to get the help message
         #DAILY=False
         MAIL=False
         TEST=False
+        STOPDAY = None
         # If update long term light curves with brand new data
         if opt.u:
             UPDATE=True
@@ -349,6 +354,10 @@ Use '-h' to get the help message
         MERGELONGTERM=False
         UPDATE=False
         STOPMONTH = None
+        if opt.STOPDAY is not None:
+            STOPDAY = str(opt.STOPDAY)
+        else:
+            STOPDAY = None
 
     # If dynamical flux trigger threshold based on source history
     if opt.history:
@@ -358,7 +367,7 @@ Use '-h' to get the help message
 
     src=args[0]
 
-    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY, stopmonth=STOPMONTH, verbose=VERBOSE, debug=DEBUG, forcealert=FORCEALERT)
+    processSrc(mysrc=src,useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,yearmonth=yearmonth,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE,force_daily=FORCE_DAILY, stopmonth=STOPMONTH, stopday=STOPDAY, verbose=VERBOSE, debug=DEBUG, forcealert=FORCEALERT)
 
     return True
 
