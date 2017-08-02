@@ -14,7 +14,6 @@ import os
 import datetime
 from optparse import OptionParser
 
-
 # Import custom module
 try:
     from flaapluc import automaticLightCurve as alc
@@ -29,7 +28,7 @@ def main(argv=None):
     """
 
     # options parser:
-    helpmsg="""%prog [options] <optional list of sources>
+    helpmsg = """%prog [options] <optional list of sources>
 
 Use '-h' to get the help message
 
@@ -46,7 +45,7 @@ Use '-h' to get the help message
                       help='generate a long term light curve, using the whole mission time (defaulted to False).')
     parser.add_option("-m", "--merge-long-term", action="store_true", dest="m", default=False,
                       help='merge the long-term month-by-month light curves together.')
-    parser.add_option("-u","--update",action="store_true",dest="u",default=False,
+    parser.add_option("-u", "--update", action="store_true", dest="u", default=False,
                       help='update with new data for last month/year when used in conjunction of --merge-long-term. Otherwise, has no effect.')
     parser.add_option("-w", "--with-history", action="store_true", dest="history", default=False,
                       help='use the long-term history of a source to dynamically determine a flux trigger threshold, instead of using a fixed flux trigger threshold as done by default. This option makes use of the long-term data on a source, and assumes that these have been previously generated with the --merge-long-term option.')
@@ -69,54 +68,54 @@ Use '-h' to get the help message
 
     (opt, args) = parser.parse_args()
 
-    CONFIGFILE=opt.CONFIGFILE
+    CONFIGFILE = opt.CONFIGFILE
 
     global VERBOSE
     if opt.v:
-        VERBOSE=True
+        VERBOSE = True
     else:
-        VERBOSE=False
+        VERBOSE = False
 
     # If dry run
     if opt.dryRun:
-        DRYRUN=True
+        DRYRUN = True
     else:
-        DRYRUN=False
+        DRYRUN = False
 
     # If parallel
     if opt.parallel:
-        PARALLEL=True
+        PARALLEL = True
         if int(opt.MAXCPU) != 1:
-            MAXCPU=int(opt.MAXCPU)
+            MAXCPU = int(opt.MAXCPU)
         else:
             # Force the script to process only one source at a time
-            MAXCPU=1
+            MAXCPU = 1
     else:
-        PARALLEL=False
-        
+        PARALLEL = False
+
     # If daily bins
     if opt.d:
-        DAILY=True
+        DAILY = True
     else:
-        DAILY=False
+        DAILY = False
 
     # If custom thresholds
     if opt.c:
-        USECUSTOMTHRESHOLD=True
+        USECUSTOMTHRESHOLD = True
     else:
-        USECUSTOMTHRESHOLD=False
+        USECUSTOMTHRESHOLD = False
 
     # If test mode
     if opt.t:
-        TEST=True
+        TEST = True
     else:
-        TEST=False
+        TEST = False
 
     # If no mail is sent
     if opt.n:
-        MAIL=False
+        MAIL = False
     else:
-        MAIL=True
+        MAIL = True
 
     if TEST and not MAIL:
         print "\033[91mFATAL You asked for both the --test and --no-mail options."
@@ -125,65 +124,63 @@ Use '-h' to get the help message
 
     # If long term
     if opt.l:
-        LONGTERM=True
+        LONGTERM = True
     else:
-        LONGTERM=False
-    
+        LONGTERM = False
+
     if LONGTERM is True and DAILY is True:
         print "\033[91mFATAL You asked for both the --long-term and --daily options."
         print "      Since this is too CPU intensive, this combination was disabled.\033[0m"
         sys.exit(1)
 
-
     # If merge long term light curves
     if opt.m:
-        MERGELONGTERM=True
+        MERGELONGTERM = True
         # If update long term light curves with brand new data
         if opt.u:
-            UPDATE=True
+            UPDATE = True
         else:
-            UPDATE=False
+            UPDATE = False
         if opt.STOPMONTH is not None:
-            STOPMONTH=str(opt.STOPMONTH)
+            STOPMONTH = str(opt.STOPMONTH)
         else:
-            STOPMONTH=None
+            STOPMONTH = None
     else:
-        MERGELONGTERM=False
-        UPDATE=False
+        MERGELONGTERM = False
+        UPDATE = False
         STOPMONTH = None
 
     # If dynamical flux trigger threshold based on source history
     if opt.history:
-        WITHHISTORY=True
+        WITHHISTORY = True
     else:
-        WITHHISTORY=False
+        WITHHISTORY = False
 
-
-    if(len(args)!=0):
-        file=args[0]
+    if (len(args) != 0):
+        file = args[0]
         print "\033[93mINFO\033[0m Overriding default list of source: using %s" % file
-        auto=alc(file=file,customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
+        auto = alc(file=file, customThreshold=USECUSTOMTHRESHOLD, daily=DAILY, longTerm=LONGTERM,
+                   mergelongterm=MERGELONGTERM, withhistory=WITHHISTORY, configfile=CONFIGFILE, stopmonth=STOPMONTH)
     else:
-        auto=alc(customThreshold=USECUSTOMTHRESHOLD,daily=DAILY,longTerm=LONGTERM,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,configfile=CONFIGFILE,stopmonth=STOPMONTH)
+        auto = alc(customThreshold=USECUSTOMTHRESHOLD, daily=DAILY, longTerm=LONGTERM, mergelongterm=MERGELONGTERM,
+                   withhistory=WITHHISTORY, configfile=CONFIGFILE, stopmonth=STOPMONTH)
 
-    src,ra,dec,z,fglName=auto.readSourceList()
-
+    src, ra, dec, z, fglName = auto.readSourceList()
 
     # Total number of sources to process
-    nbSrc=len(src)
+    nbSrc = len(src)
 
     print
     print "I will process %i sources." % nbSrc
     print
-    
 
     # Use the shell command "parallel"
     if PARALLEL:
-        options=[]
-        
+        options = []
+
         # Set the options for automaticLightCurve
-        autoOptions=[]
-        autoOptions.append("--config-file="+CONFIGFILE)
+        autoOptions = []
+        autoOptions.append("--config-file=" + CONFIGFILE)
         if USECUSTOMTHRESHOLD:
             autoOptions.append("-c")
         if DAILY:
@@ -205,8 +202,9 @@ Use '-h' to get the help message
 
         # Loop on sources
         for i in range(nbSrc):
-            options.append('\"/bin/nice -n 10 ./automaticLightCurve.py '+' '.join(autoOptions)+' '+str(src[i])+'\"')
-        cmd="parallel -j "+str(MAXCPU)+" ::: "+" ".join(options)
+            options.append(
+                '\"/bin/nice -n 10 ./automaticLightCurve.py ' + ' '.join(autoOptions) + ' ' + str(src[i]) + '\"')
+        cmd = "parallel -j " + str(MAXCPU) + " ::: " + " ".join(options)
         # use --dry-run just to test the parallel command
         if not DRYRUN:
             os.system(cmd)
@@ -216,20 +214,24 @@ Use '-h' to get the help message
     else:
         # Or directly process everything sequentially, using only 1 CPU
         if MERGELONGTERM:
-            LONGTERM=True
-        
+            LONGTERM = True
+
         # Loop on sources
         for i in range(nbSrc):
-            print 'Starting process %i for source %s' % (i,src[i])
+            print 'Starting process %i for source %s' % (i, src[i])
 
             if not DRYRUN:
-                processSrc(mysrc=src[i],useThresh=USECUSTOMTHRESHOLD,daily=DAILY,mail=MAIL,longTerm=LONGTERM,test=TEST,mergelongterm=MERGELONGTERM,withhistory=WITHHISTORY,update=UPDATE,configfile=CONFIGFILE)
+                processSrc(mysrc=src[i], useThresh=USECUSTOMTHRESHOLD, daily=DAILY, mail=MAIL, longTerm=LONGTERM,
+                           test=TEST, mergelongterm=MERGELONGTERM, withhistory=WITHHISTORY, update=UPDATE,
+                           configfile=CONFIGFILE)
             else:
-                print "processSrc(mysrc="+src[i]+",useThresh="+str(USECUSTOMTHRESHOLD)+",daily="+str(DAILY)+",mail="+str(MAIL)+",longTerm="+str(LONGTERM)+",test="+str(TEST)+",mergelongterm="+str(MERGELONGTERM)+",withhistory="+str(WITHHISTORY)+",update="+str(UPDATE)+",configfile="+str(CONFIGFILE)+")"
+                print "processSrc(mysrc=" + src[i] + ",useThresh=" + str(USECUSTOMTHRESHOLD) + ",daily=" + str(
+                    DAILY) + ",mail=" + str(MAIL) + ",longTerm=" + str(LONGTERM) + ",test=" + str(
+                    TEST) + ",mergelongterm=" + str(MERGELONGTERM) + ",withhistory=" + str(
+                    WITHHISTORY) + ",update=" + str(UPDATE) + ",configfile=" + str(CONFIGFILE) + ")"
             print
 
     return True
-
 
 
 if __name__ == '__main__':
