@@ -23,7 +23,7 @@ def met2mjd(met):
     """
     MJDREFI = 51910.0
     MJDREFF = 7.428703703703703e-4
-    return (MJDREFI+MJDREFF+met/24./60./60.)
+    return (MJDREFI + MJDREFF + met / 24. / 60. / 60.)
 
 
 def mjd2met(mjd):
@@ -52,7 +52,7 @@ def unixtime2mjd(unixtime):
     # unixtime gives seconds passed since "The Epoch": 1.1.1970 00:00
     # MJD at that time was 40587.0
 
-    result = 40587.0 + unixtime / (24.*60.*60.)
+    result = 40587.0 + unixtime / (24. * 60. * 60.)
     return result
 
 
@@ -73,37 +73,37 @@ def jd2gd(x):
 
     jd = float(x)
 
-    jd = jd+0.5
+    jd = jd + 0.5
     Z = int(jd)
-    F = jd-Z
-    alpha = int((Z-1867216.25)/36524.25)
-    A = Z + 1 + alpha - int(alpha/4)
+    F = jd - Z
+    alpha = int((Z - 1867216.25) / 36524.25)
+    A = Z + 1 + alpha - int(alpha / 4)
 
     B = A + 1524
-    C = int((B-122.1)/365.25)
-    D = int(365.25*C)
-    E = int((B-D)/30.6001)
+    C = int((B - 122.1) / 365.25)
+    D = int(365.25 * C)
+    E = int((B - D) / 30.6001)
 
-    dd = B - D - int(30.6001*E) + F
+    dd = B - D - int(30.6001 * E) + F
 
     if E < 13.5:
-        mm = E-1
+        mm = E - 1
 
     if E > 13.5:
-        mm = E-13
+        mm = E - 13
 
     if mm > 2.5:
-        yyyy = C-4716
+        yyyy = C - 4716
 
     if mm < 2.5:
-        yyyy = C-4715
+        yyyy = C - 4715
 
     daylist = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     daylist2 = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
-    h = int((dd-int(dd))*24)
-    min = int((((dd-int(dd))*24)-h)*60)
-    sec = 86400*(dd-int(dd))-h*3600-min*60
+    h = int((dd - int(dd)) * 24)
+    min = int((((dd - int(dd)) * 24) - h) * 60)
+    sec = 86400 * (dd - int(dd)) - h * 3600 - min * 60
 
     # Now calculate the fractional year. Do we have a leap year?
     if (yyyy % 4 != 0):
@@ -127,4 +127,4 @@ def mjd2gd(time):
     Under the hood, it calls jd2gd().
     """
 
-    return jd2gd(time+2400000.5)
+    return jd2gd(time + 2400000.5)
