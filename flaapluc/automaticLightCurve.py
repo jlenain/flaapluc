@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 15:02:26 jlenain"
+# Time-stamp: "2017-08-03 00:56:43 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -21,6 +21,7 @@ http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 import datetime
 import time
 import glob
+import logging
 import numpy as np
 import sys
 import os
@@ -46,14 +47,14 @@ try:
     from matplotlib import pyplot as plt
     from matplotlib.ticker import FuncFormatter
 except ImportError:
-    print "ERROR Can't import matplotlib"
+    logging.error('Can\'t import matplotlib')
     sys.exit(1)
 
 # Import the Science Tools modules
 try:
     import gt_apps as fermi
 except ImportError:
-    print "ERROR Can't import the Fermi Science tools"
+    logging.error('Can\'t import the Fermi Science tools')
     sys.exit(1)
 
 # Flags
@@ -84,7 +85,7 @@ class automaticLightCurve:
                  longTerm=False, yearmonth=None, mergelongterm=False,
                  withhistory=False, stopmonth=None, stopday=None,
                  verbose=False, debug=False, configfile='default.cfg',
-                 forcealert=False):
+                 forcealert=False, loglevel=logging.INFO):
 
         self.config = self.getConfig(configfile=configfile)
         self.allskyDir = self.config.get('InputDirs', 'AllskyDir')
@@ -108,21 +109,21 @@ class automaticLightCurve:
         except:
             # Take 7 days by default
             self.longtimebin = 7.
-            print '\033[93mCan not read LongTimeBin in config file, taking %.1f as default.\033[0m' % (self.longtimebin)
+            logging.warning('\033[93mCan not read LongTimeBin in config file, taking %.1f as default.\033[0m', self.longtimebin)
 
         try:
             self.sigma = float(self.config.get('AlertTrigger', 'Sigma'))
         except:
             # Take 2 sigma by default
             self.sigma = 3.
-            print '\033[93mCan not read Sigma in config file, taking %.1f as default.\033[0m' % (self.sigma)
+            logging.warning('\033[93mCan not read Sigma in config file, taking %.1f as default.\033[0m', self.sigma)
 
         try:
             self.sigmaLT = float(self.config.get('AlertTrigger', 'SigmaLT'))
         except:
             # Take 2 sigma by default
             self.sigmaLT = 1.5
-            print '\033[93mCan not read SigmaLT in config file, taking %.1f as default.\033[0m' % (self.sigmaLT)
+            logging.warning('\033[93mCan not read SigmaLT in config file, taking %.1f as default.\033[0m', self.sigmaLT)
 
         # Read maxz and maxZA as lists, not as single floats
         self.maxz = [float(i) for i in getConfigList(self.config.get('AlertTrigger', 'MaxZ'))]
@@ -177,13 +178,13 @@ class automaticLightCurve:
         except:
             # Take 100 MeV by default
             self.emin = 1.e2  # E min
-            print '\033[93mCan not read Emin in config file, taking %.1g as default.\033[0m' % (self.emin)
+            logging.warning('\033[93mCan not read Emin in config file, taking %.1g as default.\033[0m', self.emin)
         try:
             self.emax = float(self.config.get('Erange', 'Emax'))
         except:
             # Take 500 GeV by default
             self.emax = 5.e5  # E max
-            print '\033[93mCan not read Emax in config file, taking %.1g as default.\033[0m' % (self.emax)
+            logging.warning('\033[93mCan not read Emax in config file, taking %.1g as default.\033[0m', self.emax)
         self.zmax = 90.  # degrees
         self.rockangle = 52.  # maximal allowed rocking angle
 
@@ -201,17 +202,18 @@ class automaticLightCurve:
         try:
             hdu = fits.open(self.allsky)
         except IOError as e:
-            print 'I/O error ({0}): can not open file {1}: {2}'.format(e.errno, self.allsky, e.strerror)
-            print 'I will create the allsky file on the fly for you, for the last month of available data, using enrico.'
-            print 'First, retrieving the last photon files...'
+            logging.error("""I/O error ({0}): can not open file {1}: {2}'.format(e.errno, self.allsky, e.strerror)
+I will create the allsky file on the fly for you, for the last month of available data, using enrico.
+First, retrieving the last photon files...
+            """.format(e.errno, self.allsky, e.strerror))
             cmd = 'enrico_download --download_data'
             r = os.system(cmd)
             assert (r == 0), "Could not properly download the last data."
-            print 'Second, retrieving the last spacecraft file...'
+            logging.error('Second, retrieving the last spacecraft file...')
             cmd = 'enrico_download --download_spacecraft'
             r = os.system(cmd)
             assert (r == 0), "Could not properly download the last spacecraft file."
-            print 'Third, creating the allsky file with enrico...'
+            logging.error('Third, creating the allsky file with enrico...')
             cmd = 'enrico_download --preprocess_data --steps=gtselect --event_classes=source --selections=all --emins=100'
             r = os.system(cmd)
             assert (r == 0), "Could not properly generate the allsky file."
@@ -250,9 +252,8 @@ class automaticLightCurve:
                 tmptstart = extras.mjd2met(extras.unixtime2mjd(yearmonthStart))
                 tmptstop = extras.mjd2met(extras.unixtime2mjd(yearmonthStop))
 
-                if self.debug:
-                    print 'DEBUG: INIT yearmonthStart=', yearmonthStart
-                    print 'DEBUG: INIT yearmonthStop=', yearmonthStop
+                logging.debug('INIT yearmonthStart=', yearmonthStart)
+                logging.debug('INIT yearmonthStop=', yearmonthStop)
 
                 # Make sure that start of yearmonth is after the launch of Fermi, and that stop of yearmonth is before the very last data we have from NASA servers !
                 if tmptstart > missionStart:
@@ -285,7 +286,7 @@ class automaticLightCurve:
         try:
             srcList = ascii.read(self.file)
         except IOError:
-            print "ERROR Can't open " + self.file
+            logging.error('Can not open %s', self.file)
             sys.exit(1)
 
         src = srcList['Name']
@@ -311,7 +312,7 @@ class automaticLightCurve:
                             float(myThreshold[i])
                             self.threshold = myThreshold[i]
                         except ValueError:
-                            print 'WARNING The threshold of the source %s is not a float. Please, check the list of sources !' % mysrc
+                            logging.warning('The threshold of the source %s is not a float. Please, check the list of sources !', mysrc)
                             sys.exit(2)
                     self.src = src[i]
                     self.ra = ra[i]
@@ -321,7 +322,7 @@ class automaticLightCurve:
                     return
 
             # If we end up without any found source, print out a WARNING
-            print 'WARNING Can\'t find your source %s in the list of sources !' % str(mysrc)
+            logging.warning('Can\'t find your source %s in the list of sources !', str(mysrc))
             self.src = None
             self.ra = None
             self.dec = None
@@ -362,6 +363,7 @@ class automaticLightCurve:
         fermi.filter['tmax'] = self.tstop
         fermi.filter['zmax'] = self.zmax
         fermi.filter['evclass'] = 128
+        logging.info('Running gtselect')
         fermi.filter.run()
 
     def makeTime(self):
@@ -388,6 +390,7 @@ class automaticLightCurve:
         fermi.maketime['roicut'] = 'no'
         fermi.maketime['tstart'] = self.tstart
         fermi.maketime['tstop'] = self.tstop
+        logging.info('Running gtmktime')
         fermi.maketime.run()
 
     def mergeGTIfiles(self):
@@ -436,8 +439,7 @@ class automaticLightCurve:
         fermi.filter['tmax'] = self.tstop
         fermi.filter['zmax'] = self.zmax
         fermi.filter['evclass'] = 128
-        if self.verbose:
-            print 'INFO Running gtmktime'
+        logging.info('Running gtselect')
         fermi.filter.run()
 
     def createXML(self):
@@ -459,12 +461,11 @@ class automaticLightCurve:
         try:
             import make3FGLxml
         except ImportError:
-            print "ERROR Can't import make3FGLxml."
+            logging.error('ERROR Can\'t import make3FGLxml.')
             sys.exit(1)
 
         mymodel = make3FGLxml.srcList(self.catalogFile, evfile, modelfile)
-        if self.verbose:
-            print 'INFO Running makeModel'
+        logging.info('Running makeModel')
         mymodel.makeModel(GDfile=self.fermiDir + '/refdata/fermi/galdiffuse/gll_iem_v06.fits', GDname='GalDiffuse',
                           ISOfile=self.fermiDir + '/refdata/fermi/galdiffuse/iso_P8R2_SOURCE_V6_v06.txt',
                           ISOname='IsotropicDiffuse', extDir=self.templatesDir, makeRegion=False)
@@ -492,8 +493,7 @@ class automaticLightCurve:
         fermi.evtbin['tstart'] = self.tstart
         fermi.evtbin['tstop'] = self.tstop
         fermi.evtbin['dtime'] = self.tbin
-        if self.verbose:
-            print 'INFO Running gtbin'
+        logging.info('Running gtbin')
         fermi.evtbin.run()
 
     def exposure(self, gamma=None):
@@ -522,14 +522,12 @@ class automaticLightCurve:
         options = 'infile=' + infile + ' scfile=' + scfile + ' irfs=' + irfs + ' rad=' + rad
         if self.fglName is not None:
             target = self.fglName.replace('3FGLJ', '3FGL J')
-            if self.debug:
-                print 'DEBUG: exposure: target=%s' % target
+            logging.debug('exposure: target=%s', target)
             options += ' srcmdl=' + srcmdl + ' target="' + target + '"'
         else:
             options += ' srcmdl="none" specin=' + str(gamma)
         cmd = 'time -p ' + self.fermiDir + '/bin/gtexposure ' + options
-        if self.verbose:
-            print 'INFO Running %s' % cmd
+        logging.info('Running gtexposure')
         os.system(cmd)
 
     def createDAT(self):
@@ -552,7 +550,7 @@ class automaticLightCurve:
         try:
             hdu = fits.open(infile)
         except:
-            print 'Exception: can not open file ' + infile
+            logging.critical('Exception: can not open file %s', infile)
             raise
         data = hdu[1].data
 
@@ -765,7 +763,7 @@ class automaticLightCurve:
         mask = data.field('ENERGY') > eThresh
         datac = data[mask]
         if not datac.size:
-            print '[%s] \033[92mWARNING Empty energy vs time plot above %0.f GeV\033[0m' % (self.src, eThresh / 1.e3)
+            logging.warning('[%s] \033[92mEmpty energy vs time plot above %0.f GeV\033[0m', self.src, eThresh / 1.e3)
             return
 
         t = extras.met2mjd(datac['TIME'])
@@ -866,7 +864,7 @@ class automaticLightCurve:
         maxZA = np.array(self.maxZA)
         if z > np.max(maxz):
             thismaxZA = np.min(maxZA)
-            print 'WARNING: z is greater than maxz !'
+            logging.warning('z is greater than maxz !')
         else:
             msk = np.where(z < maxz)
             # Get the first item in the mask, to get the corresponding ZA:
@@ -885,14 +883,13 @@ class automaticLightCurve:
         zaAtCulmin = self.zaAtCulmination()
         if zaAtCulmin > 90.:
             # the source is basically NEVER visible at the site
-            print '[%s] \033[91mNEVER above horizon at the site, consider discarding this source from your source list...\033[0m' % self.src
+            logging.info('[%s] \033[91mNEVER above horizon at the site, consider discarding this source from your source list...\033[0m', self.src)
             return False
 
         if thismaxZA < zaAtCulmin:
             # the source is never above maxZA set by 2D mask on Dec/z
-            print '[%s]\033[91m Never above allowed max ZA, consider relaxing the Dec/z cuts or discarding this source from your source list...\033[0m' % self.src
-            if self.debug:
-                print "DEBUG: [%s] thismaxZA=%f, zaAtCulmin=%f" % (self.src, thismaxZA, zaAtCulmin)
+            logging.info('[%s]\033[91m Never above allowed max ZA, consider relaxing the Dec/z cuts or discarding this source from your source list...\033[0m', self.src)
+            logging.debug('[%s] thismaxZA=%f, zaAtCulmin=%f', self.src, thismaxZA, zaAtCulmin)
             return False
 
         # All times are handled here in UTC (pyEphem only uses UTC)
@@ -913,8 +910,7 @@ class automaticLightCurve:
 
         # However, if the program is run during dark time, we should look at the ephemerids of next night (not current night):
         if nextSunrise < nextSunset:
-            if self.verbose:
-                print "INFO: looking at visibility for tomorrow"
+            logging.info('looking at visibility for tomorrow')
             # we just put the current time at next sunrise + 10 min., to be sure to fall on tomorrow's morning day time
             site.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
             nextSunset = site.next_setting(sun)
@@ -932,8 +928,7 @@ class automaticLightCurve:
         srcAltAtTransit = Angle(ephemSrc.alt, unit=u.rad).degree
 
         # If srcAltAtTransit is below thisminAlt, the source is just not optimally visible and we stop here
-        if self.debug:
-            print "DEBUG: thisminAlt =", thisminAlt
+        logging.debug('thisminAlt = {0}'.format(thisminAlt))
         if srcAltAtTransit < thisminAlt:
             return False
 
@@ -957,39 +952,27 @@ class automaticLightCurve:
         srcAltAtEndDarkTime = Angle(ephemSrc.alt, unit=u.rad).degree
 
         darknessDuration = (endDarkness - beginDarkness) * 24. * 60.  # day to minutes
-        if self.debug:
-            print "DEBUG: darkness begin=%s" % beginDarkness
-            print "DEBUG: srcAltAtStartDarkTime=", srcAltAtStartDarkTime
-            print "DEBUG: srcTransitTime=", srcTransitTime
-            print "DEBUG: srcAltAtTransit=", srcAltAtTransit
-            print "DEBUG: darkness ends=%s" % endDarkness
-            print "DEBUG: srcAltAtEndDarkTime=", srcAltAtEndDarkTime
-            print "DEBUG: darkness duration=%s minutes" % darknessDuration
-
-        # check if source is visible, above minAlt, during this night
-        # if ((srcTransitTime > beginDarkness
-        #      and srcTransitTime < endDarkness
-        #      and srcAltAtTransit > thisminAlt)
-        #     or srcAltAtStartDarkTime > thisminAlt
-        #     or srcAltAtEndDarkTime > thisminAlt):
-        #     visibleFlag=True
+        logging.debug('darkness begin={0}'.format(beginDarkness))
+        logging.debug('srcAltAtStartDarkTime={0}'.format(srcAltAtStartDarkTime))
+        logging.debug('srcTransitTime={0}'.format(srcTransitTime))
+        logging.debug('srcAltAtTransit={0}'.format(srcAltAtTransit))
+        logging.debug('darkness ends={0}'.format(endDarkness))
+        logging.debug('srcAltAtEndDarkTime={0}'.format(srcAltAtEndDarkTime))
+        logging.debug('darkness duration={0} minutes'.format(darknessDuration))
 
         # check if source is visible, above minAlt, during this night
         for step in range(0, np.int(darknessDuration)):
             site.date = beginDarkness.datetime() + datetime.timedelta(minutes=step)
             ephemSrc.compute(site)
             srcAlt = Angle(ephemSrc.alt, unit=u.rad).degree
-            if self.debug:
-                print "DEBUG LOOPING: it is ", site.date, " and ", self.src, " is at alt. of ", srcAlt
+            logging.debug('LOOPING: it is {0} and {1} is at alt. of {2}'.format(site.date, self.src, srcAlt))
             if srcAlt > thisminAlt:
                 visibleFlag = True
-                if self.verbose:
-                    print "INFO: {0} starts to be optimally visible, above {1}°, at {2}".format(self.src, thisminAlt,
-                                                                                                site.date)
+                logging.info('{0} starts to be optimally visible, above {1}°, at {2}'.format(self.src, thisminAlt,
+                                                                                             site.date))
                 break
 
-        if self.verbose:
-            print "INFO: is_visible: " + str(visibleFlag)
+        logging.debug('is_visible: %s', str(visibleFlag))
         return visibleFlag
 
     def killTrigger(self):
@@ -1029,10 +1012,10 @@ class automaticLightCurve:
 
         # if the mask has at least one 'True' element, we should send an alert
         if True in msk and self.visible:
-            # print 'An alert should be triggered !'
+            # An alert should be triggered !
             return False
         else:
-            # print 'No alert triggered'
+            # No alert triggered
             return True
 
     def dynamicalTrigger(self):
@@ -1048,7 +1031,7 @@ class automaticLightCurve:
         try:
             data = ascii.read(infile)
         except IOError:
-            print '[%s] \033[95m* Long term data file unavailable for source %s\033[0m' % (self.src, self.src)
+            logging.error('[%s] \033[95m* Long term data file unavailable for source %s\033[0m', self.src, self.src)
             # Falling back to default fixed trigger threshold
             self.withhistory = False
             return (False, False)
@@ -1058,7 +1041,7 @@ class automaticLightCurve:
         if self.verbose:
             try:
                 from uncertainties import unumpy as unp
-                print('INFO: The long-term flux average is ', unp.uarray(flux, fluxErr).mean())
+                logging.info('The long-term flux average is %.2g ph cm^-2 s^-1', unp.uarray(flux, fluxErr).mean())
             except:
                 pass
 
@@ -1128,9 +1111,8 @@ class automaticLightCurve:
 
         self.energyTimeFig = self.workDir + '/' + str(self.src) + '_energyTime.png'
 
-        if self.debug:
-            print 'DEBUG %s, threshold=%g, lastFlux=%g, lastFluxErr=%g' % (
-            self.src, self.threshold, self.lastFlux, self.lastFluxErr)
+        logging.debug('%s, threshold=%g, lastFlux=%g, lastFluxErr=%g',
+                      self.src, self.threshold, self.lastFlux, self.lastFluxErr)
 
         # Do we kill potential trigger due to (ra, dec, z) cut ?
         self.triggerkilled = self.killTrigger()
@@ -1147,20 +1129,18 @@ class automaticLightCurve:
         else:
             SENDALERT = False
 
-        if self.verbose:
-            print "INFO: triggerkilled=" + str(self.triggerkilled)
-            print "INFO: active=" + str(self.active)
-            print "INFO: visible=" + str(self.visible)
-            print "INFO: SENDALERT=" + str(SENDALERT)
+        logging.debug('triggerkilled=%s', str(self.triggerkilled))
+        logging.debug('active=%s', str(self.active))
+        logging.debug('visible=%s', str(self.visible))
+        logging.debug('SENDALERT=%s', str(SENDALERT))
 
-        if self.debug:
-            print "DEBUG {0}, dec={1}, z={2}, maxZA={3}, maxz={4}, triggerkilled={5}, sendalert={6}".format(self.src,
-                                                                                                            self.dec,
-                                                                                                            self.z,
-                                                                                                            self.maxZA,
-                                                                                                            self.maxz,
-                                                                                                            self.triggerkilled,
-                                                                                                            SENDALERT)
+        logging.debug('DEBUG {0}, dec={1}, z={2}, maxZA={3}, maxz={4}, triggerkilled={5}, sendalert={6}'.format(self.src,
+                                                                                                                self.dec,
+                                                                                                                self.z,
+                                                                                                                self.maxZA,
+                                                                                                                self.maxz,
+                                                                                                                self.triggerkilled,
+                                                                                                                SENDALERT))
 
         return SENDALERT
 
@@ -1186,7 +1166,7 @@ class automaticLightCurve:
             from email import Encoders
 
         except:
-            print "ERROR sendAlert: Can't import mail modules."
+            logging.error('sendAlert: Can\'t import mail modules.')
             sys.exit(1)
 
         SENDALERT = self.Triggered()
@@ -1305,7 +1285,7 @@ class automaticLightCurve:
             s.sendmail(sender, recipient, msg.as_string())
             s.quit()
 
-            print "\033[94m*** Alert sent for %s\033[0m" % self.src
+            logging.info('\033[94m*** Alert sent for %s\033[0m', self.src)
 
             return True
         else:
@@ -1322,22 +1302,19 @@ class automaticLightCurve:
             cat3FGLfile = self.catalogFile.replace('gll_psc_v08', 'gll_psc_v16')
             hdulist = fits.open(cat3FGLfile)
             cat = hdulist[1].data
-            if self.debug:
-                print 'DEBUG: 2FGL name is %s' % self.fglName.replace('_2FGLJ', '2FGL J').replace('2FGLJ', '2FGL J')
+            logging.debug('2FGL name is %s', self.fglName.replace('_2FGLJ', '2FGL J').replace('2FGLJ', '2FGL J'))
 
             found = False
             for stuff in cat:
                 if stuff.field('2FGL_Name') == self.fglName.replace('_2FGLJ', '2FGL J').replace('2FGLJ', '2FGL J'):
                     threefglName = stuff.field('Source_Name')
-                    if self.verbose:
-                        print 'INFO: Found the 3FGL counterpart of %s: %s' % (self.fglName, threefglName)
+                    logging.info('Found the 3FGL counterpart of %s: %s', self.fglName, threefglName)
                     found = True
                     break
 
             if not found:
                 threefglName = None
-                if self.verbose:
-                    print 'INFO: No 3FGL counterpart found for %s' % self.fglName
+                logging.info('No 3FGL counterpart found for %s', self.fglName)
 
             hdulist.close()
             return threefglName
@@ -1357,8 +1334,7 @@ class automaticLightCurve:
             try:
                 hdulist = fits.open(cat2FHLfile)
             except IOError:
-                if self.verbose:
-                    print 'INFO: 2FHL catalog file not found'
+                logging.info('2FHL catalog file not found')
                 return None
             cat = hdulist[1].data
 
@@ -1369,15 +1345,13 @@ class automaticLightCurve:
                                                                                                 '3FGL J') or stuff.field(
                         '3FGL_Name') == str(threefglName).replace('3FGLJ', '3FGL J'):
                     fhlName = stuff.field('Source_Name')
-                    if self.verbose:
-                        print 'INFO: Found the 2FHL counterpart of %s: %s' % (self.fglName, fhlName)
+                    logging.info('Found the 2FHL counterpart of %s: %s', self.fglName, fhlName)
                     found = True
                     break
 
             if not found:
                 fhlName = None
-                if self.verbose:
-                    print 'INFO: No 2FHL counterpart found for %s' % self.fglName
+                logging.info('No 2FHL counterpart found for %s', self.fglName)
 
             hdulist.close()
             return fhlName

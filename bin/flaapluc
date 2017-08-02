@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 12:04:02 jlenain"
+# Time-stamp: "2017-08-03 00:54:45 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -22,6 +22,7 @@ import sys
 import os
 import datetime
 import glob
+import logging
 from optparse import OptionParser
 from ConfigParser import ConfigParser
 
@@ -29,7 +30,7 @@ from ConfigParser import ConfigParser
 try:
     from flaapluc import automaticLightCurve as alc
 except ImportError:
-    print "\033[91mERROR\033[0m Can't import automaticLightCurve"
+    logging.error('Can\'t import automaticLightCurve')
     sys.exit(1)
 
 # Flags
@@ -45,19 +46,21 @@ ASSUMEDGAMMA = -2.5
 
 def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=False, test=False, yearmonth=None,
                mergelongterm=False, withhistory=False, update=False, configfile='default.cfg', force_daily=False,
-               stopmonth=None, stopday=None, verbose=False, debug=False, forcealert=False):
+               stopmonth=None, stopday=None, verbose=False, debug=False, forcealert=False, log=logging.INFO):
     """
     Process a given source.
     """
 
+    logging.basicConfig(format='[%(levelname)s] %(message)s', level=log.upper())
+
     if mysrc is None:
-        print "ERROR Missing input source !"
+        logging.error('Missing input source !')
         sys.exit(1)
 
     # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
     # We automatically recreate here any missing long time-binned data.
     if daily and not longTerm and not force_daily:
-        print "[%s] Daily light curve asked for, I will first process the long time-binned one" % mysrc
+        logging.info('[%s] Daily light curve asked for, I will first process the long time-binned one', mysrc)
         longtermactive, visible = processSrc(mysrc=mysrc,
                                              useThresh=useThresh,
                                              daily=False,
@@ -72,27 +75,28 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
                                              stopday=stopday,
                                              verbose=verbose,
                                              debug=debug,
-                                             forcealert=forcealert)
+                                             forcealert=forcealert,
+                                             log=log)
         if longtermactive and visible:
-            print "[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve..." % (
-            mysrc, mysrc)
+            logging.info('[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve...',
+                         mysrc, mysrc)
         elif longtermactive and not visible:
-            print "[%s] \033[91mSource %s is active but not visible. Daily-binned light curve aborted...\033[0m" % (
-            mysrc, mysrc)
+            logging.info('[%s] \033[91mSource %s is active but not visible. Daily-binned light curve aborted...\033[0m',
+                         mysrc, mysrc)
             return False
         elif not longtermactive and visible:
-            print "[%s] \033[91mSource %s is visible but not active. Daily-binned light curve aborted...\033[0m" % (
-            mysrc, mysrc)
+            logging.info('[%s] \033[91mSource %s is visible but not active. Daily-binned light curve aborted...\033[0m',
+                         mysrc, mysrc)
             return False
         elif not longtermactive and not visible:
-            print "[%s] \033[91mSource %s is neither active nor visible. Daily-binned light curve aborted...\033[0m" % (
-            mysrc, mysrc)
+            logging.info('[%s] \033[91mSource %s is neither active nor visible. Daily-binned light curve aborted...\033[0m',
+                         mysrc, mysrc)
             return False
         else:
-            print "[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m" % (mysrc)
+            logging.info('[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m', mysrc)
             return False
     elif force_daily:
-        print "[%s] Forcing daily light curve, I will first process the long time-binned one" % mysrc
+        logging.info('[%s] Forcing daily light curve, I will first process the long time-binned one', mysrc)
         longtermactive, visible = processSrc(mysrc=mysrc,
                                              useThresh=useThresh,
                                              daily=False,
@@ -107,17 +111,15 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
                                              stopday=stopday,
                                              verbose=verbose,
                                              debug=debug,
-                                             forcealert=forcealert)
+                                             forcealert=forcealert,
+                                             log=log)
     else:
-        print "[%s] Processing long time-binned light curve..." % mysrc
+        logging.info('[%s] Processing long time-binned light curve...', mysrc)
 
     auto = alc(customThreshold=useThresh, daily=daily, longTerm=longTerm, yearmonth=yearmonth,
                mergelongterm=mergelongterm, withhistory=withhistory, configfile=configfile, stopmonth=stopmonth,
-               stopday=stopday, verbose=verbose, debug=debug, forcealert=forcealert)
+               stopday=stopday, verbose=verbose, debug=debug, forcealert=forcealert, loglevel=log)
     auto.readSourceList(mysrc)
-
-    if debug:
-        print 'DEBUG: 2FHL counterpart is ', auto.search2FHLcounterpart()
 
     if longTerm is True and mergelongterm is True:
 
@@ -176,8 +178,8 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
             mygamma = None
         else:
             mygamma = ASSUMEDGAMMA
-            print '[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (
-            auto.src, mygamma)
+            loggingo.info('[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m',
+                          auto.src, mygamma)
         auto.photoLC()
         auto.exposure(gamma=mygamma)
         auto.createDAT()
@@ -203,8 +205,8 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
         FLAGASSUMEDGAMMA = False
     else:
         mygamma = ASSUMEDGAMMA
-        print '[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m' % (
-        auto.src, mygamma)
+        logging.info('[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m',
+                     auto.src, mygamma)
         FLAGASSUMEDGAMMA = True
     auto.photoLC()
     auto.exposure(gamma=mygamma)
@@ -261,6 +263,8 @@ Use '-h' to get the help message
                       help='for test purposes. Do not send the alert mail to everybody if a source is above the trigger threshold, but only to test recipients (by default, mail alerts are sent to everybody, cf. the configuration files).')
     parser.add_option("-f", "--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
+    parser.add_option("--log", default=logging.INFO, dest="log", metavar="log",
+                      help="log level to use. Using '%default' by default.")
     parser.add_option("-v", "--verbose", action="store_true", dest="v", default=False,
                       help='verbose output.')
     parser.add_option("--debug", action="store_true", dest="debug", default=False,
@@ -278,6 +282,11 @@ Use '-h' to get the help message
         DEBUG = True
     else:
         DEBUG = False
+
+    if opt.log:
+        LOG = opt.log
+    else:
+        LOG = logging.INFO
 
     # If forcing an alert to be issued
     if opt.force_alert:
@@ -316,8 +325,8 @@ Use '-h' to get the help message
         TEST = False
 
     if TEST and not MAIL:
-        print "ERROR You asked for both the --test and --no-mail options."
-        print "      These options are mutually exclusive."
+        logging.error("""You asked for both the --test and --no-mail options.
+These options are mutually exclusive.""")
         sys.exit(1)
 
     # If long term
@@ -325,10 +334,10 @@ Use '-h' to get the help message
         LONGTERM = True
         # Check that we provided the mandatory argument: a source to process, and a month for which the long-term data should be produced !
         if len(args) != 2:
-            print "ERROR Main: wrong number of arguments"
-            print "            With the --long-term option, you should provide:"
-            print "              - a source name"
-            print "              - a yearmonth for which the long term data should be produced"
+            logging.error("""Main: wrong number of arguments
+              With the --long-term option, you should provide:
+                - a source name
+                - a yearmonth for which the long term data should be produced""")
             sys.exit(1)
         yearmonth = args[1]
 
@@ -336,7 +345,7 @@ Use '-h' to get the help message
         LONGTERM = False
         # Check that we provided the mandatory argument: a source to process !
         if len(args) != 1:
-            print "ERROR Main: wrong number of arguments"
+            logging.error('ERROR Main: wrong number of arguments')
             sys.exit(1)
         yearmonth = None
 
@@ -377,7 +386,7 @@ Use '-h' to get the help message
     processSrc(mysrc=src, useThresh=USECUSTOMTHRESHOLD, daily=DAILY, mail=MAIL, longTerm=LONGTERM, test=TEST,
                yearmonth=yearmonth, mergelongterm=MERGELONGTERM, withhistory=WITHHISTORY, update=UPDATE,
                configfile=CONFIGFILE, force_daily=FORCE_DAILY, stopmonth=STOPMONTH, stopday=STOPDAY, verbose=VERBOSE,
-               debug=DEBUG, forcealert=FORCEALERT)
+               debug=DEBUG, forcealert=FORCEALERT, log=LOG)
 
     return True
 
