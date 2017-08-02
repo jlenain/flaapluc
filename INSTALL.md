@@ -14,9 +14,22 @@ If you want to create a new environment for FLaapLUC, the following will do so, 
 conda create -n flaapluc -c jlenain flaapluc
 ```
 
+If the conda `auto` channel is not activated in your system configuration, the installation may fail with the following error:
+
+```
+PackageNotFoundError: Dependencies missing in current linux-64 channels: 
+  - flaapluc -> email
+  - flaapluc -> uncertainties
+```
+In this case, add the `auto` channel to your conda configuration, or run the following command:
+
+```
+conda create -n flaapluc -c auto -c jlenain flaapluc
+```
+
 ## Build from source
 
-It is of course still possible to build FLaapLUC from the source code:
+It is of course still possible to build FLaapLUC from the source code to enjoy the bleeding-edge developments (and bugs!):
 
 ```
 git clone https://github.com/jlenain/flaapluc
