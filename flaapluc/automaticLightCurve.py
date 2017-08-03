@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-03 15:12:05 jlenain"
+# Time-stamp: "2017-08-03 15:27:34 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1311,7 +1311,6 @@ First, retrieving the last photon files...
             import smtplib
 
             # Here are the email package modules we'll need
-            from email.MIMEImage import MIMEImage
             from email.MIMEMultipart import MIMEMultipart
             from email.MIMEText import MIMEText
             from email.MIMEBase import MIMEBase

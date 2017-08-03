@@ -1,16 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-07-29 22:44:55 jlenain"
+# Time-stamp: "2017-08-03 15:29:09 jlenain"
 
 """
 Extras functions for FLaapLUC
 
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
 """
-
-import numpy as np
-
 
 def met2mjd(met):
     """
