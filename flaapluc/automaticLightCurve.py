@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-03 15:27:34 jlenain"
+# Time-stamp: "2017-08-03 17:34:42 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -613,11 +613,7 @@ First, retrieving the last photon files...
         if os.path.isfile(modelfile):
             return True
 
-        try:
-            import make3FGLxml
-        except ImportError:
-            logging.error('ERROR Can\'t import make3FGLxml.')
-            sys.exit(1)
+        import make3FGLxml
 
         mymodel = make3FGLxml.srcList(self.catalogFile, evfile, modelfile)
         logging.info('Running makeModel')
