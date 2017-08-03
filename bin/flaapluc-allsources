@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-03 15:04:36 jlenain"
+# Time-stamp: "2017-08-03 17:53:15 jlenain"
 
 """
 Process all sources for automatic aperture photometry of interesting high energy sources.
@@ -9,10 +9,9 @@ Process all sources for automatic aperture photometry of interesting high energy
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
 """
 
-import sys
 import os
-import datetime
 import logging
+import sys
 from optparse import OptionParser
 
 from flaapluc import automaticLightCurve as alc
@@ -31,7 +30,7 @@ Use '-h' to get the help message
 
 """
 
-    parser = OptionParser(version="%prog v1.2",
+    parser = OptionParser(version="%prog v1.2.1",
                           usage=helpmsg)
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-03 17:34:42 jlenain"
+# Time-stamp: "2017-08-03 17:54:54 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -19,13 +19,18 @@ http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 """
 
 import datetime
-import time
 import glob
 import logging
-import numpy as np
-import sys
+import matplotlib
+matplotlib.use('Agg')
+
 import os
+import sys
+import time
+import numpy as np
 from ConfigParser import ConfigParser
+from matplotlib import pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 import ephem
 from astropy.io import ascii
@@ -34,18 +39,9 @@ from astropy.coordinates import Angle
 from astropy.coordinates import SkyCoord as Coords
 from astropy import units as u
 
+import gt_apps as fermi
 from flaapluc import extras
 
-# Import some matplotlib modules
-import matplotlib
-
-matplotlib.use('Agg')
-
-from matplotlib import pyplot as plt
-from matplotlib.ticker import FuncFormatter
-
-# Import the Science Tools modules
-import gt_apps as fermi
 
 # Flags
 BATCH = True

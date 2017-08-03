@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-03 15:04:09 jlenain"
+# Time-stamp: "2017-08-03 17:53:10 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -18,28 +18,12 @@ http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
 @author Jean-Philippe Lenain <mailto:jlenain@in2p3.fr>
 """
 
-import sys
-import os
-import datetime
-import glob
 import logging
+import sys
 from optparse import OptionParser
-from ConfigParser import ConfigParser
 
-# Import custom module
 from flaapluc import automaticLightCurve as alc
 from flaapluc.automaticLightCurve import processSrc
-
-# Flags
-BATCH = True
-# Flag to know whether Gamma is assumed to be ASSUMEDGAMMA
-# or taken from the 3FGL.
-FLAGASSUMEDGAMMA = False
-
-# Global variables
-# assumed photon index for a source not belonging to the 3FGL
-ASSUMEDGAMMA = -2.5
-
 
 
 def main(argv=None):
@@ -50,15 +34,11 @@ def main(argv=None):
     # options parser:
     helpmsg = """%prog [options] <source> [<optional YYYYMM>]
 
-This is the version $Id$
-
-If you call %prog using the -l option, you need to provide a year and a month in input, in the format YYYYMM.
-
 Use '-h' to get the help message
 
 """
 
-    parser = OptionParser(version="$Id$",
+    parser = OptionParser(version="%prog v1.2.1",
                           usage=helpmsg)
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
