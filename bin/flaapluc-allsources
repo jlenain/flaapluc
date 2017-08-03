@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-01 14:40:47 jlenain"
+# Time-stamp: "2017-08-03 15:04:36 jlenain"
 
 """
 Process all sources for automatic aperture photometry of interesting high energy sources.
@@ -12,14 +12,11 @@ Process all sources for automatic aperture photometry of interesting high energy
 import sys
 import os
 import datetime
+import logging
 from optparse import OptionParser
 
-# Import custom module
-try:
-    from flaapluc import automaticLightCurve as alc
-except ImportError:
-    print "\033[91mERROR\033[0m Can't import automaticLightCurve"
-    sys.exit(1)
+from flaapluc import automaticLightCurve as alc
+from flaapluc.automaticLightCurve import processSrc
 
 
 def main(argv=None):
@@ -63,18 +60,19 @@ Use '-h' to get the help message
                       help="in conjunction with --use-parallel, defines the number of CPU to use. Using '%default' by default.")
     parser.add_option("-f", "--config-file", default='default.cfg', dest="CONFIGFILE", metavar="CONFIGFILE",
                       help="provide a configuration file. Using '%default' by default.")
-    parser.add_option("-v", "--verbose", action="store_true", dest="v", default=False,
-                      help='verbose output.')
+    parser.add_option("--log", default='info', dest="log", metavar="log",
+                      help="log level to use. Using '%default' by default.")
 
     (opt, args) = parser.parse_args()
 
     CONFIGFILE = opt.CONFIGFILE
 
-    global VERBOSE
-    if opt.v:
-        VERBOSE = True
+    if opt.log:
+        LOG = opt.log.upper()
     else:
-        VERBOSE = False
+        LOG = logging.INFO
+
+    logging.basicConfig(format='[%(levelname)s] %(message)s', level=LOG)
 
     # If dry run
     if opt.dryRun:
@@ -118,8 +116,8 @@ Use '-h' to get the help message
         MAIL = True
 
     if TEST and not MAIL:
-        print "\033[91mFATAL You asked for both the --test and --no-mail options."
-        print "      These are mutually exclusive options.\033[0m"
+        logging.error("""\033[91mFATAL You asked for both the --test and --no-mail options.
+      These are mutually exclusive options.\033[0m""")
         sys.exit(1)
 
     # If long term
@@ -129,8 +127,8 @@ Use '-h' to get the help message
         LONGTERM = False
 
     if LONGTERM is True and DAILY is True:
-        print "\033[91mFATAL You asked for both the --long-term and --daily options."
-        print "      Since this is too CPU intensive, this combination was disabled.\033[0m"
+        logging.error("""\033[91mFATAL You asked for both the --long-term and --daily options.
+      Since this is too CPU intensive, this combination was disabled.\033[0m""")
         sys.exit(1)
 
     # If merge long term light curves
@@ -158,21 +156,21 @@ Use '-h' to get the help message
 
     if (len(args) != 0):
         file = args[0]
-        print "\033[93mINFO\033[0m Overriding default list of source: using %s" % file
+        logging.info('Overriding default list of source: using %s', file)
         auto = alc(file=file, customThreshold=USECUSTOMTHRESHOLD, daily=DAILY, longTerm=LONGTERM,
-                   mergelongterm=MERGELONGTERM, withhistory=WITHHISTORY, configfile=CONFIGFILE, stopmonth=STOPMONTH)
+                   mergelongterm=MERGELONGTERM, withhistory=WITHHISTORY, configfile=CONFIGFILE, stopmonth=STOPMONTH, log=LOG)
     else:
         auto = alc(customThreshold=USECUSTOMTHRESHOLD, daily=DAILY, longTerm=LONGTERM, mergelongterm=MERGELONGTERM,
-                   withhistory=WITHHISTORY, configfile=CONFIGFILE, stopmonth=STOPMONTH)
+                   withhistory=WITHHISTORY, configfile=CONFIGFILE, stopmonth=STOPMONTH, log=LOG)
 
     src, ra, dec, z, fglName = auto.readSourceList()
 
     # Total number of sources to process
     nbSrc = len(src)
 
-    print
-    print "I will process %i sources." % nbSrc
-    print
+    logging.info("""
+I will process %i sources.
+    """, nbSrc)
 
     # Use the shell command "parallel"
     if PARALLEL:
@@ -209,7 +207,7 @@ Use '-h' to get the help message
         if not DRYRUN:
             os.system(cmd)
         else:
-            print cmd
+            logging.info(cmd)
 
     else:
         # Or directly process everything sequentially, using only 1 CPU
@@ -218,18 +216,20 @@ Use '-h' to get the help message
 
         # Loop on sources
         for i in range(nbSrc):
-            print 'Starting process %i for source %s' % (i, src[i])
+            logging.info('Starting process %i for source %s', i, src[i])
 
             if not DRYRUN:
                 processSrc(mysrc=src[i], useThresh=USECUSTOMTHRESHOLD, daily=DAILY, mail=MAIL, longTerm=LONGTERM,
                            test=TEST, mergelongterm=MERGELONGTERM, withhistory=WITHHISTORY, update=UPDATE,
-                           configfile=CONFIGFILE)
+                           configfile=CONFIGFILE, log=LOG)
             else:
-                print "processSrc(mysrc=" + src[i] + ",useThresh=" + str(USECUSTOMTHRESHOLD) + ",daily=" + str(
-                    DAILY) + ",mail=" + str(MAIL) + ",longTerm=" + str(LONGTERM) + ",test=" + str(
-                    TEST) + ",mergelongterm=" + str(MERGELONGTERM) + ",withhistory=" + str(
-                    WITHHISTORY) + ",update=" + str(UPDATE) + ",configfile=" + str(CONFIGFILE) + ")"
-            print
+                logging.info("""Dry run, would process:
+processSrc(mysrc={src}, useThresh={useThresh}, daily={daily},
+           mail={mail}, longTerm={longTerm}, test={test},
+           mergelongterm={mergelongterm}, withhistory={withhistory},
+           update={update}, configfile={configfile})
+""".format(src=src[i], useThresh=USECUSTOMTHRESHOLD, daily=DAILY, mail=MAIL, longTerm=LONGTERM, test=TEST,
+           mergelongterm=MERGELONGTERM, withhistory=WITHHISTORY, update=UPDATE, configfile=CONFIGFILE))
 
     return True
 

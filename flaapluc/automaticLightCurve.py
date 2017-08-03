@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-03 00:56:43 jlenain"
+# Time-stamp: "2017-08-03 15:12:05 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -32,30 +32,20 @@ from astropy.io import ascii
 from astropy.io import fits
 from astropy.coordinates import Angle
 from astropy.coordinates import SkyCoord as Coords
-from astropy.coordinates import Longitude as Lon
-from astropy.coordinates import Latitude as Lat
 from astropy import units as u
 
 from flaapluc import extras
 
 # Import some matplotlib modules
-try:
-    import matplotlib
+import matplotlib
 
-    matplotlib.use('Agg')
+matplotlib.use('Agg')
 
-    from matplotlib import pyplot as plt
-    from matplotlib.ticker import FuncFormatter
-except ImportError:
-    logging.error('Can\'t import matplotlib')
-    sys.exit(1)
+from matplotlib import pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 # Import the Science Tools modules
-try:
-    import gt_apps as fermi
-except ImportError:
-    logging.error('Can\'t import the Fermi Science tools')
-    sys.exit(1)
+import gt_apps as fermi
 
 # Flags
 BATCH = True
@@ -73,6 +63,176 @@ def getConfigList(option, sep=','):
     return [stuff for stuff in option.split(sep)]
 
 
+def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=False, test=False, yearmonth=None,
+               mergelongterm=False, withhistory=False, update=False, configfile='default.cfg', force_daily=False,
+               stopmonth=None, stopday=None, forcealert=False, log=logging.INFO):
+    """
+    Process a given source.
+    """
+
+    logging.basicConfig(format='[%(levelname)s] %(message)s', level=log)
+
+    if mysrc is None:
+        logging.error('Missing input source !')
+        sys.exit(1)
+
+    # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
+    # We automatically recreate here any missing long time-binned data.
+    if daily and not longTerm and not force_daily:
+        logging.info('[%s] Daily light curve asked for, I will first process the long time-binned one', mysrc)
+        longtermactive, visible = processSrc(mysrc=mysrc,
+                                             useThresh=useThresh,
+                                             daily=False,
+                                             mail=False,
+                                             longTerm=longTerm,
+                                             yearmonth=yearmonth,
+                                             mergelongterm=mergelongterm,
+                                             withhistory=withhistory,
+                                             update=update,
+                                             configfile=configfile,
+                                             stopmonth=stopmonth,
+                                             stopday=stopday,
+                                             forcealert=forcealert,
+                                             log=log)
+        if longtermactive and visible:
+            logging.info('[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve...',
+                         mysrc, mysrc)
+        elif longtermactive and not visible:
+            logging.info('[%s] \033[91mSource %s is active but not visible. Daily-binned light curve aborted...\033[0m',
+                         mysrc, mysrc)
+            return False
+        elif not longtermactive and visible:
+            logging.info('[%s] \033[91mSource %s is visible but not active. Daily-binned light curve aborted...\033[0m',
+                         mysrc, mysrc)
+            return False
+        elif not longtermactive and not visible:
+            logging.info('[%s] \033[91mSource %s is neither active nor visible. Daily-binned light curve aborted...\033[0m',
+                         mysrc, mysrc)
+            return False
+        else:
+            logging.info('[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m', mysrc)
+            return False
+    elif force_daily:
+        logging.info('[%s] Forcing daily light curve, I will first process the long time-binned one', mysrc)
+        longtermactive, visible = processSrc(mysrc=mysrc,
+                                             useThresh=useThresh,
+                                             daily=False,
+                                             mail=False,
+                                             longTerm=longTerm,
+                                             yearmonth=yearmonth,
+                                             mergelongterm=mergelongterm,
+                                             withhistory=withhistory,
+                                             update=update,
+                                             configfile=configfile,
+                                             stopmonth=stopmonth,
+                                             stopday=stopday,
+                                             forcealert=forcealert,
+                                             log=log)
+    else:
+        logging.info('[%s] Processing long time-binned light curve...', mysrc)
+
+    auto = automaticLightCurve(customThreshold=useThresh, daily=daily, longTerm=longTerm, yearmonth=yearmonth,
+                               mergelongterm=mergelongterm, withhistory=withhistory, configfile=configfile, stopmonth=stopmonth,
+                               stopday=stopday, forcealert=forcealert, log=log)
+    auto.readSourceList(mysrc)
+
+    if longTerm is True and mergelongterm is True:
+
+        # Remove all the old merged file for this source, before reprocessing the merged data
+        if not auto.daily:
+            for file in glob.glob(auto.workDir + '/' + auto.src + '*'):
+                os.remove(file)
+        if auto.daily:
+            for file in glob.glob(auto.workDir + '/' + auto.src + '*daily*'):
+                os.remove(file)
+
+        # TO BE CHANGED !!!
+        startyearmonth = '200808'
+        # Hardcoded !!! Beurk, not good, ugly, bad !!!
+
+        if auto.stopmonth is not None:
+            thisyearmonth = auto.stopmonth
+        else:
+            thisyearmonth = datetime.date.today().strftime('%Y%m')
+        thisyear = thisyearmonth[:-2]
+        thismonth = thisyearmonth[-2:]
+        startyear = startyearmonth[:-2]
+        startmonth = startyearmonth[-2:]
+
+        # First make sure that all the month-by-month long-term data have been processed
+        #
+        # Loop on month from 2008/08 to this month
+        for year in range(int(startyear), int(thisyear) + 1):
+            for month in range(1, 12 + 1):
+                # To retrieve the correct results directories, 'month' should be made of 2 digits
+                month = '%02d' % month
+                tmpyearmonth = str(year) + str(month)
+                if (year == int(startyear) and int(month) < int(startmonth)) or (
+                        year == int(thisyear) and int(month) > int(thismonth)):
+                    continue
+
+                # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
+                # BUT only if update=True
+                if year == int(thisyear) and int(month) == int(thismonth) and update is True:
+                    tmpworkdir = auto.baseOutDir + "/longTerm/" + str(year) + str(month)
+                    if not auto.daily:
+                        for file in glob.glob(tmpworkdir + '/' + auto.src + '*'):
+                            os.remove(file)
+                    if auto.daily:
+                        for file in glob.glob(tmpworkdir + '/' + auto.src + '*daily*'):
+                            os.remove(file)
+
+                processSrc(mysrc=auto.src, useThresh=useThresh, daily=auto.daily, mail=False, longTerm=True, test=False,
+                           yearmonth=tmpyearmonth, mergelongterm=False, update=update, configfile=configfile,
+                           stopmonth=stopmonth, forcealert=forcealert)
+
+        # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT, createLCfig, createEnergyTimeFig. No mail is sent here.
+        auto.mergeGTIfiles()
+        if auto.fglName is not None:
+            auto.createXML()
+            mygamma = None
+        else:
+            mygamma = ASSUMEDGAMMA
+            logging.info('[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m',
+                          auto.src, mygamma)
+        auto.photoLC()
+        auto.exposure(gamma=mygamma)
+        auto.createDAT()
+        auto.createLCfig()
+        auto.createEnergyTimeFig()
+        # Exit here
+        return False
+    # End mergelongterm
+
+
+    # When mergelongterm is False, we do the following:
+    auto.selectSrc()
+    auto.makeTime()
+
+    # If we are in --long-term mode, but not in --merge-long-term mode, we can stop here, since the --merge-long-term mode then starts at the mergeGTIfiles level
+    if longTerm:
+        return False
+
+    global FLAGASSUMEDGAMMA
+    if auto.fglName is not None:
+        auto.createXML()
+        mygamma = None
+        FLAGASSUMEDGAMMA = False
+    else:
+        mygamma = ASSUMEDGAMMA
+        logging.info('[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m',
+                     auto.src, mygamma)
+        FLAGASSUMEDGAMMA = True
+    auto.photoLC()
+    auto.exposure(gamma=mygamma)
+    auto.createDAT()
+    auto.createLCfig()
+    auto.createEnergyTimeFig()
+    auto.sendAlert(nomailall=test, sendmail=mail)
+
+    return auto.active, auto.visible
+
+
 class automaticLightCurve:
     """
     FLaapLUC
@@ -84,8 +244,8 @@ class automaticLightCurve:
     def __init__(self, file=None, customThreshold=False, daily=False,
                  longTerm=False, yearmonth=None, mergelongterm=False,
                  withhistory=False, stopmonth=None, stopday=None,
-                 verbose=False, debug=False, configfile='default.cfg',
-                 forcealert=False, loglevel=logging.INFO):
+                 configfile='default.cfg', forcealert=False,
+                 log=logging.INFO):
 
         self.config = self.getConfig(configfile=configfile)
         self.allskyDir = self.config.get('InputDirs', 'AllskyDir')
@@ -100,8 +260,6 @@ class automaticLightCurve:
         self.allskyFile = self.allskyDir + "/" + self.config.get('InputFiles', 'WholeAllskyFile')
         self.lastAllskyFile = self.allskyDir + "/" + self.config.get('InputFiles', 'LastAllskyFile')
         self.spacecraftFile = self.allskyDir + "/" + self.config.get('InputFiles', 'SpacecraftFile')
-        self.verbose = verbose
-        self.debug = debug
         self.forcealert = forcealert
 
         try:
@@ -227,7 +385,7 @@ First, retrieving the last photon files...
             self.tstop = header['TSTOP']
             if self.stopday is not None:
                 from astropy.time import Time
-                self.tstop = mjd2met(Time('%s 00:00:00' % self.stopday, format='iso', scale='utc').mjd)
+                self.tstop = extras.mjd2met(Time('%s 00:00:00' % self.stopday, format='iso', scale='utc').mjd)
                 self.tstart = self.tstop - 30 * 24 * 3600  # stop - 30 days
         else:
             missionStart = header['TSTART']  # in MET
@@ -301,11 +459,8 @@ First, retrieving the last photon files...
         # If we ask for a particular source, return the parameters for that source
         if mysrc != None:
             # Find our input src in the list of sources
-            found = False
             for i in range(len(src)):
                 if src[i] == mysrc:
-                    found = True
-
                     # Redefine the threshold if we provided a custom threshold
                     if self.customThreshold and myThreshold[i] != 0.:
                         try:
@@ -682,8 +837,6 @@ First, retrieving the last photon files...
         ax.set_ylabel('F (%.0f MeV-%.0f GeV) (%s 10$^{-6}$ ph cm$^{-2}$ s$^{-1}$)' % (
         self.emin, self.emax / 1000., r'$\times$'))  # , size='x-small')
 
-        day = 24. * 60. * 60.
-
         ## Make the x-axis ticks shifted by some value
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f' % (x - TOFFSET)))
         ax.set_xlabel('MJD-' + str(TOFFSET))
@@ -785,7 +938,7 @@ First, retrieving the last photon files...
 
         ylabel = 'Energy (MeV)'
         if eThresh > self.emin:
-            ylable += ' -- only data above %.1f GeV are shown' % (eThresh / 1.e3)
+            ylabel += ' -- only data above %.1f GeV are shown' % (eThresh / 1.e3)
         # ax.set_ylabel(ylabel, size='x-small')
         ax.set_ylabel(ylabel)
 
@@ -1038,12 +1191,11 @@ First, retrieving the last photon files...
 
         flux = data['Flux']
         fluxErr = data['FluxError']
-        if self.verbose:
-            try:
-                from uncertainties import unumpy as unp
-                logging.info('The long-term flux average is %.2g ph cm^-2 s^-1', unp.uarray(flux, fluxErr).mean())
-            except:
-                pass
+        try:
+            from uncertainties import unumpy as unp
+            logging.info('[%s] The long-term flux average is %.2g ph cm^-2 s^-1', self.src, unp.uarray(flux, fluxErr).mean())
+        except:
+            pass
 
         # weighted average of the historical fluxes, weighted by their errors
         fluxAverage = np.average(flux, weights=1. / fluxErr)
