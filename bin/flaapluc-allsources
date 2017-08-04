@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-03 17:53:15 jlenain"
+# Time-stamp: "2017-08-04 12:46:54 jlenain"
 
 """
 Process all sources for automatic aperture photometry of interesting high energy sources.
@@ -200,7 +200,7 @@ I will process %i sources.
         # Loop on sources
         for i in range(nbSrc):
             options.append(
-                '\"/bin/nice -n 10 ./automaticLightCurve.py ' + ' '.join(autoOptions) + ' ' + str(src[i]) + '\"')
+                '\"/bin/nice -n 10 flaapluc ' + ' '.join(autoOptions) + ' ' + str(src[i]) + '\"')
         cmd = "parallel -j " + str(MAXCPU) + " ::: " + " ".join(options)
         # use --dry-run just to test the parallel command
         if not DRYRUN:
