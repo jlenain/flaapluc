@@ -17,7 +17,7 @@ import os, sys, datetime, shutil
 
 # Import custom module
 try:
-    from automaticLightCurve import *
+    from automaticLightCurve import automaticLightCurve as alc
 except ImportError:
     print "ERROR Can't import automaticLightCurve"
     sys.exit(1)
@@ -26,8 +26,8 @@ except ImportError:
 def createResultWebsite(configfile='default.cfg'):
     
     # Retrieving information from the list of sources and from the configuration cfg file.
-    auto=autoLC(configfile=configfile)
-    autoLT=autoLC(longTerm=True,mergelongterm=True,configfile=configfile)
+    auto=alc(configfile=configfile)
+    autoLT=alc(longTerm=True,mergelongterm=True,configfile=configfile)
 
     # where all the graphs and data files are
     PATH_TO_FILES=auto.webpageDir+'/'
