@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-08-03 17:54:54 jlenain"
+# Time-stamp: "2017-09-12 09:04:02 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -470,6 +470,8 @@ First, retrieving the last photon files...
                     self.dec = dec[i]
                     self.z = z[i]
                     self.fglName = fglName[i]
+                    if self.fglName == 'None':
+                        self.fglName = None
                     return
 
             # If we end up without any found source, print out a WARNING
