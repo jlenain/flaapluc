@@ -1,3 +1,7 @@
+[![ascl](https://img.shields.io/badge/ascl-1709.011-blue.svg?colorB=262255)](http://ascl.net/1709.011)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.907519.svg)](https://doi.org/10.5281/zenodo.907519)
+
+
 # FLaapLUC
 
 Welcome to the FLaapLUC (Fermi-LAT automatic aperture photometry Light C<->Urve) pipeline !
