@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-09-12 09:04:02 jlenain"
+# Time-stamp: "2017-10-24 12:33:35 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -351,12 +351,12 @@ class automaticLightCurve:
         self.customThreshold = customThreshold
 
         self.stopmonth = stopmonth
-
+        
         # Open allsky file to get the start and stop dates
         try:
             hdu = fits.open(self.allsky)
         except IOError as e:
-            logging.error("""I/O error ({0}): can not open file {1}: {2}'.format(e.errno, self.allsky, e.strerror)
+            logging.error("""I/O error ({0}): can not open file {1}: {2}
 I will create the allsky file on the fly for you, for the last month of available data, using enrico.
 First, retrieving the last photon files...
             """.format(e.errno, self.allsky, e.strerror))
@@ -376,6 +376,8 @@ First, retrieving the last photon files...
             hdu = fits.open(self.allsky)
         header = hdu[0].header
 
+        self.filtermoon = self.hasmoon()
+        
         if not longTerm:
             self.tstart = header['TSTART']
             self.tstop = header['TSTOP']
@@ -519,6 +521,18 @@ First, retrieving the last photon files...
         logging.info('Running gtselect')
         fermi.filter.run()
 
+    def hasmoon(self):
+        """
+        Return True if the FT2 spacecraft file has the Moon coordinates (using the moonpos user contributed script), False otherwise
+        """
+        d = fits.open(self.spacecraft)[1].data
+        try:
+            m = d.field('RA_MOON')
+            r = True
+        except KeyError:
+            r = False
+        return r
+
     def makeTime(self):
         """
         Filter the GTI for a given source
@@ -538,8 +552,12 @@ First, retrieving the last photon files...
             return True
 
         # cf. http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
-        fermi.maketime['filter'] = "LAT_CONFIG==1 && DATA_QUAL>0 && (angsep(" + str(self.ra) + "," + str(
+        gtifilter = "LAT_CONFIG==1 && DATA_QUAL>0 && (angsep(" + str(self.ra) + "," + str(
             self.dec) + ",RA_SUN,DEC_SUN)>5.)"
+        if self.filtermoon:
+            gtifilter += " && (angsep(" + str(self.ra) + "," + str(
+                self.dec) + ",RA_MOON,DEC_MOON)>5.)"
+        fermi.maketime['filter'] = gtifilter
         fermi.maketime['roicut'] = 'no'
         fermi.maketime['tstart'] = self.tstart
         fermi.maketime['tstop'] = self.tstop
