@@ -1,2 +1,9 @@
 *.py[cod]
+*.egg-info/
 *~
+
+build/
+dist/
+
+# Do not ship concatenated list of sources monitored with FLaapLUC
+flaapluc/lists/listSources.txt
