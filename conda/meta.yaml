@@ -7,26 +7,21 @@ source:
   
 requirements:
   build:
-    - python 2.7*
-    - email
-    - numpy 1.13*
-    - scipy
-    - astropy >=2.*
-    - matplotlib >=2.*
-    - ephem
-    - setuptools
-    - uncertainties
+    - python 2.7.*
+    - numpy 1.13.*
+    - scipy 1.2.*
+    - astropy 2.0.*
+    - matplotlib 2.2.*
+    - ephem 3.7.*
+    - pytz 2020.*
 
   run:
-    - python 2.7*
-    - email
-    - numpy 1.13*
-    - scipy
-    - astropy >=2.*
-    - matplotlib >=2.*
-    - ephem
-    - setuptools
-    - uncertainties
+    - python 2.7.*
+    - numpy 1.13.*
+    - scipy 1.2.*
+    - astropy 2.0.*
+    - matplotlib 2.2.*
+    - ephem 3.7.*
 
 about:
   home: https://github.com/jlenain/flaapluc
