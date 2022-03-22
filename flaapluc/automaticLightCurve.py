@@ -10,7 +10,7 @@ Automatic generation of aperture photometric light curves of
 high energy sources, for a given source.
 
 No likelihood fit is performed, the results solely rely on the
-3FGL spectral fits, if available.
+4FGL spectral fits, if available.
 
 More information are available at:
 http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
@@ -31,13 +31,15 @@ import numpy as np
 from ConfigParser import ConfigParser
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter
+from matplotlib.dates import date2num, HourLocator, DayLocator, DateFormatter
+from matplotlib import patheffects
 
 import ephem
 from astropy.io import ascii
 from astropy.io import fits
-from astropy.coordinates import Angle
-from astropy.coordinates import SkyCoord as Coords
+from astropy import coordinates as c
 from astropy import units as u
+from astropy import time as t
 
 import gt_apps as fermi
 from flaapluc import extras
@@ -46,14 +48,18 @@ from flaapluc import extras
 # Flags
 BATCH = True
 # Flag to know whether Gamma is assumed to be ASSUMEDGAMMA
-# or taken from the 3FGL.
+# or taken from the 4FGL.
 FLAGASSUMEDGAMMA = False
 
 # Global variables
 TOFFSET = 54000.  # offset in MJD for plot creation
-# assumed photon index for a source not belonging to the 3FGL
+# assumed photon index for a source not belonging to the 4FGL
 ASSUMEDGAMMA = -2.5
 
+# Visibility parameters
+ASTRONOMICAL_TWILIGHT_ANGLE = -16. * u.deg
+CIVIL_TWILIGHT_ANGLE = -12. * u.deg
+MOON_TWILIGHT_ANGLE = -0.83 * u.deg
 
 def getConfigList(option, sep=','):
     return [stuff for stuff in option.split(sep)]
@@ -61,7 +67,7 @@ def getConfigList(option, sep=','):
 
 def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=False, test=False, yearmonth=None,
                mergelongterm=False, withhistory=False, update=False, configfile='default.cfg', force_daily=False,
-               stopmonth=None, stopday=None, forcealert=False, log=logging.INFO):
+               stopmonth=None, stopday=None, forcealert=False, too=False, log=logging.INFO):
     """
     Process a given source.
     """
@@ -72,10 +78,15 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
         logging.error('Missing input source !')
         sys.exit(1)
 
+    if too=="True":
+        logging.info('[{src:s}] \033[94m*** Dealing with a ToO, forcing daily-binned light curve, and alert\033[0m'.format(src=mysrc))
+        forcealert = True
+        force_daily = True
+
     # If we asked for a daily light curve, first make sure that the long time-binned data already exists, otherwise this script will crash, since the daily-binned PNG needs the long time-binned data to be created. No mail alert is sent at this step.
     # We automatically recreate here any missing long time-binned data.
     if daily and not longTerm and not force_daily:
-        logging.info('[%s] Daily light curve asked for, I will first process the long time-binned one', mysrc)
+        logging.info('[{src:s}] Daily light curve asked for, I will first process the long time-binned one'.format(src=mysrc))
         longtermactive, visible = processSrc(mysrc=mysrc,
                                              useThresh=useThresh,
                                              daily=False,
@@ -89,27 +100,24 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
                                              stopmonth=stopmonth,
                                              stopday=stopday,
                                              forcealert=forcealert,
+                                             too=too,
                                              log=log)
         if longtermactive and visible:
-            logging.info('[%s] Source %s is active and visible in long time-binned data, processing daily-binned light curve...',
-                         mysrc, mysrc)
+            logging.info('[{src:s}] Source {src:s} is active and visible in long time-binned data, processing daily-binned light curve...'.format(src=mysrc))
         elif longtermactive and not visible:
-            logging.info('[%s] \033[91mSource %s is active but not visible. Daily-binned light curve aborted...\033[0m',
-                         mysrc, mysrc)
+            logging.info('[{src:s}] \033[91mSource {src:s} is active but not visible. Daily-binned light curve aborted...\033[0m'.format(src=mysrc))
             return False
         elif not longtermactive and visible:
-            logging.info('[%s] \033[91mSource %s is visible but not active. Daily-binned light curve aborted...\033[0m',
-                         mysrc, mysrc)
+            logging.info('[{src:s}] \033[91mSource {src:s} is visible but not active. Daily-binned light curve aborted...\033[0m'.format(src=mysrc))
             return False
         elif not longtermactive and not visible:
-            logging.info('[%s] \033[91mSource %s is neither active nor visible. Daily-binned light curve aborted...\033[0m',
-                         mysrc, mysrc)
+            logging.info('[{src:s}] \033[91mSource {src:s} is neither active nor visible. Daily-binned light curve aborted...\033[0m'.format(src=mysrc))
             return False
         else:
-            logging.info('[%s] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m', mysrc)
+            logging.info('[{src:s}] \033[91mDaily-binned light curve aborted, for unknown reason...\033[0m'.format(src=mysrc))
             return False
     elif force_daily:
-        logging.info('[%s] Forcing daily light curve, I will first process the long time-binned one', mysrc)
+        logging.info('[{src:s}] Forcing daily light curve, I will first process the long time-binned one'.format(src=mysrc))
         longtermactive, visible = processSrc(mysrc=mysrc,
                                              useThresh=useThresh,
                                              daily=False,
@@ -125,7 +133,7 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
                                              forcealert=forcealert,
                                              log=log)
     else:
-        logging.info('[%s] Processing long time-binned light curve...', mysrc)
+        logging.info('[{src:s}] Processing long time-binned light curve...'.format(src=mysrc))
 
     auto = automaticLightCurve(customThreshold=useThresh, daily=daily, longTerm=longTerm, yearmonth=yearmonth,
                                mergelongterm=mergelongterm, withhistory=withhistory, configfile=configfile, stopmonth=stopmonth,
@@ -180,7 +188,7 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
 
                 processSrc(mysrc=auto.src, useThresh=useThresh, daily=auto.daily, mail=False, longTerm=True, test=False,
                            yearmonth=tmpyearmonth, mergelongterm=False, update=update, configfile=configfile,
-                           stopmonth=stopmonth, forcealert=forcealert)
+                           stopmonth=stopmonth, forcealert=forcealert, too=auto.too)
 
         # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT, createLCfig, createEnergyTimeFig. No mail is sent here.
         auto.mergeGTIfiles()
@@ -189,8 +197,7 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
             mygamma = None
         else:
             mygamma = ASSUMEDGAMMA
-            logging.info('[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m',
-                          auto.src, mygamma)
+            logging.info('[{src:s}] \033[93mNo 4FGL counterpart given in the list of sources, assuming photon index of {gamma:.2f} for the light curve generation.\033[0m'.format(src=auto.src, gamma=mygamma))
         auto.photoLC()
         auto.exposure(gamma=mygamma)
         auto.createDAT()
@@ -216,15 +223,17 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
         FLAGASSUMEDGAMMA = False
     else:
         mygamma = ASSUMEDGAMMA
-        logging.info('[%s] \033[93mNo 3FGL counterpart given in the list of sources, assuming photon index of %.2f for the light curve generation.\033[0m',
-                     auto.src, mygamma)
+        logging.info('[{src:s}] \033[93mNo 4FGL counterpart given in the list of sources, assuming photon index of {gamma:.2f} for the light curve generation.\033[0m'.format(src=auto.src, gamma=mygamma))
         FLAGASSUMEDGAMMA = True
-    auto.photoLC()
-    auto.exposure(gamma=mygamma)
-    auto.createDAT()
-    auto.createLCfig()
-    auto.createEnergyTimeFig()
-    auto.sendAlert(nomailall=test, sendmail=mail)
+    try:
+        auto.photoLC()
+        auto.exposure(gamma=mygamma)
+        auto.createDAT()
+        auto.createLCfig()
+        auto.createEnergyTimeFig()
+        alertSent = auto.sendAlert(nomailall=test, sendmail=mail)
+    except KeyError:
+        return False, False
 
     return auto.active, auto.visible
 
@@ -263,21 +272,26 @@ class automaticLightCurve:
         except:
             # Take 7 days by default
             self.longtimebin = 7.
-            logging.warning('\033[93mCan not read LongTimeBin in config file, taking %.1f as default.\033[0m', self.longtimebin)
+            logging.warning('\033[93mCan not read LongTimeBin in config file, taking {lt:.1f} days as default.\033[0m'.format(lt=self.longtimebin))
 
         try:
             self.sigma = float(self.config.get('AlertTrigger', 'Sigma'))
         except:
             # Take 2 sigma by default
             self.sigma = 3.
-            logging.warning('\033[93mCan not read Sigma in config file, taking %.1f as default.\033[0m', self.sigma)
+            logging.warning('\033[93mCan not read Sigma in config file, taking {sig:.1f} as default.\033[0m'.format(sig=self.sigma))
 
         try:
             self.sigmaLT = float(self.config.get('AlertTrigger', 'SigmaLT'))
         except:
             # Take 2 sigma by default
             self.sigmaLT = 1.5
-            logging.warning('\033[93mCan not read SigmaLT in config file, taking %.1f as default.\033[0m', self.sigmaLT)
+            logging.warning('\033[93mCan not read SigmaLT in config file, taking {siglt:.1f} as default.\033[0m'.format(siglt=self.sigmaLT))
+
+        try:
+            self.lowerExposure = float(self.config.get('AlertTrigger', 'LowerExposure'))
+        except:
+            self.lowerExposure = 0.
 
         # Read maxz and maxZA as lists, not as single floats
         self.maxz = [float(i) for i in getConfigList(self.config.get('AlertTrigger', 'MaxZ'))]
@@ -290,6 +304,13 @@ class automaticLightCurve:
         except:
             # Don't check the source visibility, by default
             self.checkVisibility = False
+
+        # Is the source currently observable from the site under reasonable Moonlight ?
+        self.observableUnderMoonlight = False
+        self.visibleUnderMoonlight = False
+        self.visibleUnderMoonlightOnly = False
+        self.visibleInDarkness = False
+        self.visibilityFig = None
 
         self.daily = daily
         self.withhistory = withhistory
@@ -332,13 +353,13 @@ class automaticLightCurve:
         except:
             # Take 100 MeV by default
             self.emin = 1.e2  # E min
-            logging.warning('\033[93mCan not read Emin in config file, taking %.1g as default.\033[0m', self.emin)
+            logging.warning('\033[93mCan not read Emin in config file, taking {emin:.1g} MeV as default.\033[0m'.format(emin=self.emin))
         try:
             self.emax = float(self.config.get('Erange', 'Emax'))
         except:
             # Take 500 GeV by default
             self.emax = 5.e5  # E max
-            logging.warning('\033[93mCan not read Emax in config file, taking %.1g as default.\033[0m', self.emax)
+            logging.warning('\033[93mCan not read Emax in config file, taking {emax:.1g} MeV as default.\033[0m'.format(emax=self.emax))
         self.zmax = 90.  # degrees
         self.rockangle = 52.  # maximal allowed rocking angle
 
@@ -351,15 +372,15 @@ class automaticLightCurve:
         self.customThreshold = customThreshold
 
         self.stopmonth = stopmonth
-        
+
         # Open allsky file to get the start and stop dates
         try:
             hdu = fits.open(self.allsky)
         except IOError as e:
-            logging.error("""I/O error ({0}): can not open file {1}: {2}
+            logging.error("""I/O error ({errno}): can not open file {f}: {err}
 I will create the allsky file on the fly for you, for the last month of available data, using enrico.
 First, retrieving the last photon files...
-            """.format(e.errno, self.allsky, e.strerror))
+            """.format(errno=e.errno, f=self.allsky, err=e.strerror))
             cmd = 'enrico_download --download_data'
             r = os.system(cmd)
             assert (r == 0), "Could not properly download the last data."
@@ -382,8 +403,15 @@ First, retrieving the last photon files...
             self.tstart = header['TSTART']
             self.tstop = header['TSTOP']
             if self.stopday is not None:
-                from astropy.time import Time
-                self.tstop = extras.mjd2met(Time('%s 00:00:00' % self.stopday, format='iso', scale='utc').mjd)
+                logging.debug('Input stop day is {}'.format(self.stopday))
+                logging.debug('i.e. MJD {}'.format(t.Time('%s 00:00:00' % self.stopday, format='iso', scale='utc').mjd))
+                stopdaymet = extras.mjd2met(t.Time('%s 00:00:00' % self.stopday, format='iso', scale='utc').mjd)
+                logging.debug('i.e. {} MET'.format(stopdaymet))
+                logging.debug('while tstop is {}'.format(self.tstop))
+                if stopdaymet > self.tstop:
+                    logging.error('FLaapLUC can not predict the future !')
+                    sys.exit(1)
+                self.tstop = stopdaymet
                 self.tstart = self.tstop - 30 * 24 * 3600  # stop - 30 days
         else:
             missionStart = header['TSTART']  # in MET
@@ -408,8 +436,8 @@ First, retrieving the last photon files...
                 tmptstart = extras.mjd2met(extras.unixtime2mjd(yearmonthStart))
                 tmptstop = extras.mjd2met(extras.unixtime2mjd(yearmonthStop))
 
-                logging.debug('INIT yearmonthStart=', yearmonthStart)
-                logging.debug('INIT yearmonthStop=', yearmonthStop)
+                logging.debug('INIT yearmonthStart={}'.format(yearmonthStart))
+                logging.debug('INIT yearmonthStop={}'.format(yearmonthStop))
 
                 # Make sure that start of yearmonth is after the launch of Fermi, and that stop of yearmonth is before the very last data we have from NASA servers !
                 if tmptstart > missionStart:
@@ -442,17 +470,17 @@ First, retrieving the last photon files...
         try:
             srcList = ascii.read(self.file)
         except IOError:
-            logging.error('Can not open %s', self.file)
+            logging.error('Can not open {f:s}'.format(f=self.file))
             sys.exit(1)
 
         src = srcList['Name']
         ra = srcList['RA']
         dec = srcList['Dec']
         z = srcList['z']
-        fglName = srcList['3FGLname']
+        fglName = srcList['4FGLname']
         # Read the threshold for the source from the source list, if we asked to process with custom thresholds when instanciating the class
-        if self.customThreshold:
-            myThreshold = srcList['Threshold']
+        myThreshold = srcList['Threshold']
+        too = srcList['ToO']
 
         # If we ask for a particular source, return the parameters for that source
         if mysrc != None:
@@ -462,10 +490,10 @@ First, retrieving the last photon files...
                     # Redefine the threshold if we provided a custom threshold
                     if self.customThreshold and myThreshold[i] != 0.:
                         try:
-                            float(myThreshold[i])
-                            self.threshold = myThreshold[i]
+                            self.threshold = float(myThreshold[i])
+                            logging.debug('[{src:s}] Read threshold={th} from source list'.format(src=mysrc,th=self.threshold))
                         except ValueError:
-                            logging.warning('The threshold of the source %s is not a float. Please, check the list of sources !', mysrc)
+                            logging.warning('The threshold of the source {src:s} is ill-defined (not a float). Please, check the list of sources !'.format(src=mysrc))
                             sys.exit(2)
                     self.src = src[i]
                     self.ra = ra[i]
@@ -474,20 +502,21 @@ First, retrieving the last photon files...
                     self.fglName = fglName[i]
                     if self.fglName == 'None':
                         self.fglName = None
+                    self.too = too[i]
                     return
 
-            # If we end up without any found source, print out a WARNING
-            logging.warning('Can\'t find your source %s in the list of sources !', str(mysrc))
+            logging.warning('\033[92mCan\'t find your source {src:s} in the list of sources !\033[0m'.format(src=mysrc))
             self.src = None
             self.ra = None
             self.dec = None
             self.z = None
             self.fglName = None
+            self.too = None
             return
 
         # Otherwise, return the whole list of parameters for all the sources
         else:
-            return src, ra, dec, z, fglName
+            return src, ra, dec, z, fglName, too
 
     def selectSrc(self):
         """
@@ -615,7 +644,7 @@ First, retrieving the last photon files...
 
     def createXML(self):
         """
-        Create an XML model file based on the 3FGL catalogue
+        Create an XML model file based on the 4FGL catalogue
         """
 
         if self.daily:
@@ -629,12 +658,12 @@ First, retrieving the last photon files...
         if os.path.isfile(modelfile):
             return True
 
-        import make3FGLxml
+        import make4FGLxml
 
-        mymodel = make3FGLxml.srcList(self.catalogFile, evfile, modelfile)
+        mymodel = make4FGLxml.srcList(self.catalogFile, evfile, modelfile)
         logging.info('Running makeModel')
-        mymodel.makeModel(GDfile=self.fermiDir + '/refdata/fermi/galdiffuse/gll_iem_v06.fits', GDname='GalDiffuse',
-                          ISOfile=self.fermiDir + '/refdata/fermi/galdiffuse/iso_P8R2_SOURCE_V6_v06.txt',
+        mymodel.makeModel(GDfile=self.fermiDir + '/refdata/fermi/galdiffuse/gll_iem_v07.fits', GDname='GalDiffuse',
+                          ISOfile=self.fermiDir + '/refdata/fermi/galdiffuse/iso_P8R3_SOURCE_V2.txt',
                           ISOname='IsotropicDiffuse', extDir=self.templatesDir, makeRegion=False)
 
     def photoLC(self):
@@ -683,18 +712,22 @@ First, retrieving the last photon files...
             return True
 
         scfile = self.spacecraft
-        irfs = 'P8R2_SOURCE_V6'
+        irfs = 'P8R3_SOURCE_V2'
         rad = str(self.roi)
 
         options = 'infile=' + infile + ' scfile=' + scfile + ' irfs=' + irfs + ' rad=' + rad
         if self.fglName is not None:
-            target = self.fglName.replace('3FGLJ', '3FGL J')
+            target = self.fglName.replace('4FGLJ', '4FGL J')
+            # Special case for IC component of Crab, which is extended, and which name is replaced by "Crab IC" by make4FGLxml:
+            if self.fglName == '4FGLJ0534.5+2201i':
+                target = 'Crab IC'
             logging.debug('exposure: target=%s', target)
             options += ' srcmdl=' + srcmdl + ' target="' + target + '"'
         else:
             options += ' srcmdl="none" specin=' + str(gamma)
-        cmd = 'time -p ' + self.fermiDir + '/bin/gtexposure ' + options
+        cmd = 'time -p gtexposure ' + options
         logging.info('Running gtexposure')
+        logging.debug('Running gtexposure with command: {cmd}'.format(cmd=cmd))
         os.system(cmd)
 
     def createDAT(self):
@@ -772,6 +805,10 @@ First, retrieving the last photon files...
                 webfile = urllib2.urlopen(baturl)
             except (urllib2.HTTPError, urllib2.URLError) as e:
                 return False, None
+            except socket.error:
+                return False, None
+        except socket.error:
+            return False, None
 
         # save lc to local file
         localfile = open(file, 'w')
@@ -823,7 +860,7 @@ First, retrieving the last photon files...
 
         # Redefine the trigger threshold if withhistory=True
         if self.withhistory:
-            (fluxAverage, fluxRMS) = self.dynamicalTrigger()
+            self.dynamicalTrigger()
 
         fig = plt.figure()
 
@@ -834,9 +871,9 @@ First, retrieving the last photon files...
             ax = fig.add_subplot(111)
 
         if self.fglName is not None:
-            title = str(self.src) + ', ' + str(self.fglName).replace('_2FGLJ', '2FGL J').replace('3FGLJ', '3FGL J')
+            title = str(self.src) + ', ' + str(self.fglName).replace('_2FGLJ', '2FGL J').replace('3FGLJ', '3FGL J').replace('4FGLJ', '4FGL J')
         else:
-            title = str(self.src) + ', no known 3FGL counterpart'
+            title = str(self.src) + ', no known 4FGL counterpart'
         if self.z == 'None':
             title = title + ' (z unknown)'
         else:
@@ -867,9 +904,9 @@ First, retrieving the last photon files...
         # Plot a line at the threshold value
         ax.axhline(y=self.threshold, linewidth=3, linestyle='--', color='r')
         if self.withhistory:
-            ax.axhline(y=fluxAverage, linewidth=1, linestyle='-', color='b')
-            ax.axhline(y=fluxAverage + fluxRMS, linewidth=1, linestyle='--', color='b')
-            ax.axhline(y=fluxAverage - fluxRMS, linewidth=1, linestyle='--', color='b')
+            ax.axhline(y=self.LTfluxAverage, linewidth=1, linestyle='-', color='b')
+            ax.axhline(y=self.LTfluxAverage + self.LTfluxRMS, linewidth=1, linestyle='--', color='b')
+            ax.axhline(y=self.LTfluxAverage - self.LTfluxRMS, linewidth=1, linestyle='--', color='b')
 
         # Plot a line at flux=0, for visibility/readibility
         ax.axhline(y=0., color='k')
@@ -913,6 +950,7 @@ First, retrieving the last photon files...
             plt.show()
         # Save the figure
         fig.savefig(outfig)
+        plt.close(fig)
 
     def createEnergyTimeFig(self, eThresh=1.e2):
         """
@@ -928,7 +966,7 @@ First, retrieving the last photon files...
         mask = data.field('ENERGY') > eThresh
         datac = data[mask]
         if not datac.size:
-            logging.warning('[%s] \033[92mEmpty energy vs time plot above %0.f GeV\033[0m', self.src, eThresh / 1.e3)
+            logging.warning('[{src:s}] \033[92mEmpty energy vs time plot above {eth:0.2f} GeV\033[0m'.format(src=self.src, eth=eThresh/1.e3))
             return
 
         t = extras.met2mjd(datac['TIME'])
@@ -938,9 +976,9 @@ First, retrieving the last photon files...
         ax = fig.add_subplot(111)
 
         if self.fglName is not None:
-            title = str(self.src) + ', ' + str(self.fglName).replace('_2FGLJ', '2FGL J').replace('3FGLJ', '3FGL J')
+            title = str(self.src) + ', ' + str(self.fglName).replace('_2FGLJ', '2FGL J').replace('3FGLJ', '3FGL J').replace('4FGLJ', '4FGL J')
         else:
-            title = str(self.src) + ', no known 3FGL counterpart'
+            title = str(self.src) + ', no known 4FGL counterpart'
         if self.z == 'None':
             title = title + ' (z unknown)'
         else:
@@ -993,6 +1031,156 @@ First, retrieving the last photon files...
             plt.show()
         # Save the figure
         fig.savefig(outfig)
+        plt.close(fig)
+
+    def createVisibilityPlot(self, begindate):
+        '''
+        Create a PNG figure with the visibility plot for the source from the site.
+        '''
+
+        logging.info('[{src:s}] Creating visibility plot'.format(src=self.src))
+        logging.debug('[createVisibiliytPlot] begin date is {}'.format(begindate))
+
+        fig = plt.figure(figsize=(10, 5))
+        ax = plt.subplot(1, 1, 1)
+        ax.xaxis_date()
+        ax.xaxis.set_minor_formatter(DateFormatter("%Hh"))
+        ax.xaxis.set_minor_locator(HourLocator(interval=2))
+        ax.xaxis.set_major_formatter(DateFormatter("%Y-%m-%d     "))
+        ax.xaxis.set_major_locator(DayLocator())
+        ax.tick_params(pad=20)
+        if self.fglName is not None:
+            title = str(self.src) + ', ' + str(self.fglName).replace('_2FGLJ', '2FGL J').replace('3FGLJ', '3FGL J').replace('4FGLJ', '4FGL J')
+        else:
+            title = str(self.src) + ', no known 4FGL counterpart'
+        if self.z == 'None':
+            title += ' (z unknown)'
+        else:
+            title += ' (z=' + str(self.z) + ')'
+        ax.set_title(title)
+
+        self.visibilityFig = self.workDir + '/' + str(self.src) + '_visibilityPlot.png'
+
+        site = c.EarthLocation(lon=self.siteLon * u.deg, lat=self.siteLat * u.deg,
+                               height=self.siteAlt * u.m)
+        # Time range for plot
+        hrange = 10.
+        centerhour = 24 - int(round(site.longitude.hour))
+        begindate = begindate.datetime()  # ephem.Date to datetime.datetime
+        begindate = t.Time(datetime.datetime(begindate.year, begindate.month, begindate.day, centerhour),
+                           scale='utc')
+        dt = np.linspace(-int(hrange), int(hrange),
+                         100 * int(hrange)) * u.hour
+        times = begindate + dt
+        fdates = np.array([date2num(x.datetime) for x in times])
+
+        # Sun, Moon and source altitudes
+        horizframe = c.AltAz(obstime=times, location=site)
+        sun = c.get_sun(times).transform_to(horizframe)
+
+        srcCoords = c.SkyCoord(ra=self.ra * u.degree, dec=self.dec * u.degree, frame='icrs')
+        altaz = srcCoords.transform_to(horizframe)
+
+        obs = ephem.Observer()
+        moonHorizon = ephem.degrees(str(MOON_TWILIGHT_ANGLE.value))  # Moon twilight angle to -0.83°
+        obs.lon = ephem.degrees(str(self.siteLon))  # ephem needs this as string
+        obs.lat = ephem.degrees(str(self.siteLat))  # ephem needs this as string
+        obs.elev = self.siteAlt
+        obs.compute_pressure()
+
+        moon = ephem.Moon()
+        moon_alts = np.zeros_like(times)
+
+        for ii, tt in enumerate(times):
+            obs.date = ephem.Date(tt.datetime)
+            moon.compute(obs)
+            moon_alts[ii] = c.Angle(moon.alt, unit=u.rad).degree
+            # logging.debug('[createVisibilityPlot] It is {date}, {src} alt. {srcalt:.1f}, Sun alt. {sun:.1f}, Moon alt. {moon:.1f} deg.'.format(date=obs.date, src=self.src, srcalt=altaz.alt[ii], sun=sun.alt[ii], moon=moon_alts[ii]))
+
+        moon_alts = moon_alts * u.deg
+
+        # plt.fill_between(fdates, 0, 90, sun.alt < -0 * u.deg,
+        #                  color='0.5', zorder=0)
+
+        # nautical twilight
+        plt.fill_between(fdates, 0, 90, sun.alt < CIVIL_TWILIGHT_ANGLE,
+                         color='0.3', zorder=0, label='Twilight')
+
+        # astronomical twilight
+        darkness = (sun.alt < ASTRONOMICAL_TWILIGHT_ANGLE)
+        plt.fill_between(fdates, 0, 90, darkness,
+                         color='k', zorder=0, label='Darkness')
+
+        # plot the moon window. Note that we don't use -18 degrees
+        moonup = (moon_alts > MOON_TWILIGHT_ANGLE) & (sun.alt < ASTRONOMICAL_TWILIGHT_ANGLE)
+        plt.fill_between(fdates, 0, 90, moonup,
+                         color='sienna', zorder=0, label='Moon')
+
+        srcObsDark = (darkness) & (~moonup) & (altaz.alt.degree > self.srcMinAlt)
+        logging.debug('[{src}] Observable under dark conditions between {start} and {stop}'.format(src=self.src, start=times[srcObsDark][0], stop=times[srcObsDark][-1]))
+        if self.visibleUnderMoonlight:
+            srcObsMoon = (darkness) & (moonup) & (altaz.alt.degree > self.srcMinAlt)
+            logging.debug('[{src}] Observable under moonlight conditions between {start} and {stop}'.format(src=self.src, start=times[srcObsMoon][0], stop=times[srcObsMoon][-1]))
+
+        ax.axhline(y=self.srcMinAlt,
+                   linestyle='--',
+                   color='red',
+                   linewidth=2.0,
+                   label='ZA={za} deg'.format(za=(90.-self.srcMinAlt)))
+
+        fig.autofmt_xdate(rotation=0, ha='center')
+        plt.xlabel("Time ({})".format(times.scale.upper()), fontsize='small')
+        plt.ylabel("Altitude (deg)", fontsize='small')
+        plt.ylim(0, 90)
+
+        plt.grid(color="0.8", which="minor")
+        plt.grid(color="0.8", which="major")
+        plt.grid(color="0.8", which="major", lw=4, axis="x")
+
+        leg = plt.legend(loc="upper right", frameon=True)
+
+        plt.plot(fdates, altaz.alt, lw=3, label=self.src,
+             path_effects=[patheffects.Stroke(linewidth=4, foreground='white'),
+                           patheffects.Normal()])
+        for tt in leg.texts:
+            tt.set_path_effects([patheffects.Stroke(linewidth=3, foreground="w"),
+                                 patheffects.Normal()])
+
+        # Add a label for the creation date of this figure
+        # x,y in relative 0-1 coords in figure
+        plt.figtext(0.98, 0.95,
+                    'plot creation date: %s (UTC)' % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
+                    horizontalalignment="right",
+                    rotation='vertical',
+                    size='xx-small')
+
+        # Add information on start and stop times of observability under dark and/or moonlight conditions
+        if self.visibleInDarkness:
+            obstext = '''{src} observable under dark conditions between {start} and {stop}, for ZA<{maxza} deg
+'''.format(src=self.src,
+           start=t.Time(times[srcObsDark][0], format='iso', scale='utc', out_subfmt='date_hm'),
+           stop=t.Time(times[srcObsDark][-1], format='iso', scale='utc', out_subfmt='date_hm'),
+           maxza=(90.-self.srcMinAlt))
+            if self.visibleUnderMoonlight:
+                obstext += '''{src} observable under reasonable moonlight conditions between {start} and {stop}
+'''.format(src=self.src,
+           start=t.Time(times[srcObsMoon][0], format='iso', scale='utc', out_subfmt='date_hm'),
+           stop=t.Time(times[srcObsMoon][-1], format='iso', scale='utc', out_subfmt='date_hm'))
+            else:
+                obstext += "but not observable under reasonable moonlight conditions."
+        else:
+            obstext = "{src} is not observable (nor under dark or moonlight conditions) during the night".format(src=self.src)
+        plt.figtext(0.05, 0.01,
+                    obstext,
+                    size='x-small')
+
+        # Don't show the figure in batch mode
+        if not BATCH:
+            plt.show()
+        # Save the figure
+        fig.savefig(self.visibilityFig)
+        plt.close(fig)
+
 
     def zaAtCulmination(self):
         """
@@ -1008,19 +1196,20 @@ First, retrieving the last photon files...
 
         # Define site for pyephem
         site = ephem.Observer()
-        astroHorizon = ephem.degrees('-18:00')  # astronomical twilight
-        civilHorizon = ephem.degrees('-0:34')
+        astroHorizon = ephem.degrees(str(ASTRONOMICAL_TWILIGHT_ANGLE.value))  # astronomical twilight
+        moonHorizon = ephem.degrees(str(MOON_TWILIGHT_ANGLE.value))  # Moon twilight angle to -0.83°
         site.horizon = astroHorizon
         site.lon = ephem.degrees(str(self.siteLon))  # ephem needs this as string
         site.lat = ephem.degrees(str(self.siteLat))  # ephem needs this as string
         site.elev = self.siteAlt  # meters
         site.compute_pressure()
 
-        srcCoords = Coords(ra=self.ra * u.degree, dec=self.dec * u.degree, frame='icrs')
+        srcCoords = c.SkyCoord(ra=self.ra * u.degree, dec=self.dec * u.degree, frame='icrs')
 
         # If input z is None, make it believe it is 0, otherwise msk crashes:
         if self.z == 'None':
             z = 0.
+            logging.warning('[{src:s}] \033[93mUnknown z, taking z=0.\033[0m'.format(src=self.src))
         else:
             z = float(self.z)
 
@@ -1029,14 +1218,15 @@ First, retrieving the last photon files...
         maxZA = np.array(self.maxZA)
         if z > np.max(maxz):
             thismaxZA = np.min(maxZA)
-            logging.warning('z is greater than maxz !')
+            logging.warning('[{src}] \033[93mz={z} is greater than max probed z={maxz} !\033[0m'.format(src=self.src, z=z, maxz=np.max(maxz)))
         else:
             msk = np.where(z < maxz)
             # Get the first item in the mask, to get the corresponding ZA:
             thismaxZA = maxZA[msk[0][0]]
+            thismaxz = maxz[msk[0][0]]
 
         # Convert ZA to Alt
-        thisminAlt = np.abs(90. - thismaxZA)
+        self.srcMinAlt = np.abs(90. - thismaxZA)
 
         ephemSrc = ephem.FixedBody()
         ephemSrc._ra = ephem.hours(str(srcCoords.ra.to_string(unit=u.hourangle,
@@ -1048,97 +1238,131 @@ First, retrieving the last photon files...
         zaAtCulmin = self.zaAtCulmination()
         if zaAtCulmin > 90.:
             # the source is basically NEVER visible at the site
-            logging.info('[%s] \033[91mNEVER above horizon at the site, consider discarding this source from your source list...\033[0m', self.src)
+            logging.info('[{src:s}] \033[91mNEVER above horizon at the site, consider discarding this source from your source list...\033[0m'.format(src=self.src))
             return False
 
         if thismaxZA < zaAtCulmin:
             # the source is never above maxZA set by 2D mask on Dec/z
-            logging.info('[%s]\033[91m Never above allowed max ZA, consider relaxing the Dec/z cuts or discarding this source from your source list...\033[0m', self.src)
-            logging.debug('[%s] thismaxZA=%f, zaAtCulmin=%f', self.src, thismaxZA, zaAtCulmin)
+            logging.info('[{src:s}]\033[91m Never above allowed max ZA, consider relaxing the Dec/z cuts or discarding this source from your source list...\033[0m'.format(src=self.src))
+            logging.debug('[{src:s}] thismaxZA={maxZA:f}, zaAtCulmin={zaculmin:f}, thismaxz={maxz:f}'.format(src=self.src, maxZA=thismaxZA, zaculmin=zaAtCulmin, maxz=thismaxz))
             return False
 
         # All times are handled here in UTC (pyEphem only uses UTC)
-        now = datetime.datetime.utcnow()
-        # tomorrow = now + datetime.timedelta(days=1)
-
-        site.date = now
+        if self.stopday is not None:
+            site.date = ephem.Date(self.stopday.replace('-','/')+' 12:00:00')
+        else:
+            site.date = datetime.datetime.utcnow()
         sun = ephem.Sun()
+        sun.compute(site)
         nextSunset = site.next_setting(sun)
         nextSunrise = site.next_rising(sun)
-        # The Moon just needs to be below the horizon, not below astronomical twilight angle
-        site.horizon = civilHorizon
-        moon = ephem.Moon()
-        nextMoonset = site.next_setting(moon)
-        nextMoonrise = site.next_rising(moon)
-        site.horizon = astroHorizon
         # so far, so good. All of this is OK if we execute the program during day time.
 
         # However, if the program is run during dark time, we should look at the ephemerids of next night (not current night):
         if nextSunrise < nextSunset:
-            logging.info('looking at visibility for tomorrow')
+            logging.info('Looking at visibility for tomorrow')
             # we just put the current time at next sunrise + 10 min., to be sure to fall on tomorrow's morning day time
             site.date = nextSunrise.datetime() + datetime.timedelta(minutes=10)
+            sun.compute(site)
             nextSunset = site.next_setting(sun)
             nextSunrise = site.next_rising(sun)
-            site.horizon = civilHorizon
-            nextMoonset = site.next_setting(moon)
-            nextMoonrise = site.next_rising(moon)
-            site.horizon = astroHorizon
+
+        logging.debug('[is_visible] Date is set to {date}'.format(date=site.date))
+
+        # The Moon just needs to be below the horizon, not below astronomical twilight angle
+        site.horizon = moonHorizon
+        moon = ephem.Moon()
+        moon.compute(site)
+        nextMoonset = site.next_setting(moon)
+        nextMoonrise = site.next_rising(moon)
+        site.horizon = astroHorizon
+
+        logging.debug('[is_visible] Next sun rise at {0}'.format(nextSunrise))
+        logging.debug('[is_visible] Next sun set at {0}'.format(nextSunset))
+        logging.debug('[is_visible] Next moon rise at {0}'.format(nextMoonrise))
+        logging.debug('[is_visible] Next moon set at {0}'.format(nextMoonset))
 
         ephemSrc.compute(site)
-        srcTransitTime = site.next_transit(ephemSrc)
+        moonPhase = moon.phase  # phase of the Moon between 0 and 100
+        targetMoonSeparation = c.Angle(ephem.separation(ephemSrc, moon), unit=u.rad).degree  # ephem computes angles in radians !!
+        logging.debug('[is_visible] Moon phase is {phase:.1f}% and the Moon/{src} separation is {sep:.1f}°'.format(phase=moonPhase, src=self.src, sep=targetMoonSeparation))
 
+        # Add criteria on Moon phase and Moon/target separation
+        if moonPhase < 40. and targetMoonSeparation >= 45. and targetMoonSeparation <= 145.:
+            self.observableUnderMoonlight = True
+        logging.debug('[is_visible] Is {src} observable under reasonable Moonlight conditions ? {ans}'.format(src=self.src, ans='Yes' if self.observableUnderMoonlight else 'No'))
+
+        srcTransitTime = site.next_transit(ephemSrc)
         site.date = srcTransitTime
         ephemSrc.compute(site)
-        srcAltAtTransit = Angle(ephemSrc.alt, unit=u.rad).degree
+        srcAltAtTransit = c.Angle(ephemSrc.alt, unit=u.rad).degree
 
-        # If srcAltAtTransit is below thisminAlt, the source is just not optimally visible and we stop here
-        logging.debug('thisminAlt = {0}'.format(thisminAlt))
-        if srcAltAtTransit < thisminAlt:
+        # If srcAltAtTransit is below self.srcMinAlt, the source is just not optimally visible and we stop here
+        logging.debug('[is_visible] Acceptable minimium altitude for {src}: {alt:.1f}°'.format(src=self.src, alt=self.srcMinAlt))
+        if srcAltAtTransit < self.srcMinAlt:
             return False
 
         # Compute start and end of darkness time
-        if nextMoonset > nextSunset and nextMoonset < nextSunrise:
+        # (from here, as if we're computing these during the day)
+        if nextMoonset > nextSunset and nextMoonset < nextSunrise and not self.observableUnderMoonlight:
             beginDarkness = nextMoonset
         else:
             beginDarkness = nextSunset
 
-        if nextMoonrise < nextSunrise and nextMoonrise > nextSunset:
+        if nextMoonrise < nextSunrise and nextMoonrise > nextSunset and not self.observableUnderMoonlight:
             endDarkness = nextMoonrise
         else:
             endDarkness = nextSunrise
 
         site.date = beginDarkness
         ephemSrc.compute(site)
-        srcAltAtStartDarkTime = Angle(ephemSrc.alt, unit=u.rad).degree
+        srcAltAtStartDarkTime = c.Angle(ephemSrc.alt, unit=u.rad).degree
 
         site.date = endDarkness
         ephemSrc.compute(site)
-        srcAltAtEndDarkTime = Angle(ephemSrc.alt, unit=u.rad).degree
+        srcAltAtEndDarkTime = c.Angle(ephemSrc.alt, unit=u.rad).degree
 
         darknessDuration = (endDarkness - beginDarkness) * 24. * 60.  # day to minutes
-        logging.debug('darkness begin={0}'.format(beginDarkness))
-        logging.debug('srcAltAtStartDarkTime={0}'.format(srcAltAtStartDarkTime))
-        logging.debug('srcTransitTime={0}'.format(srcTransitTime))
-        logging.debug('srcAltAtTransit={0}'.format(srcAltAtTransit))
-        logging.debug('darkness ends={0}'.format(endDarkness))
-        logging.debug('srcAltAtEndDarkTime={0}'.format(srcAltAtEndDarkTime))
-        logging.debug('darkness duration={0} minutes'.format(darknessDuration))
+        logging.debug('[is_visible] Darkness begins at {0}'.format(beginDarkness))
+        logging.debug('[is_visible] Darkness ends at {0}'.format(endDarkness))
+        logging.debug('[is_visible] Darkness duration: {0:.1f} minutes'.format(darknessDuration))
+        logging.debug('[is_visible] {src} altitude at beginning of darkness: {alt:.1f}°'.format(src=self.src, alt=srcAltAtStartDarkTime))
+        logging.debug('[is_visible] {src} transitting on {transit} at an altitude of {alt:.1f}°'.format(src=self.src, transit=srcTransitTime, alt=srcAltAtTransit))
+        logging.debug('[is_visible] {src} altitude at end of darkness: {alt:.1f}°'.format(src=self.src, alt=srcAltAtEndDarkTime))
 
         # check if source is visible, above minAlt, during this night
         for step in range(0, np.int(darknessDuration)):
             site.date = beginDarkness.datetime() + datetime.timedelta(minutes=step)
             ephemSrc.compute(site)
-            srcAlt = Angle(ephemSrc.alt, unit=u.rad).degree
-            logging.debug('LOOPING: it is {0} and {1} is at alt. of {2}'.format(site.date, self.src, srcAlt))
-            if srcAlt > thisminAlt:
+            srcAlt = c.Angle(ephemSrc.alt, unit=u.rad).degree
+            moon.compute(site)
+            moonAlt = c.Angle(moon.alt, unit=u.rad).degree
+            moonUp = moonAlt > MOON_TWILIGHT_ANGLE.value
+            # logging.debug('[is_visible] Time loop: It is now {now} and {src} is at alt. of {alt:.2f}°. Moon is {isup} at alt. of {moonAlt:.1f}°'.format(now=site.date,
+            #                                                                                                                       src=self.src,
+            #                                                                                                                       alt=srcAlt,
+            #                                                                                                                       isup='up' if moonUp else 'down',
+            #                                                                                                                       moonAlt=moonAlt))
+            if srcAlt > self.srcMinAlt and not visibleFlag:
                 visibleFlag = True
-                logging.info('{0} starts to be optimally visible, above {1}°, at {2}'.format(self.src, thisminAlt,
-                                                                                             site.date))
-                break
+                logging.info('[{src:s}] {src:s} starts to be optimally visible, that is above an altitude of {alt:.2f}°, at {date}'.format(src=self.src, alt=self.srcMinAlt, date=site.date))
+            if visibleFlag and not moonUp:
+                self.visibleInDarkness = True
+            if moonUp and visibleFlag and self.observableUnderMoonlight and not self.visibleUnderMoonlight:
+                self.visibleUnderMoonlight = True
 
-        logging.debug('is_visible: %s', str(visibleFlag))
+        if visibleFlag and self.visibleUnderMoonlight and not self.visibleInDarkness:
+            self.visibleUnderMoonlightOnly = True
+
+        logging.debug('[is_visible] Is {src} visible at all during the night ? {vis}'.format(src=self.src, vis='Yes' if visibleFlag else 'No'))
+        logging.debug('[is_visible] Is {src} visible under reasonable Moonlight ? {vis}'.format(src=self.src, vis='Yes' if self.visibleUnderMoonlight else 'No'))
+        logging.debug('[is_visible] Is {src} visible only under reasonable Moonlight and never during dark time ? {vis}'.format(src=self.src, vis='Yes' if self.visibleUnderMoonlightOnly else 'No'))
+
+        if self.daily:
+            self.createVisibilityPlot(beginDarkness)
+
         return visibleFlag
+
 
     def killTrigger(self):
         """
@@ -1186,9 +1410,6 @@ First, retrieving the last photon files...
     def dynamicalTrigger(self):
         '''
         If long-term data are available for a source, dynamically computes a flux trigger threshold based on the flux history of the source. Otherwise, fall back with default fixed trigger threshold.
-
-        @return (fluxAverage,fluxRMS)
-        @rtype tuple
         '''
 
         # Read the longterm .dat LC file
@@ -1196,30 +1417,38 @@ First, retrieving the last photon files...
         try:
             data = ascii.read(infile)
         except IOError:
-            logging.error('[%s] \033[95m* Long term data file unavailable for source %s\033[0m', self.src, self.src)
+            logging.error('[{src:s}] \033[95m* Long term data file unavailable for source {src:s}\033[0m'.format(src=self.src))
             # Falling back to default fixed trigger threshold
             self.withhistory = False
-            return (False, False)
+            self.LTfluxAverage = self.threshold
+            self.LTfluxRMS = 0.
+            return None
 
         flux = data['Flux']
         fluxErr = data['FluxError']
         try:
             from uncertainties import unumpy as unp
-            logging.info('[%s] The long-term flux average is %.2g ph cm^-2 s^-1', self.src, unp.uarray(flux, fluxErr).mean())
+            logging.info('[{src:s}] The long-term flux average is {f} ph cm^-2 s^-1'.format(src=self.src, f=unp.uarray(flux, fluxErr).mean()))
         except:
+            logging.debug('Cannot use uncertainties...')
             pass
 
         # weighted average of the historical fluxes, weighted by their errors
-        fluxAverage = np.average(flux, weights=1. / fluxErr)
-        fluxRMS = np.std(flux, dtype=np.float64)
+        try:
+            self.LTfluxAverage = np.average(flux, weights=1. / fluxErr)
+            self.LTfluxRMS = np.std(flux, dtype=np.float64)
+        except ZeroDivisionError:
+            logging.error('[{src:s}] \033[95m* Zero division error for computation of long term flux average for source {src:s}\033[0m'.format(src=self.src))
+            self.withhistory = False
+            self.LTfluxAverage = self.threshold
+            self.LTfluxRMS = 0.
+            return None
 
         # Dynamically redefine the flux trigger threshold, using a 2-level criteria depending on whether we are currently looking at short- or long-term data
         if self.daily:
-            self.threshold = fluxAverage + self.sigma * fluxRMS
+            self.threshold = self.LTfluxAverage + self.sigma * self.LTfluxRMS
         else:
-            self.threshold = fluxAverage + self.sigmaLT * fluxRMS
-
-        return (fluxAverage, fluxRMS)
+            self.threshold = self.LTfluxAverage + self.sigmaLT * self.LTfluxRMS
 
     def Triggered(self):
         '''
@@ -1232,6 +1461,7 @@ First, retrieving the last photon files...
         # Read the light curve file
         if self.daily:
             infile = self.workDir + '/' + str(self.src) + '_daily_lc.dat'
+            infilefits = self.workDir + '/' + str(self.src) + '_daily_lc.fits'
             self.pngFig = self.workDir + '/' + str(self.src) + '_daily_lc.png'
 
             # Also take a look in the long time-binned data
@@ -1257,6 +1487,7 @@ First, retrieving the last photon files...
             self.arrivalTimeLastPhoton = photonsTime[-1:]
         else:
             infile = self.workDir + '/' + str(self.src) + '_lc.dat'
+            infilefits = self.workDir + '/' + str(self.src) + '_lc.fits'
             self.pngFig = self.workDir + '/' + str(self.src) + '_lc.png'
 
             photonfile = self.workDir + '/' + str(self.src) + '_gti.fits'
@@ -1267,6 +1498,7 @@ First, retrieving the last photon files...
         time = data['MET']
         flux = data['Flux']
         fluxErr = data['FluxError']
+        self.lastExposure = float(fits.open(infilefits)['RATE'].data.field('EXPOSURE')[-1:])
 
         # Catch the last flux point
         self.lastTime = time[-1:]
@@ -1275,37 +1507,39 @@ First, retrieving the last photon files...
 
         self.energyTimeFig = self.workDir + '/' + str(self.src) + '_energyTime.png'
 
-        logging.debug('%s, threshold=%g, lastFlux=%g, lastFluxErr=%g',
-                      self.src, self.threshold, self.lastFlux, self.lastFluxErr)
+        logging.debug('[{src:s}] threshold={th:.2g}, lastFlux={lastfl:.2g} +/- {lastflerr:.2g} ph cm^-2 s^-1'.format(src=self.src,
+                                                                                                                     th=float(self.threshold),
+                                                                                                                     lastfl=float(self.lastFlux),
+                                                                                                                     lastflerr=float(self.lastFluxErr)))
 
         # Do we kill potential trigger due to (ra, dec, z) cut ?
         self.triggerkilled = self.killTrigger()
 
-        # Assess whether flux is above threshold, looking at the last flux point
-        if (self.lastFlux - self.lastFluxErr) >= self.threshold:
+        # Assess whether flux is above threshold, looking at the last flux point and at the exposure of the last flux measurement
+        if self.lastFlux >= self.LTfluxAverage + self.sigma * np.sqrt(self.LTfluxRMS**2 + self.lastFluxErr**2):
             self.active = True
+            if self.lastExposure < self.lowerExposure:
+                self.active = False
+                logging.warning('[{src}] \033[93mPotential trigger killed due to low exposure: last exposure is {lastExp:.2g} cm^2 s versus cutting on the exposure at {lowExp:.2g} cm^2 s.\033[0m'.format(src=self.src, lastExp=self.lastExposure, lowExp=self.lowerExposure))
         else:
             self.active = False
 
-        # Combine killTrigger and flux above threshold criteria
-        if (not self.triggerkilled and self.active) or self.forcealert:
+        # Combine killTrigger and flux above threshold criteria, force an alert in case of ToO
+        SENDALERT = False
+        if ((not self.triggerkilled and self.active) or self.forcealert or self.too) is True:
             SENDALERT = True
-        else:
-            SENDALERT = False
 
-        logging.debug('triggerkilled=%s', str(self.triggerkilled))
-        logging.debug('active=%s', str(self.active))
-        logging.debug('visible=%s', str(self.visible))
-        logging.debug('SENDALERT=%s', str(SENDALERT))
-
-        logging.debug('DEBUG {0}, dec={1}, z={2}, maxZA={3}, maxz={4}, triggerkilled={5}, sendalert={6}'.format(self.src,
-                                                                                                                self.dec,
-                                                                                                                self.z,
-                                                                                                                self.maxZA,
-                                                                                                                self.maxz,
-                                                                                                                self.triggerkilled,
-                                                                                                                SENDALERT))
-
+        logging.debug('[{src}] dec={dec}, z={z}, maxZA={za}, maxz={maxz}, active={active}, visible={visible}, triggerkilled={kill}, sendalert={send}, too={too}, forcealert={forcealert}'.format(src=self.src,
+                                                                                                                                                                                                 dec=self.dec,
+                                                                                                                                                                                                 z=self.z,
+                                                                                                                                                                                                 za=self.maxZA,
+                                                                                                                                                                                                 maxz=self.maxz,
+                                                                                                                                                                                                 active=self.active,
+                                                                                                                                                                                                 visible=self.visible,
+                                                                                                                                                                                                 kill=self.triggerkilled,
+                                                                                                                                                                                                 send=SENDALERT,
+                                                                                                                                                                                                 too=self.too,
+                                                                                                                                                                                                 forcealert=self.forcealert))
         return SENDALERT
 
     def sendAlert(self, nomailall=False, sendmail=False):
@@ -1346,20 +1580,24 @@ First, retrieving the last photon files...
             else:
                 fhlmessage = "No 2FHL counterpart found"
 
-            fglName = self.search3FGLcounterpart()
+            fglName = self.search4FGLcounterpart()
             if fglName is not None:
-                fglmessage = "3FGL counterpart is %s" % fglName
+                fglmessage = "4FGL counterpart is %s" % fglName
             else:
-                fglmessage = "No 3FGL counterpart found"
+                fglmessage = "No 4FGL counterpart found"
 
             # To whom the mail should be sent (cf. __init__ function of the class)
+            if self.too == 'True':
+                tootitleflag = " *** ToO *** Fermi-LAT report"
+            else:
+                tootitleflag = "Fermi-LAT flare alert"
             if not nomailall:
                 recipient = self.usualRecipients
-                msg['Subject'] = '[FLaapLUC] Fermi/LAT flare alert on %s [2FHL counterpart: %s]' % (self.src, fhlName)
+                msg['Subject'] = '[FLaapLUC] %s on %s [2FHL counterpart: %s]' % (tootitleflag, self.src, fhlName)
             else:
                 recipient = self.testRecipients
-                msg['Subject'] = '[FLaapLUC TEST MAIL] Fermi/LAT flare alert on %s [2FHL counterpart: %s]' % (
-                self.src, fhlName)
+                msg['Subject'] = '[FLaapLUC TEST MAIL] %s on %s [2FHL counterpart: %s]' % (
+                tootitleflag, self.src, fhlName)
 
             msg['From'] = sender
             COMMASPACE = ', '
@@ -1368,12 +1606,23 @@ First, retrieving the last photon files...
             # Guarantees the message ends in a newline
             msg.epilogue = ''
 
+            if not self.too:
+                stateinfo = "exceeds"
+            else:
+                if self.lastFlux > self.threshold:
+                    stateinfo = "*exceeds*"
+                else:
+                    stateinfo="*does not* exceed"
+
             mailtext = """
      FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) report
 
-     *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s (%s, %s) exceeds the trigger threshold of %.2g ph cm^-2 s^-1 ***
+     *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s (%s, %s) %s the trigger threshold of %.2g ph cm^-2 s^-1 ***
 
-     """ % (self.emin, self.emax / 1000., self.src, fhlmessage, fglmessage, self.threshold)
+     Source coordinates (RA, Dec): %f %f
+
+     """ % (self.emin, self.emax / 1000., self.src, fhlmessage, fglmessage, stateinfo, self.threshold, self.ra, self.dec)
+
 
             if self.daily:
                 mailtext = mailtext + """
@@ -1409,10 +1658,32 @@ First, retrieving the last photon files...
                 mailtext = mailtext + "The most recent lightcurve (%.0f-day binned) is attached." % (
                 self.tbin / 24. / 60. / 60.)
 
+            if self.visibleUnderMoonlightOnly:
+                mailtext = mailtext + """
+
+     *NOTE*: %s is visible from your site, but only observable under *moonlight* conditions.
+""" % (self.src)
+            elif self.visibleUnderMoonlight and not self.visibleUnderMoonlightOnly:
+                mailtext = mailtext + """
+
+     *NOTE*: %s is visible from your site, and observable both under *dark* and *moonlight* conditions.
+""" % (self.src)
+            elif self.visibleInDarkness and not self.visibleUnderMoonlight:
+                mailtext = mailtext + """
+
+     *NOTE*: %s is visible from your site, and observable under *dark* conditions.
+""" % (self.src)
+
+            if self.too == 'True':
+                mailtext=mailtext+"""
+
+     *NOTE*: a ToO is currently ongoing on %s, this alert is forced.
+"""%(self.src)
+
             if FLAGASSUMEDGAMMA is True:
                 mailtext = mailtext + """
 
-     *WARNING*: The source %s is not found in the 3FGL catalogue, its photon index is thus assumed to be %.2f for the light curve computation.
+     *WARNING*: The source %s is not found in the 4FGL catalogue, its photon index is thus assumed to be %.2f for the light curve computation.
 """ % (self.src, ASSUMEDGAMMA)
 
             mailtext = mailtext + """
@@ -1427,7 +1698,7 @@ First, retrieving the last photon files...
             msg.attach(txt)
 
             # Attach the figures
-            for fig in [self.pngFig, self.energyTimeFig]:
+            for fig in [self.pngFig, self.energyTimeFig, self.visibilityFig]:
                 try:
                     # Open the files in binary mode.  Let the MIMEImage class automatically guess the specific image type.
                     fp = open(fig, 'rb')
@@ -1448,52 +1719,116 @@ First, retrieving the last photon files...
             s.sendmail(sender, recipient, msg.as_string())
             s.quit()
 
-            logging.info('\033[94m*** Alert sent for %s\033[0m', self.src)
+            logging.info('\033[94m*** Alert sent for {src:s}\033[0m'.format(src=self.src))
 
             return True
         else:
             return False
 
+
     def search3FGLcounterpart(self):
         """
-        Search the 3FGL name of a 2FGL source name
+        Search the 3FGL name of a 2FGL or a 4FGL source name
         """
-        if self.fglName is not None:
-            if "3FGL" in self.fglName:
-                return self.fglName.replace('_3FGLJ', '3FGL J').replace('3FGLJ', '3FGL J')
+        if self.fglName is None:
+            return None
+        if "3FGL" in self.fglName:
+            return self.fglName.replace('_3FGLJ', '3FGL J').replace('3FGLJ', '3FGL J')
 
+        # Search 3FGL name from a 2FGL name
+        if '2FGL' in self.fglName:
             cat3FGLfile = self.catalogFile.replace('gll_psc_v08', 'gll_psc_v16')
             hdulist = fits.open(cat3FGLfile)
             cat = hdulist[1].data
-            logging.debug('2FGL name is %s', self.fglName.replace('_2FGLJ', '2FGL J').replace('2FGLJ', '2FGL J'))
+            logging.debug('[{src:s}] 2FGL name is {fgl}'.format(src=self.src, fgl=self.fglName.replace('_2FGLJ', '2FGL J').replace('2FGLJ', '2FGL J')))
 
             found = False
             for stuff in cat:
                 if stuff.field('2FGL_Name') == self.fglName.replace('_2FGLJ', '2FGL J').replace('2FGLJ', '2FGL J'):
                     threefglName = stuff.field('Source_Name')
-                    logging.info('Found the 3FGL counterpart of %s: %s', self.fglName, threefglName)
+                    logging.info('[{src:s}] Found the 3FGL counterpart of {two:s}: {three:s}'.format(src=self.src, two=self.fglName, three=threefglName))
                     found = True
                     break
 
             if not found:
                 threefglName = None
-                logging.info('No 3FGL counterpart found for %s', self.fglName)
+                logging.info('[{src:s}] No 3FGL counterpart found for {two:s}'.format(src=self.src, two=self.fglName))
 
             hdulist.close()
             return threefglName
-        else:
+
+        # Search 3FGL name from a 4FGL name
+        if '4FGL' in self.fglName:
+            cat4FGLfile = self.catalogFile.replace('/3FGL/','/4FGL-DR2/').replace('gll_psc_v16', 'gll_psc_v27')
+            hdulist = fits.open(cat4FGLfile)
+            cat = hdulist[1].data
+            logging.debug('[{src:s}] 4FGL name is {fgl}'.format(src=self.src, fgl=self.fglName.replace('_4FGLJ', '4FGL J').replace('4FGLJ', '4FGL J')))
+
+            found = False
+            for stuff in cat:
+                if stuff.field('Source_Name') == self.fglName.replace('_4FGLJ', '4FGL J').replace('4FGLJ', '4FGL J') and '3FGL' in stuff.field('ASSOC_FGL'):
+                    threefglName = stuff.field('ASSOC_FGL')
+                    logging.info('[{src:s}] Found the 3FGL counterpart of {two:s}: {three:s}'.format(src=self.src, two=self.fglName, three=threefglName))
+                    found = True
+                    break
+
+            if not found:
+                threefglName = None
+                logging.info('[{src:s}] No 3FGL counterpart found for {two:s}'.format(src=self.src, two=self.fglName))
+
+            hdulist.close()
+            return threefglName
+
+
+    def search4FGLcounterpart(self, threefglName=None):
+        """
+        Search the 4FGL name of a 3FGL source name
+        """
+        if self.fglName is None:
             return None
+        if "4FGL" in self.fglName:
+            return self.fglName.replace('4FGLJ', '4FGL J')
+
+        cat4FGLfile = self.catalogFile.replace('gll_psc_v16', 'gll_psc_v27')
+        hdulist = fits.open(cat4FGLfile)
+        cat = hdulist[1].data
+        logging.debug('[{src:s}] 3FGL name is {fgl}'.format(src=self.src, fgl=self.fglName.replace('3FGLJ', '3FGL J')))
+
+        found = False
+        for stuff in cat:
+            if threefglName is not None and stuff.field('ASSOC_FGL') == threefglName.replace('3FGLJ', '3FGL J'):
+                fourfglName = stuff.field('Source_Name')
+                logging.info('[{src:s}] Found the 4FGL counterpart of {three:s}: {four:s}'.format(src=self.src, three=threefglName, four=fourfglName))
+                found = True
+                break
+            elif threefglName is None and stuff.field('ASSOC_FGL') == self.fglName.replace('3FGLJ', '3FGL J'):
+                fourfglName = stuff.field('Source_Name')
+                logging.info('[{src:s}] Found the 4FGL counterpart of {three:s}: {four:s}'.format(src=self.src, three=self.fglName, four=fourfglName))
+                found = True
+                break
+
+        if not found:
+            fourfglName = None
+            logging.info('[{src:s}] No 4FGL counterpart found for {three:s}'.format(src=self.src, three=self.fglName))
+
+        hdulist.close()
+        return fourfglName
+
 
     def search2FHLcounterpart(self):
         """
-        Search the 2FHL name of a 2FGL or a 3FGL source name
+        Search the 2FHL name of a 2FGL, a 3FGL or a 4FGL source name
         """
         if self.fglName is not None:
             if "2FHL" in self.fglName:
                 return self.fglName.replace('_2FHLJ', '2FHL J').replace('2FHLJ', '2FHL J')
 
-            cat2FHLfile = self.catalogFile.replace('/3FGL/', '/2FHL/').replace('psc_v08', 'psch_v08').replace('psc_v16',
-                                                                                                              'psch_v08')
+            cat2FHLfile = self.catalogFile.replace('/3FGL/',
+                                                   '/2FHL/').replace('/4FGL-DR2',
+                                                                     '/2FHL/').replace('psc_v08',
+                                                                                       'psch_v08').replace('psc_v16',
+                                                                                                           'psch_v08').replace('psc_v27',
+                                                                                                                               'psch_v08')
             try:
                 hdulist = fits.open(cat2FHLfile)
             except IOError:
@@ -1508,13 +1843,13 @@ First, retrieving the last photon files...
                                                                                                 '3FGL J') or stuff.field(
                         '3FGL_Name') == str(threefglName).replace('3FGLJ', '3FGL J'):
                     fhlName = stuff.field('Source_Name')
-                    logging.info('Found the 2FHL counterpart of %s: %s', self.fglName, fhlName)
+                    logging.info('[{src:s}] Found the 2FHL counterpart of {fgl:s}: {fhl:s}'.format(src=self.src, fgl=self.fglName, fhl=fhlName))
                     found = True
                     break
 
             if not found:
                 fhlName = None
-                logging.info('No 2FHL counterpart found for %s', self.fglName)
+                logging.info('[{src:s}] No 2FHL counterpart found for {fgl:s}'.format(src=self.src, fgl=self.fglName))
 
             hdulist.close()
             return fhlName

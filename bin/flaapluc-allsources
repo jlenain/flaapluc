@@ -30,7 +30,7 @@ Use '-h' to get the help message
 
 """
 
-    parser = OptionParser(version="%prog v1.2.1",
+    parser = OptionParser(version="%prog v1.2.3",
                           usage=helpmsg)
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
@@ -162,7 +162,7 @@ Use '-h' to get the help message
         auto = alc(customThreshold=USECUSTOMTHRESHOLD, daily=DAILY, longTerm=LONGTERM, mergelongterm=MERGELONGTERM,
                    withhistory=WITHHISTORY, configfile=CONFIGFILE, stopmonth=STOPMONTH, log=LOG)
 
-    src, ra, dec, z, fglName = auto.readSourceList()
+    src, ra, dec, z, fglName, too = auto.readSourceList()
 
     # Total number of sources to process
     nbSrc = len(src)
@@ -219,16 +219,16 @@ I will process %i sources.
 
             if not DRYRUN:
                 processSrc(mysrc=src[i], useThresh=USECUSTOMTHRESHOLD, daily=DAILY, mail=MAIL, longTerm=LONGTERM,
-                           test=TEST, mergelongterm=MERGELONGTERM, withhistory=WITHHISTORY, update=UPDATE,
-                           configfile=CONFIGFILE, log=LOG)
+                           test=TEST, mergelongterm=MERGELONGTERM, stopmonth=STOPMONTH, withhistory=WITHHISTORY,
+                           update=UPDATE, configfile=CONFIGFILE, too=too[i], log=LOG)
             else:
                 logging.info("""Dry run, would process:
 processSrc(mysrc={src}, useThresh={useThresh}, daily={daily},
            mail={mail}, longTerm={longTerm}, test={test},
-           mergelongterm={mergelongterm}, withhistory={withhistory},
+           mergelongterm={mergelongterm}, stopmonth={stopmonth}, withhistory={withhistory},
            update={update}, configfile={configfile})
 """.format(src=src[i], useThresh=USECUSTOMTHRESHOLD, daily=DAILY, mail=MAIL, longTerm=LONGTERM, test=TEST,
-           mergelongterm=MERGELONGTERM, withhistory=WITHHISTORY, update=UPDATE, configfile=CONFIGFILE))
+           mergelongterm=MERGELONGTERM, stopmonth=STOPMONTH, withhistory=WITHHISTORY, update=UPDATE, configfile=CONFIGFILE))
 
     return True
 

@@ -10,7 +10,7 @@ Automatic generation of aperture photometric light curves of
 high energy sources, for a given source.
 
 No likelihood fit is performed, the results solely rely on the
-3FGL spectral fits, if available.
+4FGL spectral fits, if available.
 
 More information are available at:
 http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/aperture_photometry.html
@@ -38,7 +38,7 @@ Use '-h' to get the help message
 
 """
 
-    parser = OptionParser(version="%prog v1.2.1",
+    parser = OptionParser(version="%prog v1.2.3",
                           usage=helpmsg)
 
     parser.add_option("-d", "--daily", action="store_true", dest="d", default=False,
