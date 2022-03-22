@@ -863,6 +863,7 @@ First, retrieving the last photon files...
             self.dynamicalTrigger()
         else:
             self.LTfluxAverage = self.threshold
+            self.LTfluxRMS = 0.
 
         fig = plt.figure()
 
