@@ -861,6 +861,8 @@ First, retrieving the last photon files...
         # Redefine the trigger threshold if withhistory=True
         if self.withhistory:
             self.dynamicalTrigger()
+        else:
+            self.LTfluxAverage = self.threshold
 
         fig = plt.figure()
 
