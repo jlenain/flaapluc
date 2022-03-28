@@ -557,8 +557,8 @@ First, retrieving the last photon files...
         try:
             d = fits.open(self.spacecraft)[1].data
         except:
-            liste = np.loadtxt(self.spacecraft,unpack=True,dtype=str)
-            d = fits.open(liste[0])[1].data
+            sclist = np.loadtxt(self.spacecraft,unpack=True,dtype=str)
+            d = fits.open(sclist[0])[1].data
         try:
             m = d.field('RA_MOON')
             r = True
