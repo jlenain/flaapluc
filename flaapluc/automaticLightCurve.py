@@ -554,7 +554,11 @@ First, retrieving the last photon files...
         """
         Return True if the FT2 spacecraft file has the Moon coordinates (using the moonpos user contributed script), False otherwise
         """
-        d = fits.open(self.spacecraft)[1].data
+        try:
+            d = fits.open(self.spacecraft)[1].data
+        except:
+            liste = np.loadtxt(self.spacecraft,unpack=True,dtype=str)
+            d = fits.open(liste[0])[1].data
         try:
             m = d.field('RA_MOON')
             r = True
@@ -690,7 +694,11 @@ First, retrieving the last photon files...
         fermi.evtbin['tstop'] = self.tstop
         fermi.evtbin['dtime'] = self.tbin
         logging.info('Running gtbin')
-        fermi.evtbin.run()
+        try:
+            fermi.evtbin.run()
+        except:
+            fermi.evtbin['scfile'] = '@'+self.spacecraft   
+            fermi.evtbin.run()
 
     def exposure(self, gamma=None):
         """
