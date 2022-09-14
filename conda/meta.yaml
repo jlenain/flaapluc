@@ -15,7 +15,6 @@ requirements:
     - matplotlib 3.5.*
     - fermitools 2.*
     - ephem 4.*
-    # - pytz
 
   run:
     - python 3.*
