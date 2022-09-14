@@ -797,7 +797,7 @@ First, retrieving the last photon files...
         }
 
         # Remove '+', add file ending
-        if urls.has_key(self.src):
+        if self.src in urls:
             file = urls[self.src].replace('+', 'p') + ".lc.fits"
         else:
             file = self.src.replace('+', 'p') + ".lc.fits"
@@ -1019,7 +1019,7 @@ First, retrieving the last photon files...
             z = z / max(z)
             idx = z.argsort()
             t, e, z = t[idx], e[idx], z[idx]
-            pcm = ax.scatter(t, e, c=z, s=100, edgecolor='')
+            pcm = ax.scatter(t, e, c=z, s=100, edgecolors=None)
             cbar = plt.colorbar(pcm, ax=ax)
             cbar.set_label('Kernel-density estimates (arb. unit)', rotation=90)
         except ImportError:
