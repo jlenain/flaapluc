@@ -7,21 +7,23 @@ source:
   
 requirements:
   build:
-    - python 2.7.*
-    - numpy 1.13.*
-    - scipy 1.2.*
-    - astropy 2.0.*
-    - matplotlib 2.2.*
-    - ephem 3.7.*
-    - pytz 2020.*
+    - python 3.*
+    - numpy
+    - scipy
+    - astropy
+    - matplotlib
+    - fermitools 2.*
+    - ephem
+    - pytz
 
   run:
-    - python 2.7.*
-    - numpy 1.13.*
-    - scipy 1.2.*
-    - astropy 2.0.*
-    - matplotlib 2.2.*
-    - ephem 3.7.*
+    - python 3.*
+    - numpy
+    - scipy
+    - astropy
+    - matplotlib
+    - fermitools 2.*
+    - ephem
 
 about:
   home: https://github.com/jlenain/flaapluc

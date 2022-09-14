@@ -28,7 +28,7 @@ import os
 import sys
 import time
 import numpy as np
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter
 from matplotlib.dates import date2num, HourLocator, DayLocator, DateFormatter
@@ -782,7 +782,7 @@ First, retrieving the last photon files...
         file.close()
 
     def getBAT(self):
-        import urllib2
+        import urllib3
 
         # daily fits example url:
         # http://swift.gsfc.nasa.gov/docs/swift/results/transients/CygX-3.lc.fits
@@ -806,16 +806,14 @@ First, retrieving the last photon files...
         # lc files can be in a weak/ subdir for weak sources, we try both
         try:
             baturl = urlprefix + file
-            webfile = urllib2.urlopen(baturl)
-        except (urllib2.HTTPError, urllib2.URLError) as e:
+            webfile = urllib3.urlopen(baturl)
+        except (urllib3.exceptions.HTTPError) as e:
             try:
                 baturl = urlprefix + 'weak/' + file
-                webfile = urllib2.urlopen(baturl)
-            except (urllib2.HTTPError, urllib2.URLError) as e:
+                webfile = urllib3.urlopen(baturl)
+            except:
                 return False, None
-            except socket.error:
-                return False, None
-        except socket.error:
+        except:
             return False, None
 
         # save lc to local file
@@ -1568,10 +1566,10 @@ First, retrieving the last photon files...
             import smtplib
 
             # Here are the email package modules we'll need
-            from email.MIMEMultipart import MIMEMultipart
-            from email.MIMEText import MIMEText
-            from email.MIMEBase import MIMEBase
-            from email import Encoders
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+            from email.mime.base import MIMEBase
+            import email.encoders as Encoders
 
         except:
             logging.error('sendAlert: Can\'t import mail modules.')

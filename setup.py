@@ -1,11 +1,7 @@
 from setuptools import setup, find_packages
 
-import sys
-if sys.version_info >= (3,0):
-    sys.exit('Sorry, Python >= 3.0 is not supported')
-
 setup(name='flaapluc',
-      version='1.2.4',
+      version='2.0.0',
       description='Quick generation of alerts from Fermi-LAT data',
       url='',
       author='Jean-Philippe Lenain',
@@ -15,7 +11,8 @@ setup(name='flaapluc',
       install_requires=[
           'astropy',
           'matplotlib',
-          'ephem'
+          'ephem',
+          'urllib3'
       ],
       scripts=[
           'bin/flaapluc',
