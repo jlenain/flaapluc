@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-10-24 12:33:35 jlenain"
+# Time-stamp: "2022-09-14 17:42:23 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -662,9 +662,9 @@ First, retrieving the last photon files...
         if os.path.isfile(modelfile):
             return True
 
-        import make4FGLxml
+        from flaapluc import make4FGLxml
 
-        mymodel = make4FGLxml.srcList(self.catalogFile, evfile, modelfile)
+        mymodel = make4FGLxml.srcList(self.catalogFile, evfile, modelfile, DRversion=2)
         logging.info('Running makeModel')
         mymodel.makeModel(GDfile=self.fermiDir + '/refdata/fermi/galdiffuse/gll_iem_v07.fits', GDname='GalDiffuse',
                           ISOfile=self.fermiDir + '/refdata/fermi/galdiffuse/iso_P8R3_SOURCE_V2.txt',
