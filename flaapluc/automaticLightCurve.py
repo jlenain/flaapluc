@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2017-10-24 12:33:35 jlenain"
+# Time-stamp: "2022-09-14 17:42:23 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -28,7 +28,7 @@ import os
 import sys
 import time
 import numpy as np
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter
 from matplotlib.dates import date2num, HourLocator, DayLocator, DateFormatter
@@ -662,9 +662,9 @@ First, retrieving the last photon files...
         if os.path.isfile(modelfile):
             return True
 
-        import make4FGLxml
+        from flaapluc import make4FGLxml
 
-        mymodel = make4FGLxml.srcList(self.catalogFile, evfile, modelfile)
+        mymodel = make4FGLxml.srcList(self.catalogFile, evfile, modelfile, DRversion=2)
         logging.info('Running makeModel')
         mymodel.makeModel(GDfile=self.fermiDir + '/refdata/fermi/galdiffuse/gll_iem_v07.fits', GDname='GalDiffuse',
                           ISOfile=self.fermiDir + '/refdata/fermi/galdiffuse/iso_P8R3_SOURCE_V2.txt',
@@ -782,7 +782,7 @@ First, retrieving the last photon files...
         file.close()
 
     def getBAT(self):
-        import urllib2
+        import urllib3
 
         # daily fits example url:
         # http://swift.gsfc.nasa.gov/docs/swift/results/transients/CygX-3.lc.fits
@@ -797,7 +797,7 @@ First, retrieving the last photon files...
         }
 
         # Remove '+', add file ending
-        if urls.has_key(self.src):
+        if self.src in urls:
             file = urls[self.src].replace('+', 'p') + ".lc.fits"
         else:
             file = self.src.replace('+', 'p') + ".lc.fits"
@@ -806,16 +806,14 @@ First, retrieving the last photon files...
         # lc files can be in a weak/ subdir for weak sources, we try both
         try:
             baturl = urlprefix + file
-            webfile = urllib2.urlopen(baturl)
-        except (urllib2.HTTPError, urllib2.URLError) as e:
+            webfile = urllib3.urlopen(baturl)
+        except (urllib3.exceptions.HTTPError) as e:
             try:
                 baturl = urlprefix + 'weak/' + file
-                webfile = urllib2.urlopen(baturl)
-            except (urllib2.HTTPError, urllib2.URLError) as e:
+                webfile = urllib3.urlopen(baturl)
+            except:
                 return False, None
-            except socket.error:
-                return False, None
-        except socket.error:
+        except:
             return False, None
 
         # save lc to local file
@@ -924,7 +922,7 @@ First, retrieving the last photon files...
 
         # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
-        plt.figtext(0.98, 0.95,
+        plt.figtext(0.98, 0.05,
                     'plot creation date: %s (UTC)' % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
                     horizontalalignment="right",
                     rotation='vertical',
@@ -1021,7 +1019,7 @@ First, retrieving the last photon files...
             z = z / max(z)
             idx = z.argsort()
             t, e, z = t[idx], e[idx], z[idx]
-            pcm = ax.scatter(t, e, c=z, s=100, edgecolor='')
+            pcm = ax.scatter(t, e, c=z, s=100, edgecolors=None)
             cbar = plt.colorbar(pcm, ax=ax)
             cbar.set_label('Kernel-density estimates (arb. unit)', rotation=90)
         except ImportError:
@@ -1030,7 +1028,7 @@ First, retrieving the last photon files...
 
         # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
-        plt.figtext(0.98, 0.95,
+        plt.figtext(0.98, 0.05,
                     'plot creation date: %s (UTC)' % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
                     horizontalalignment="right",
                     rotation='vertical',
@@ -1159,7 +1157,7 @@ First, retrieving the last photon files...
 
         # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
-        plt.figtext(0.98, 0.95,
+        plt.figtext(0.98, 0.05,
                     'plot creation date: %s (UTC)' % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
                     horizontalalignment="right",
                     rotation='vertical',
@@ -1389,7 +1387,7 @@ First, retrieving the last photon files...
         # Numpy array
         # combination of acceptable
         #                           z         ZA@culmination
-        grid = np.array(zip(self.maxz, self.maxZA))
+        grid = np.array(list(zipp(self.maxz, self.maxZA)))
 
         zaAtCulmin = self.zaAtCulmination()
 
@@ -1568,10 +1566,10 @@ First, retrieving the last photon files...
             import smtplib
 
             # Here are the email package modules we'll need
-            from email.MIMEMultipart import MIMEMultipart
-            from email.MIMEText import MIMEText
-            from email.MIMEBase import MIMEBase
-            from email import Encoders
+            from email.mime.multipart import MIMEMultipart
+            from email.mime.text import MIMEText
+            from email.mime.base import MIMEBase
+            import email.encoders as Encoders
 
         except:
             logging.error('sendAlert: Can\'t import mail modules.')
@@ -1866,3 +1864,17 @@ First, retrieving the last photon files...
             return fhlName
         else:
             return None
+
+
+def zipp(*iterables):
+    # zip('ABCD', 'xy') --> Ax By
+    sentinel = object()
+    iterators = [iter(it) for it in iterables]
+    while iterators:
+        result = []
+        for it in iterators:
+            elem = next(it, sentinel)
+            if elem is sentinel:
+                return
+            result.append(elem)
+        yield tuple(result)

@@ -5,21 +5,28 @@ class srcList:
 	#sources (string, filename of LAT source list fits file in catalog format)
 	#ft1 (string, filename of event file for which the xml will be used, only used to extract ROI info)
 	#out (string, name of output xml file, defaults to mymodel.xml)
-	def __init__(self,sources,ft1,out='mymodel.xml'):
+	def __init__(self,sources,ft1,out='mymodel.xml',DRversion=3):
 		if not fileCheck(sources): #check that file exists
-			print "Error:  %s not found." %sources
+			print("Error:  %s not found."%sources)
 			return
 		if fileCheck(out):
-			print 'Warning: %s already exists, file will be overwritten if you proceed with makeModel.' %out
+			print('Warning: %s already exists, file will be overwritten if you proceed with makeModel.'%out)
+		if DRversion not in [1,2,3]:
+			print('Invalid choice, %i, of data release version.  Must be 1, 2, or 3.\nWill produce file assuming DR3')
+			self.DR=3
+			self.VarLim=24.725
+		else:
+			self.DR=DRversion
+			self.VarLim=(24.725 if DRversion==3 else 21.666 if DRversion==2 else 18.475)
 		self.srcs=sources
 		self.out=out
 		self.roi=getPos(ft1)
 	
 	#define a quick print function to make sure everything looks irght
 	def Print(self):
-		print 'Source list file: ',self.srcs
-		print 'Output file name: ',self.out
-		print 'Selecting %s degrees around (ra,dec)=(%s,%s)' %(self.roi[2],self.ra,self.dec)
+		print('Source list file: ',self.srcs)
+		print('Output file name: ',self.out)
+		print('Selecting %s degrees around (ra,dec)=(%s,%s)'%(self.roi[2],self.ra,self.dec))
 	
 	#make the xml file
 	#arguments are:
@@ -32,23 +39,23 @@ class srcList:
 	#radLim (float) -- optional, radius in degrees from center of ROI beyond which source parameters are fixed
 	#maxRad (float) -- optional, absolute maximum radius beyond which sources are fixed, this may be necessary when doing binned analysis and a variable source beyond radLim would be set free but this source is beyond the boundaries of the square region used for the binned likelihood
 	#ExtraRad (float) -- optional, radius beyond ROI radius in event file out to which sources will be included with fixed parameters, defaul tof 10 is good for analyses starting around 100 MeV, but for higher energy fits this can be decreased
-	#sigFree (float) -- optional, significance below which source parameters are fixed, even if within radLim
-	#varFree (float) -- optional, variability index above which source parameters are free, if beyond radLim and/or below sigFree only the normalization parameter is set free, currently not implemented for building from xml catalog
+	#sigFree (float) -- optional, average significance, using FITS catalog file, below which source parameters are fixed, even if within radLim.  This corresponds to TS_value if using the XML catalog file.
+	#varFree (float) -- optional, variability index above which source parameters are free, if beyond radLim and/or below sigFree only the normalization parameter is set free
 	#psForce (bool) -- optional, flag to force extended sources to be point sources
 	#E2CAT (bool) -- optional, flag to force use catalog names for extended sources (only matters if using catalog FITS file)
 	#makeRegion (bool) -- optional, flag to also generate ds9 region file
 	#GIndexFree (bool) -- optional, the Galactic diffuse is given a power-law spectral shape but the by default the index is frozen, setting this flag to True allows that to be free for additional freedom in diffuse fit
-	#ApplyEDisp (boo) -- optional, flag to apply energy dispersion to free sources (except diffuse backgrounds) default is False.
+	#oldNames (bool) -- optional, flag to use the naming convention from make1FGLxml.py and make2FGLxml.py with a leading underscore and no spaces
 	def makeModel(self,GDfile="$(FERMI_DIR)/refdata/fermi/galdiffuse/gll_iem_v07.fits",GDname='gll_iem_v07',ISOfile="$(FERMI_DIR)/refdata/fermi/galdiffuse/iso_P8R3_SOURCE_V3_v1.txt",ISOname='iso_P8R3_SOURCE_V3_v1',normsOnly=False,extDir='',radLim=-1,maxRad=None,ExtraRad=10,sigFree=5,varFree=True,psForce=False,E2CAT=False,makeRegion=True,GIndexFree=False,wd='',oldNames=False):
 		self.radLim=(self.roi[2] if radLim<=0 else radLim)
 		self.maxRad=(self.radLim if maxRad==None else maxRad)
 		if self.maxRad<self.radLim:
-			print "NOTE: maxRad (%.1f deg) is less than radLim (%.1f deg), meaning maxRad parameter is useless"%(self.maxRad,self.radLim)
+			print("NOTE: maxRad (%.1f deg) is less than radLim (%.1f deg), meaning maxRad parameter is useless"%(self.maxRad,self.radLim))
 		self.var=varFree
 		self.psF=psForce
 		self.E2C=E2CAT
 		self.nO=normsOnly
-		extDir=(extDir if extDir!='' and self.srcs.split('.')[-1]!='xml' else '$(FERMI_DIR)/data/pyBurstAnalysisGUI/templates')#make sure the default for FSSC STs is correct
+		extDir=(extDir if extDir!='' else '$(FERMI_DIR)/data/pyBurstAnalysisGUI/templates')#make sure the default for FSSC STs is correct
 		self.extD=(extDir if extDir[-1]=='/' else extDir+'/')
 		self.ER=ExtraRad
 		self.sig=sigFree
@@ -62,7 +69,7 @@ class srcList:
 			for r in rhold:
 				self.regFile+=r
 			self.regFile+='.reg'
-		print 'Creating file and adding sources from 4FGL'
+		print('Creating file and adding sources from 4FGL')
 		#want ability to use either the FITS or xml versions of the catalog
 		#need to tweak FITS version to have new functionality and then work out xml version
 		if self.srcs.split('.')[-1]=='xml':
@@ -70,23 +77,19 @@ class srcList:
 		else:
 			addSrcsFITS(self,GDfile,GDname,ISOfile,ISOname,oldNames)
 	
-try:	
-	import pyfits
-except:
-	import astropy.io.fits as pyfits
+import astropy.io.fits as pyfits
 import os
 from xml.dom import minidom
 from xml.dom.minidom import parseString as pS
 from numpy import floor,log10,cos,sin,arccos,pi,array,log,exp
 acos=arccos
-#import ROOT #note that this is only done to turn tab completion on for functions and filenames
-print "This is make4FGLxml version 01r06."
-print "The default diffuse model files and names are for pass 8 and 4FGL and assume you have v11r5p3 of the Fermi Science Tools or higher."
-print "The default isotropic template is now for P8R3_SOUCE_V3 IRFs."
+print("This is make4FGLDR3xml version 01r09.")
+print("The default diffuse model files and names are for P8R3, 4FGL DRs, and the default fermitools directory locations.")
 d2r=pi/180.
-varValue=18.48
+####varValue=24.725#21.666 for dr2,18.475 for 4fgl 
 
 def addSrcsXML(sL,GD,GDn,ISO,ISOn,oldNames=False):
+	varValue=sL.VarLim
 	inputXml=minidom.parse(sL.srcs)
 	outputXml=minidom.getDOMImplementation().createDocument(None,'source_library',None)
 	outputXml.documentElement.setAttribute('title','source library')
@@ -94,8 +97,6 @@ def addSrcsXML(sL,GD,GDn,ISO,ISOn,oldNames=False):
 	Sources={}
 	ptSrcNum=0
 	extSrcNum=0
-	#normNames=['Prefactor','Integral','norm']
-	#freePars=['Index','Index1','Cutoff','alpha','beta']
 	for src in catalog:
 		if src.getAttribute('type')=='PointSource':
 			for p in src.getElementsByTagName('spatialModel')[0].getElementsByTagName('parameter'):
@@ -109,10 +110,10 @@ def addSrcsXML(sL,GD,GDn,ISO,ISOn,oldNames=False):
 			  srcRA=float(src.getAttribute('RA'))
 			except:
 			  for p in src.getElementsByTagName('spatialModel')[0].getElementsByTagName('parameter'):
-				if p.getAttribute('name')=='RA':
-					srcRA=float(p.getAttribute('value'))
-				if p.getAttribute('name')=='DEC':
-					srcDEC=float(p.getAttribute('value'))
+			    if p.getAttribute('name')=='RA':
+			      srcRA=float(p.getAttribute('value'))
+			    if p.getAttribute('name')=='DEC':
+			      srcDEC=float(p.getAttribute('value'))
 		dist=angsep(sL.roi[0],sL.roi[1],srcRA,srcDEC) #check that source is within ROI radius + 10 degress of ROI center
 		if srcRA==sL.roi[0] and srcDEC==sL.roi[1]:
 			dist=0.0
@@ -122,35 +123,35 @@ def addSrcsXML(sL,GD,GDn,ISO,ISOn,oldNames=False):
 			specPars=spec[0].getElementsByTagName('parameter')
 			Ext=(True if (src.getAttribute('type')=='DiffuseSource' and not sL.psF) else False)
 			sname=src.getAttribute('name')
-			#comment out the stuff below for now...likely add something back for official 4FGL release
-			#fixAll=(True if str(sname) in ['3FGL J0534.5+2201i','3FGL J0833.1-4511e','3FGL J1514.0-5915e','3FGL J2021.0+4031e','3FGL J2028.6+4110e'] else False)#account for sources held fixed in 3FGL analysis
+			
 			if oldNames:#if you want the same naming convention as in make1FGLxml.py and make2FGLxml.py, e.g., preceeded by an underscore and no spaces
 				sn='_'
 				for N in str(sname).split(' '):
 					sn+=N
 			varIdx=float(src.getAttribute('Variability_Index'))
+			#varidx=-1#hold over from old XMLs having and then not having and then now having Variability Index
 			Sources[sname]={'ra':srcRA,'dec':srcDEC,'E':Ext,'stype':str(specType)}
 			specOut=outputXml.createElement('spectrum')
-			specOut.setAttribute('type',specType)
+			if str(specType)=='PLSuperExpCutoff2':
+			  specOut.setAttribute('type','PLSuperExpCutoff')
+			else:
+			  specOut.setAttribute('type',specType)
 			spatialOut=outputXml.createElement('spatialModel')
 			srcOut=outputXml.createElement('source')
 			srcOut.setAttribute('name',sname)
 			srcOut.setAttribute('ROI_Center_Distance',"%.2f"%dist)
-			if dist>=sL.roi[2] or dist>=sL.maxRad or sname=='4FGL J0534.5+2201i':
+			if dist>=sL.roi[2] or dist>=sL.maxRad:
 				Sources[sname]['free']=False
-				#specOut.setAttribute('apply_edisp','false')#source is fixed, so never apply edisp
 				for p in specPars:
 				  specOut.appendChild(parameter_element("0","%s"%str(p.getAttribute('name')),"%s"%str(p.getAttribute('max')),"%s"%str(p.getAttribute('min')),"%s"%str(p.getAttribute('scale')),"%s"%str(p.getAttribute('value'))))
 			elif dist>sL.radLim:
 				if sL.var and varIdx>=varValue:
 					Sources[sname]['free']=True
-					#specOut.setAttribute('apply_edisp',ed)
 					for p in specPars:
 					  freeFlag=("1" if p.getAttribute('name')==spec[0].getAttribute('normPar') else "0")
 					  specOut.appendChild(parameter_element("%s"%freeFlag,"%s"%str(p.getAttribute('name')),"%s"%str(p.getAttribute('max')),"%s"%str(p.getAttribute('min')),"%s"%str(p.getAttribute('scale')),"%s"%str(p.getAttribute('value'))))
 				else:
 					Sources[sname]['free']=False
-					#specOut.setAttribute('apply_edisp','false')
 					for p in specPars:
 					  specOut.appendChild(parameter_element("0","%s"%str(p.getAttribute('name')),"%s"%str(p.getAttribute('max')),"%s"%str(p.getAttribute('min')),"%s"%str(p.getAttribute('scale')),"%s"%str(p.getAttribute('value'))))
 			elif float(src.getAttribute('TS_value'))>=sL.sig:
@@ -180,15 +181,15 @@ def addSrcsXML(sL,GD,GDn,ISO,ISOn,oldNames=False):
 				  spatialOut.setAttribute('map_based_integral','true')
 				  efile=sL.extD+spatial[0].getAttribute('file').split('/')[-1]
 				  spatialOut.setAttribute('file',efile)
-				  print 'Extended source %s in ROI, make sure %s is the correct path to the extended template.'%(sname,efile)
+				  print('Extended source %s in ROI, make sure %s is the correct path to the extended template.'%(sname,efile))
 				else:#have to do above to get correct extended source template file localtion
 				  spatialOut.setAttribute('type',str(spatType))
 				  for p in spatPars:#for radial disks and gaussians, can just do the following
 				    spatialOut.appendChild(parameter_element("0","%s"%str(p.getAttribute('name')),"%s"%str(p.getAttribute('max')),"%s"%str(p.getAttribute('min')),"%s"%str(p.getAttribute('scale')),"%s"%str(p.getAttribute('value'))))
-				    print 'Extended source %s in ROI, with %s spatial model.'%(sname,str(spatType))
+				    print('Extended source %s in ROI, with %s spatial model.'%(sname,str(spatType)))
 				srcOut.setAttribute('type','DiffuseSource')
 				extSrcNum+=1
-				#print 'Extended source %s in ROI, make sure %s is the correct path to the extended template.'%(sname,efile)
+				#print('Extended source %s in ROI, make sure %s is the correct path to the extended template.'%(sname,efile))
 			else:
 				spatialOut.setAttribute('type','SkyDirFunction')
 				spatialOut.appendChild(parameter_element("0","RA","360.0","-360.0","1.0","%.4f"%srcRA))
@@ -237,11 +238,11 @@ def addSrcsXML(sL,GD,GDn,ISO,ISOn,oldNames=False):
 	outfile.write(''.join(outStr))
 	outfile.close()
 	if not sL.psF:
-		print 'Added %i point sources and %i extended sources'%(ptSrcNum,extSrcNum)
+		print('Added %i point sources and %i extended sources'%(ptSrcNum,extSrcNum))
 		if extSrcNum>0:
-			print 'If using unbinned likelihood you will need to rerun gtdiffrsp for the extended sources or rerun the makeModel function with optional argument psForce=True'
+			print('If using unbinned likelihood you will need to rerun gtdiffrsp for the extended sources or rerun the makeModel function with optional argument psForce=True')
 	else:
-		print 'Added %i point sources, note that any extended sources in ROI were modeled as point sources becaue psForce option was set to True'%ptSrcNum
+		print('Added %i point sources, note that any extended sources in ROI were modeled as point sources becaue psForce option was set to True'%ptSrcNum)
 	if sL.reg:
 		BuildRegion(sL,Sources)
 	return
@@ -249,11 +250,9 @@ def addSrcsXML(sL,GD,GDn,ISO,ISOn,oldNames=False):
 #function to cycle through the source list and add point source entries
 def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 	model=open(sL.out,'w') #open file in write mode, overwrites other files of same name
-	file=pyfits.open(sL.srcs) #open source list file and access necessary fields, requires LAT source catalog definitions and names
-	#mask=file[1].data.field('Signif_Avg')>=sL.sig
-	#data=file[1].data[mask]
-	data=file['LAT_Point_Source_Catalog'].data
-	extendedinfo=file['ExtendedSources'].data
+	catfile=pyfits.open(sL.srcs) #open source list file and access necessary fields, requires LAT source catalog definitions and names
+	data=catfile['LAT_Point_Source_Catalog'].data
+	extendedinfo=catfile['ExtendedSources'].data
 	extName=extendedinfo.field('Source_Name')	
 	extFile=extendedinfo.field('Spatial_Filename')
 	extFunc=extendedinfo.field('Spatial_Function')
@@ -262,15 +261,7 @@ def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 	extDec=extendedinfo.field('DEJ2000')
 	name=data.field('Source_Name')
 	Sigvals=data.field('Signif_Avg')
-	try:
-		VarIdx=data.field('Variability_Index')
-	except:
-		if sL.var==True:
-			print "Error: requested to set variables sources free but 'Variability_Index' not found in %s"%sL.srcs
-			print "make sure you are using gll_psc_v19.fit or newer."
-			return
-		else:
-			VarIdx=[0.]*len(name)
+	VarIdx=data.field('Variability_Index')
 	EName=data.field('Extended_Source_Name')
 	ra=data.field('RAJ2000')
 	dec=data.field('DEJ2000')
@@ -281,9 +272,14 @@ def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 	plIndex=data.field('PL_Index')
 	lpIndex=data.field('LP_Index')
 	lpbeta=data.field('LP_beta')
-	plecIndex=data.field('PLEC_Index')
-	plecexpFact=data.field('PLEC_Expfactor')
-	plecexpIndex=data.field('PLEC_Exp_Index')
+	if sL.DR==3:
+		plecIndex=data.field('PLEC_IndexS')
+		plecexpFact=data.field('PLEC_ExpfactorS')
+		plecexpIndex=data.field('PLEC_Exp_Index')
+	else:
+		plecIndex=data.field('PLEC_Index')
+		plecexpFact=data.field('PLEC_Expfactor')
+		plecexpIndex=data.field('PLEC_Exp_Index')
 	spectype=data.field('SpectrumType')
 	model.write('<?xml version="1.0" ?>\n')
 	model.write('<source_library title="source library">\n')
@@ -294,10 +290,6 @@ def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 	ptSrcNum=0
 	extSrcNum=0
 	Sources={}#dictionary for sources, useful for creating region file later.
-	for ii in range(len(name)):
-		if name[ii]=='4FGL J0534.5+2201i':
-			Sigvals[ii]=-1
-			VarIdx[ii]=-1
 	while i<6:
 		if i*step<=sL.roi[2]+sL.ER:
 			radii+=[step*i]
@@ -309,15 +301,13 @@ def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 			model.write('\n<!-- Sources between [%s,%s] degrees of ROI center -->\n' %(x-step,x))
 		else:
 			model.write('\n<!-- Sources between [%s,%s) degrees of ROI center -->\n' %(x-step,x))
-		#for n,f,i,r,d,p,c,t,b,TS,ei,vi,En in zip(name,flux,index,ra,dec,pivot,cutoff,spectype,beta,Sigvals,expIndex,VarIdx,EName):
-		#for n,f,r,d,p,pli,lpi,lpb,pleci,plecef,plecei,t,TS,En,vi in zip(name,flux,ra,dec,pivot,plIndex,lpIndex,lpbeta,plecIndex,plecexpFact,plecexpIndex,spectype,Sigvals,EName,VarIdx):
 		for n,plf,lpf,cof,r,d,p,pli,lpi,lpb,pleci,plecef,plecei,t,TS,En,vi in zip(name,plflux,lpflux,coflux,ra,dec,pivot,plIndex,lpIndex,lpbeta,plecIndex,plecexpFact,plecexpIndex,spectype,Sigvals,EName,VarIdx):
-			E=(True if n[-1] in ['e','i'] else False)
+			E=(True if n[-1]=='e' else False)
 			dist=angsep(sL.roi[0],sL.roi[1],r,d) #check that source is within ROI radius + 10 degress of ROI center
 			if r==sL.roi[0] and d==sL.roi[1]:
 				dist=0.0
 			if (dist<x and dist>=x-step) or (x==sL.roi[2]+10. and dist==x):
-				if E and not sL.psF:#uncomment this later when FSSC STs can deal with rosette nebula and two new spatial models
+				if E and not sL.psF:
 					Sources[En]={'ra':r,'dec':d,'stype':t,'E':E}
 					extSrcNum+=1
 					Name='<source ROI_Center_Distance="%.3f" name="%s" type="DiffuseSource">\n' %(dist,En)
@@ -337,21 +327,15 @@ def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 					ptSrcNum+=1
 				if t=='PowerLaw':
 					#uncomment out the two lines immediately following later
-					#fixAll=(True if n=='3FGL J0534.5+2201i' or En in ['Cygnus Cocoon','Vela X','MSH 15-52','gamma Cygni'] else False)
-					#spec,free=PLspec(sL,f,pli,p,dist,TS,vi,fixAll)
-					spec,free=PLspec(sL,plf,pli,p,dist,TS,vi,False)
-				elif t=='PowerLaw2':#no value for flux from 100 MeV to 100 GeV in fits file
-					if pli!=1.:#so calculate it by integrating PowerLaw spectral model
-						F=plf*p**pli/(-pli+1.)*(1.e5**(-pli+1.)-1.e2**(-pli+1.))
-					else:
-						F=plf*p*log(1.e3)
-					spec,free=PL2spec(sL,F,pli,dist,TS,vi)
-					#spec,free=PL2spec(sL,f100,i,dist,TS,vi)
+					spec,free=PLspec(sL,plf,pli,p,dist,TS,vi)
 				elif t=='LogParabola':
-					spec,free=LPspec(sL,lpf,lpi,p,lpb,dist,TS,vi)
+					fixAll=(True if n=='4FGL J0534.5+2201i' else False)
+					spec,free=LPspec(sL,lpf,lpi,p,lpb,dist,TS,vi,fixAll)
 				else:
-					##spec,free=COspec(sL,f,pleci,p,plecef,plecei,dist,TS,vi)
-					spec,free=CO2spec(sL,cof,pleci,p,plecef,plecei,dist,TS,vi)
+					if sL.DR==3:
+						spec,free=CO4spec(sL,cof,pleci,p,plecef,plecei,dist,TS,vi)
+					else:
+						spec,free=CO2spec(sL,cof,pleci,p,plecef,plecei,dist,TS,vi)
 				if E and not sL.E2C:
 					Sources[En]['free']=free
 				else:
@@ -369,16 +353,16 @@ def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 							if efunc=='SpatialMap':
 							  efile=sL.extD+EXTFILE
 							else:
-							  eSize=EXTSIZE
+							  eSize=(EXTSIZE/(-2*log(0.32))**0.5 if efunc=='RadialGaussian' else EXTSIZE)
 							  eR=EXTRA
 							  eD=EXTDEC
 					if efunc=='SpatialMap':
 					  if efile==None:
-						print 'could not find a match for',En,'in the list:'
-						print extName
-						efile=''
+					    print('could not find a match for',En,'in the list:')
+					    print(extName)
+					    efile=''
 					  skydir='\t<spatialModel file="%s" map_based_integral="true" type="SpatialMap">\n'%(efile)
-					  print 'Extended source %s in ROI, make sure %s is the correct path to the extended template.'%(En,efile)
+					  print('Extended source %s in ROI, make sure %s is the correct path to the extended template.'%(En,efile))
 					  skydir+='\t\t<parameter free="0" max="1000" min="0.001" name="Prefactor" scale="1" value="1"/>\n'
 					  skydir+='\t</spatialModel>\n'
 					else:
@@ -390,7 +374,7 @@ def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 					  else:
 					    skydir+='\t<parameter free="0" max="10" min="0" name="Sigma" scale="1" value="%s"/>\n'%eSize
 					  skydir+='\t</spatialModel>\n'
-					  print 'Extended source %s in ROI with %s spatial model.'%(En,efunc)
+					  print('Extended source %s in ROI with %s spatial model.'%(En,efunc))
 				else:
 					skydir='\t<spatialModel type="SkyDirFunction">\n'
 					skydir+='\t\t<parameter free="0" max="360.0" min="-360.0" name="RA" scale="1.0" value="%s"/>\n' %r
@@ -401,13 +385,13 @@ def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 				ptsrc=pS(src).getElementsByTagName('source')[0]
 				ptsrc.writexml(model)
 				model.write('\n')
-	file.close() #close file
+	catfile.close() #close file
 	if not sL.psF:
-		print 'Added %i point sources and %i extended sources'%(ptSrcNum,extSrcNum)
+		print('Added %i point sources and %i extended sources'%(ptSrcNum,extSrcNum))
 		if extSrcNum>0:
-			print 'If using unbinned likelihood you will need to rerun gtdiffrsp for the extended sources or rerun the makeModel function with optional argument psForce=True'
+			print('If using unbinned likelihood you will need to rerun gtdiffrsp for the extended sources or rerun the makeModel function with optional argument psForce=True')
 	else:
-		print 'Added %i point sources, note that any extended sources in ROI were modeled as point sources becaue psForce option was set to True'%ptSrcNum
+		print('Added %i point sources, note that any extended sources in ROI were modeled as point sources becaue psForce option was set to True'%ptSrcNum)
 	#add galactic diffuse with PL spectrum, fix index to zero for general use, those who want it to be free can unfreeze parameter manually
 	model.write('\n<!-- Diffuse Sources -->\n')
 	Name='\n<source name="%s" type="DiffuseSource">\n' %GDn
@@ -447,7 +431,7 @@ def addSrcsFITS(sL,GD,GDn,ISO,ISOn,oldNames):
 def BuildRegion(sL,Sources):
 	myreg=open(sL.regFile,'w')#note that this will overwrite previous region files of the same name
 	myreg.write('# Region File format: DS9 version ?')#I don't actually know, but I think it's one of the later ones, need to verify
-	myreg.write('\n# Created by make4FGLxml.py')
+	myreg.write('\n# Created by make3FGLxml.py')
 	myreg.write('\nglobal font="roman 10 normal" move =0')
 	for k in Sources.keys():
 		src=Sources[k]
@@ -461,44 +445,42 @@ def BuildRegion(sL,Sources):
 	myreg.close()
 	return
 
-def PLspec(sL,f,i,p,dist,TS,vi,fixAll):
+def PLspec(sL,f,i,p,dist,TS,vi):
+	varValue=sL.VarLim
 	fscale=int(floor(log10(f)))
 	spec='\t<spectrum type="PowerLaw">\n'
 	spec+='\t<!-- Source is %s degrees away from ROI center -->\n' %dist
-	if dist>sL.roi[2] or fixAll: #if beyond ROI, shouldn't attempt to fit parameters
-		if fixAll:
-			spec+='\t<!-- Source parameters were held fixed in 3FGL analysis, free at your own discretion -->\n'
-		else:
-			spec+='\t<!-- Source is outside ROI, all parameters should remain fixed -->\n'
-		spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+	if dist>sL.roi[2]: #if beyond ROI, shouldn't attempt to fit parameters
+		spec+='\t<!-- Source is outside ROI, all parameters should remain fixed -->\n'
+		spec+='\t\t<parameter free="0" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="Index" scale="-1.0" value="%s"/>\n' %i
 		free=False
 	elif(dist>sL.radLim):
 		if dist>sL.maxRad:
 			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="0" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 			free=False
 		elif vi<varValue or not sL.var:
 			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="0" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 			free=False
 		else:
 			spec+='\t<!-- Source is outside specified radius limit of %s but variability index %.2f is greater than %.2f and varFree set to True-->\n'%(sL.radLim,vi,varValue)
 			free=True
-			spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="1" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="Index" scale="-1.0" value="%s"/>\n' %i
 	elif(TS<sL.sig):
 		if vi<varValue or not sL.var:
 			spec+='\t<!-- Source signficance %.1f is less than specified minimum for a free source of %s -->\n'%(TS,sL.sig)
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="0" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 			free=False
 		else:
 			spec+='\t<!-- Source significane %.1f is less than specified minimum for a free source of %s but variability index %.2f is greater than %.2f and varFree is set to True -->\n'%(TS,sL.sig,vi,varValue)
-			spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="1" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 			free=True
 		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="Index" scale="-1.0" value="%s"/>\n' %i
 	else:
-		spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+		spec+='\t\t<parameter free="1" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 		free=True
 		if sL.nO:
 			spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="Index" scale="-1.0" value="%s"/>\n' %i
@@ -508,120 +490,8 @@ def PLspec(sL,f,i,p,dist,TS,vi,fixAll):
 	spec+='\t</spectrum>\n'
 	return spec,free
 
-def PL2spec(sL,F,i,dist,TS,vi):
-	fscale=int(floor(log10(F)))
-	spec='\t<spectrum type="PowerLaw2">\n'
-	spec+='\t<!-- Source is %s degrees away from ROI center -->\n' %dist
-	if(dist>sL.roi[2]): #if beyond ROI, shouldn't attempt to fit parameters
-		spec+='\t<!-- Source is outside ROI, all parameters should remain fixed -->\n'
-		spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Integral" scale="1e%i" value="%s"/>\n'%(fscale,F/10**fscale)
-		spec+='\t\t<parameter free="0" max="10" min="0" name="Index" scale="-1.0" value="%s"/>\n' %i
-		free=False
-	elif(dist>sL.radLim):
-		if dist>sL.maxRad:
-			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Integral" scale="1e%i" value="%s"/>\n'%(fscale,F/10**fscale)
-			free=False
-		elif vi<varValue or not sL.var:
-			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Integral" scale="1e%i" value="%s"/>\n'%(fscale,F/10**fscale)
-			free=False
-		else:
-			spec+='\t<!-- Source is outside specified radius limit of %s but variability index %.2f is greater than %.2f and varFree is set to True -->\n'%(sL.radLim,vi,varValue)
-			spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="Integral" scale="1e%i" value="%s"/>\n'%(fscale,F/10**fscale)
-			free=True
-		spec+='\t\t<parameter free="0" max="10" min="0" name="Index" scale="-1.0" value="%s"/>\n' %i
-	elif(TS<sL.sig):
-		if vi<varValue or not sL.var:
-			spec+='\t<!-- Source significance %.1f is less than specified minimum for a free source of %s -->\n'%(TS,sL.sig)
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Integral" scale="1e%i" value="%s"/>\n'%(fscale,F/10**fscale)
-			free=False
-		else:
-			spec+='\t<!-- Source significance %.1f is less than specified minimum for a free source of %s but variability index %.2f is greater than %.2f and varFree is set to True -->\n'%(TS,sL.sig,vi,varValue)
-			spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="Integral" scale="1e%i" value="%s"/>\n'%(fscale,F/10**fscale)
-			free=True
-		spec+='\t\t<parameter free="0" max="10" min="0" name="Index" scale="-1.0" value="%s"/>\n' %i
-	else:
-		free=True
-		spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="Integral" scale="1e%i" value="%s"/>\n'%(fscale,F/10**fscale)
-		if sL.nO:
-			spec+='\t\t<parameter free="0" max="10" min="0" name="Index" scale="-1.0" value="%s"/>\n' %i
-		else:
-			spec+='\t\t<parameter free="1" max="10" min="0" name="Index" scale="-1.0" value="%s"/>\n' %i
-	spec+='\t\t<parameter free="0" max="5e5" min="30" name="LowerLimit" scale="1" value="1e2"/>\n'
-	spec+='\t\t<parameter free="0" max="5e5" min="30" name="UpperLimit" scale="1" value="1e5"/>\n'
-	spec+='\t</spectrum>\n'
-	return spec,free
-
-def COspec(sL,f,i,p,a,ei,dist,TS,vi):
-	c=(1./a)**(1./ei)
-	f*=exp((p/c)**ei)
-	fscale=int(floor(log10(f)))
-	spec='\t<spectrum type="PLSuperExpCutoff">\n'
-	spec+='\t<!-- Source is %s degrees away from ROI center -->\n' %dist
-	i=(i if i>=0 else 2.)#some pulsars with index1 < 0 assuming standard convention, means rising counts spectrum at low E, odd
-	if(dist>sL.roi[2]): #if beyond ROI, shouldn't attempt to fit parameters
-		spec+='\t<!-- Source is outside ROI, all parameters should remain fixed -->\n'
-		free=False
-		spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
-		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="Index1" scale="-1.0" value="%s"/>\n' %i
-		if c<=1e5:
-			spec+='\t\t<parameter free="0" max="1e5" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%c
-		else:
-			spec+='\t\t<parameter free="0" max="%.2e" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%(2.*c,c)
-	elif(dist>sL.radLim):
-		if dist>sL.maxRad:
-			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
-			free=False
-		elif vi<varValue or not sL.var:
-			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
-			free=False
-		else:
-			spec+='\t<!-- Source is outside specified radius limit of %s but variability index %.2f is greater than %.2f and varFree is set to True -->\n'%(sL.radLim,vi,varValue)
-			spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
-			free=True
-		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="Index1" scale="-1.0" value="%s"/>\n' %i
-		if c<=1e5:
-			spec+='\t\t<parameter free="0" max="1e5" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%c
-		else:
-			spec+='\t\t<parameter free="0" max="%.2e" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%(2.*c,c)
-	elif(TS<sL.sig):
-		if vi<varValue or not sL.var:
-			spec+='\t<!-- Source significance %.1f is less than specified minimum for a free source of %s -->\n'%(TS,sL.sig)
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
-			free=False
-		else:
-			spec+='\t<!-- Source significance %.1f is less than specified minimum for a free source of %s but variability index %.2f is greater than %.2f and varFree is set to True -->\n'%(TS,sL.sig,vi,varValue)
-			spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
-			free=True
-		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="Index1" scale="-1.0" value="%s"/>\n' %i
-		if c<=1e5:
-			spec+='\t\t<parameter free="0" max="1e5" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%c
-		else:
-			spec+='\t\t<parameter free="0" max="%.2e" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%(2.*c,c)
-	else:
-		free=True
-		spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
-		if sL.nO:
-			spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="Index1" scale="-1.0" value="%s"/>\n' %i
-			if c<=1e5:
-				spec+='\t\t<parameter free="0" max="1e5" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%c
-			else:
-				spec+='\t\t<parameter free="0" max="%.2e" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%(2.*c,c)
-		else:
-			spec+='\t\t<parameter free="1" max="10.0" min="0.0" name="Index1" scale="-1.0" value="%s"/>\n' %i
-			if c<=1e5:
-				spec+='\t\t<parameter free="1" max="1e5" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%c
-			else:
-				spec+='\t\t<parameter free="0" max="%.2e" min="1e1" name="Cutoff" scale="1.0" value="%f"/>\n'%(2.*c,c)
-	spec+='\t\t<parameter free="0" max="5e5" min="30" name="Scale" scale="1.0" value="%f"/>\n'%p
-	spec+='\t\t<parameter free="0" max="5" min="0" name="Index2" scale="1.0" value="%f"/>\n'%ei
-	spec+='\t</spectrum>\n'
-	return spec,free
-
 def CO2spec(sL,f,i,p,a,ei,dist,TS,vi):
+	varValue=sL.VarLim
 	f*=exp(a*(p**ei))
 	fscale=int(floor(log10(f)))
 	spec='\t<spectrum type="PLSuperExpCutoff2">\n'
@@ -673,51 +543,109 @@ def CO2spec(sL,f,i,p,a,ei,dist,TS,vi):
 	spec+='\t</spectrum>\n'
 	return spec,free
 
-def LPspec(sL,f,i,p,b,dist,TS,vi):
+def CO4spec(sL,f,i,p,a,ei,dist,TS,vi):
+	varValue=sL.VarLim
+	fscale=int(floor(log10(f)))
+	spec='\t<spectrum type="PLSuperExpCutoff4">\n'
+	spec+='\t<!-- Source is %s degrees away from ROI center -->\n' %dist
+	if(dist>sL.roi[2]): #if beyond ROI, shouldn't attempt to fit parameters
+		spec+='\t<!-- Source is outside ROI, all parameters should remain fixed -->\n'
+		free=False
+		spec+='\t\t<parameter free="0" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="IndexS" scale="-1.0" value="%s"/>\n' %i
+		spec+='\t\t<parameter free="0" max="100" min="-10" name="ExpfactorS" scale="0.1" value="%f"/>\n'%(a*10.)
+	elif(dist>sL.radLim):
+		if dist>sL.maxRad:
+			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
+			spec+='\t\t<parameter free="0" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			free=False
+		elif vi<varValue or not sL.var:
+			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
+			spec+='\t\t<parameter free="0" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			free=False
+		else:
+			spec+='\t<!-- Source is outside specified radius limit of %s but variability index %.2f is greater than %.2f and varFree is set to True -->\n'%(sL.radLim,vi,varValue)
+			spec+='\t\t<parameter free="1" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			free=True
+		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="IndexS" scale="-1.0" value="%s"/>\n' %i
+		spec+='\t\t<parameter free="0" max="100" min="-10" name="ExpfactorS" scale="0.1" value="%f"/>\n'%(a*10.)
+	elif(TS<sL.sig):
+		if vi<varValue or not sL.var:
+			spec+='\t<!-- Source significance %.1f is less than specified minimum for a free source of %s -->\n'%(TS,sL.sig)
+			spec+='\t\t<parameter free="0" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			free=False
+		else:
+			spec+='\t<!-- Source significance %.1f is less than specified minimum for a free source of %s but variability index %.2f is greater than %.2f and varFree is set to True -->\n'%(TS,sL.sig,vi,varValue)
+			spec+='\t\t<parameter free="1" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			free=True
+		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="IndexS" scale="-1.0" value="%s"/>\n' %i
+		spec+='\t\t<parameter free="0" max="100" min="-10" name="ExpfactorS" scale="0.1" value="%f"/>\n'%(a*10.)
+	else:
+		free=True
+		spec+='\t\t<parameter free="1" max="1e6" min="0" name="Prefactor" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+		if sL.nO:
+			spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="IndexS" scale="-1.0" value="%s"/>\n' %i
+			spec+='\t\t<parameter free="0" max="100" min="-10" name="ExpfactorS" scale="0.1" value="%f"/>\n'%(a*10.)
+		else:
+			spec+='\t\t<parameter free="1" max="10.0" min="0.0" name="IndexS" scale="-1.0" value="%s"/>\n' %i
+			spec+='\t\t<parameter free="1" max="100" min="-10" name="ExpfactorS" scale="0.1" value="%f"/>\n'%(a*10.)
+	spec+='\t\t<parameter free="0" max="5e5" min="30" name="Scale" scale="1.0" value="%f"/>\n'%p
+	spec+='\t\t<parameter free="0" max="5" min="0" name="Index2" scale="1.0" value="%f"/>\n'%ei
+	spec+='\t</spectrum>\n'
+	return spec,free
+
+def LPspec(sL,f,i,p,b,dist,TS,vi,fixAll=False):
+	varValue=sL.VarLim
 	fscale=int(floor(log10(f)))
 	spec='\t<spectrum type="LogParabola">\n'
 	spec+='\t<!-- Source is %s degrees away from ROI center -->\n' %dist
 	if(dist>sL.roi[2]): #if beyond ROI, shouldn't attempt to fit parameters
 		spec+='\t<!-- Source is outside ROI, all parameters should remain fixed -->\n'
-		spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+		spec+='\t\t<parameter free="0" max="1e6" min="0" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 		spec+='\t\t<parameter free="0" max="5.0" min="0.0" name="alpha" scale="1.0" value="%s"/>\n' %i
-		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="beta" scale="1.0" value="%s"/>\n'%b
+		spec+='\t\t<parameter free="0" max="10.0" min="-5.0" name="beta" scale="1.0" value="%s"/>\n'%b
+		free=False
+	elif fixAll: #if set to fix all, should be only for crab IC component
+		spec+='\t<!-- Source is kept fixed in 4FGL-DR3 analysis -->\n'
+		spec+='\t\t<parameter free="0" max="1e6" min="0" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+		spec+='\t\t<parameter free="0" max="5.0" min="0.0" name="alpha" scale="1.0" value="%s"/>\n' %i
+		spec+='\t\t<parameter free="0" max="10.0" min="-5.0" name="beta" scale="1.0" value="%s"/>\n'%b
 		free=False
 	elif(dist>sL.radLim):
 		if dist>sL.maxRad:
 			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="0" max="1e6" min="0" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 			free=False
 		elif vi<varValue or not sL.var:
 			spec+='\t<!-- Source is outside specified radius limit of %s -->\n'%sL.radLim
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="0" max="1e6" min="0" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 			free=False
 		else:
 			spec+='\t<!-- Source is outside specified radius limit of %s but variability index %.2f is greater than %.2f and varFree is set to True -->\n'%(sL.radLim,vi,varValue)
-			spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="1" max="1e6" min="0" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 			free=True
 		spec+='\t\t<parameter free="0" max="5.0" min="0.0" name="alpha" scale="1.0" value="%s"/>\n' %i
-		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="beta" scale="1.0" value="%s"/>\n'%b
+		spec+='\t\t<parameter free="0" max="10.0" min="-5.0" name="beta" scale="1.0" value="%s"/>\n'%b
 	elif(TS<sL.sig):
 		if vi<varValue or not sL.var:
 			spec+='\t<!-- Source significance %.1f is less than specified minimum for a free source of %s -->\n'%(TS,sL.sig)
-			spec+='\t\t<parameter free="0" max="1e4" min="1e-4" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="0" max="1e6" min="0" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 			free=False
 		else:
 			spec+='\t<!-- Source significance %.1f is less than specified minimum for a free source of %s but variability index %.2f is greater than %.2f and varFree is set to True -->\n'%(TS,sL.sig,vi,varValue)
-			spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+			spec+='\t\t<parameter free="1" max="1e6" min="0" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 			free=True
 		spec+='\t\t<parameter free="0" max="5.0" min="0.0" name="alpha" scale="1.0" value="%s"/>\n' %i
-		spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="beta" scale="1.0" value="%s"/>\n'%b
+		spec+='\t\t<parameter free="0" max="10.0" min="-5.0" name="beta" scale="1.0" value="%s"/>\n'%b
 	else:
 		free=True
-		spec+='\t\t<parameter free="1" max="1e4" min="1e-4" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
+		spec+='\t\t<parameter free="1" max="1e6" min="0" name="norm" scale="1e%i" value="%s"/>\n' %(fscale,f/10**fscale)
 		if sL.nO:
 			spec+='\t\t<parameter free="0" max="5.0" min="0.0" name="alpha" scale="1.0" value="%s"/>\n' %i
-			spec+='\t\t<parameter free="0" max="10.0" min="0.0" name="beta" scale="1.0" value="%s"/>\n'%b
+			spec+='\t\t<parameter free="0" max="10.0" min="-5.0" name="beta" scale="1.0" value="%s"/>\n'%b
 		else:
 			spec+='\t\t<parameter free="1" max="5.0" min="0.0" name="alpha" scale="1.0" value="%s"/>\n' %i
-			spec+='\t\t<parameter free="1" max="10.0" min="0.0" name="beta" scale="1.0" value="%s"/>\n'%b
+			spec+='\t\t<parameter free="1" max="10.0" min="-5.0" name="beta" scale="1.0" value="%s"/>\n'%b
 	spec+='\t\t<parameter free="0" max="5e5" min="30" name="Eb" scale="1.0" value="%s"/>\n'%p
 	spec+='\t</spectrum>\n'
 	return spec,free
@@ -738,7 +666,7 @@ def getPos(ft1):
 			i=num
 		i+=1
 	if(keynum==0):  #DSKEYS start numbering at 1, if this value hasn't been updated, KEYword doesn't exist
-		print 'Error: No position keyword found in fits header (assuming position is RA and DEC.  Exiting...'
+		print('Error: No position keyword found in fits header (assuming position is RA and DEC.  Exiting...')
 		exit()
 	keyword='DSVAL%i' %keynum
 	try:
@@ -809,20 +737,14 @@ def cli():
 	parser.add_argument("-E2C","--E2CAT",type=mybool,default=False,help="Flag to use catalog names for extended sources, default is False.",nargs="?",const=True,choices=['True','False','T','F','t','f','TRUE','FALSE','true','false',1,0])
 	parser.add_argument("-m","--makeRegion",type=mybool,default=True,help="Flag to create ds9 region file as well as the xml model, default is True.",choices=['True','False','T','F','t','f','TRUE','FALSE','true','false',1,0])
 	parser.add_argument("-GIF","--GIndexFree",type=mybool,default=False,help="Flag to use a power-law modification to the Galactic diffuse model spectrum and have the index be free, default is False.",nargs="?",const=True,choices=['True','False','T','F','t','f','TRUE','FALSE','true','false',1,0])
-	#parser.add_argument("-ED","--edisp",type=mybool,default=False,help="Flag to turn on energy dispersion for free point and extended sources, never for diffuse backgrounds, default is False.",nargs="?",const=True,choices=['True','False','T','F','t','f','TRUE','FALSE','true','false',1,0])
 	parser.add_argument("-wd","--writeDir",type=str,default='',help="Directory to write the output ds9 region file in if not the current working directory or if you are specifying the full path to the newly made XML file.")
 	parser.add_argument("-ON","--oldNames",type=mybool,default=False,help="Flag to use the make2FLGxml style naming convention, underscore before name and no spaces, default is False.",nargs="?",const=True,choices=['True','False','T','F','t','f','TRUE','FALSE','true','false',1,0])
-	#parser.add_argument("-P7","--pass7",type=mybool,default=False,help="Flag to say you're making a model for analysis of P7 data, default is False.  The only reason to use this is to switch the defaults for the diffuse components.",nargs="?",const=True,choices=['True','False','T','F','t','f','TRUE','FALSE','true','false',1,0])
+	parser.add_argument('-DR','--DataRelease',type=int,default=3,help='Choice of data release, 3 for 4FGL-DR3, 2 for 4FGL-DR2, and 1 for 4FGL.',choices=[1,2,3])
 	
 	args=parser.parse_args()
+
+	sL=srcList(args.catalog,args.ev,args.outputxml,args.DataRelease)
 	
-	#if args.pass7:
-		#args.galfile='$(FERMI_DIR)/refdata/fermi/galdiffuse/gll_iem_v05_rev1.fits'
-		#args.galname='gll_iem_v05_rev1'
-		#args.isofile='$(FERMI_DIR)/refdata/fermi/galdiffuse/iso_source_v05.txt'
-		#args.isoname='iso_source_v05'
-	
-	sL=srcList(args.catalog,args.ev,args.outputxml)
 	sL.makeModel(args.galfile,args.galname,args.isofile,args.isoname,args.normsonly,args.extDir,args.radLim,args.maxRad,args.ExtraRad,args.sigFree,args.varFree,args.psForce,args.E2CAT,args.makeRegion,args.GIndexFree,args.writeDir,args.oldNames)
 	
 	

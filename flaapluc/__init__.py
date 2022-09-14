@@ -1,3 +1,3 @@
-from automaticLightCurve import automaticLightCurve
-import make4FGLxml
-import extras
+from flaapluc.automaticLightCurve import automaticLightCurve
+import flaapluc.make4FGLxml
+import flaapluc.extras
