@@ -4,7 +4,6 @@ package:
 
 source:
   git_url: https://github.com/jlenain/flaapluc.git
-  git_tag: py2to3
 
 requirements:
   build:
