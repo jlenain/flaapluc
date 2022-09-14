@@ -922,7 +922,7 @@ First, retrieving the last photon files...
 
         # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
-        plt.figtext(0.98, 0.95,
+        plt.figtext(0.98, 0.05,
                     'plot creation date: %s (UTC)' % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
                     horizontalalignment="right",
                     rotation='vertical',
@@ -1028,7 +1028,7 @@ First, retrieving the last photon files...
 
         # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
-        plt.figtext(0.98, 0.95,
+        plt.figtext(0.98, 0.05,
                     'plot creation date: %s (UTC)' % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
                     horizontalalignment="right",
                     rotation='vertical',
@@ -1157,7 +1157,7 @@ First, retrieving the last photon files...
 
         # Add a label for the creation date of this figure
         # x,y in relative 0-1 coords in figure
-        plt.figtext(0.98, 0.95,
+        plt.figtext(0.98, 0.05,
                     'plot creation date: %s (UTC)' % (time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())),
                     horizontalalignment="right",
                     rotation='vertical',
