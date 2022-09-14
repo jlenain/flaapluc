@@ -1387,7 +1387,7 @@ First, retrieving the last photon files...
         # Numpy array
         # combination of acceptable
         #                           z         ZA@culmination
-        grid = np.array(zip(self.maxz, self.maxZA))
+        grid = np.array(list(zipp(self.maxz, self.maxZA)))
 
         zaAtCulmin = self.zaAtCulmination()
 
@@ -1864,3 +1864,17 @@ First, retrieving the last photon files...
             return fhlName
         else:
             return None
+
+
+def zipp(*iterables):
+    # zip('ABCD', 'xy') --> Ax By
+    sentinel = object()
+    iterators = [iter(it) for it in iterables]
+    while iterators:
+        result = []
+        for it in iterators:
+            elem = next(it, sentinel)
+            if elem is sentinel:
+                return
+            result.append(elem)
+        yield tuple(result)
