@@ -4,28 +4,32 @@ package:
 
 source:
   git_url: https://github.com/jlenain/flaapluc.git
-  
+  git_tag: py2to3
+
 requirements:
   build:
     - python 3.*
-    - numpy
-    - scipy
-    - astropy
-    - matplotlib
+    - numpy 1.23.*
+    - scipy 1.9.*
+    - astropy 5.*
+    - matplotlib 3.5.*
     - fermitools 2.*
-    - ephem
-    - pytz
+    - ephem 4.*
+    # - pytz
 
   run:
     - python 3.*
-    - numpy
-    - scipy
-    - astropy
-    - matplotlib
+    - numpy 1.23.*
+    - scipy 1.9.*
+    - astropy 5.*
+    - matplotlib 3.5.*
     - fermitools 2.*
-    - ephem
+    - ephem 4.*
 
 about:
   home: https://github.com/jlenain/flaapluc
   license: BSD
   license_file: LICENSE
+  summary: Quick and dirty Fermi-LAT light curve analysis
+  description: |
+    Build conda package with `conda build . -c fermi -c conda-forge`
