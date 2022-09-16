@@ -1074,7 +1074,7 @@ First, retrieving the last photon files...
                                height=self.siteAlt * u.m)
         # Time range for plot
         hrange = 10.
-        centerhour = 24 - int(round(site.longitude.hour))
+        centerhour = 24 - int(round(site.lon.hour))
         begindate = begindate.datetime()  # ephem.Date to datetime.datetime
         begindate = t.Time(datetime.datetime(begindate.year, begindate.month, begindate.day, centerhour),
                            scale='utc')
