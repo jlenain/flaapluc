@@ -1,0 +1,24 @@
+# Conda environment for FLaapLUC version 2.0.1
+# Install:    conda env create -f environment.yml
+# Activate:   conda activate flaapluc
+# Deactivate: conda deactivate
+
+name: flaapluc
+
+channels:
+  - default
+
+dependencies:
+  - jlenain::flaapluc=2.0.1
+  - python=3 # nail the python version, so conda does not try upgrading / downgrading
+  - numpy=1.23
+  - scipy=1.9
+  - conda-forge::astropy=5
+  - matplotlib=3.5
+  - fermi::fermitools=2
+  - ephem=4
+  - urllib3=1
+  - conda-forge::uncertainties=3
+#  - pip
+#  - pip:
+#      - git+https://github.com/gammapy/enrico.git  # enrico not installable via PIP: no setup.py

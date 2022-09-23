@@ -1,5 +1,5 @@
 [![ascl](https://img.shields.io/badge/ascl-1709.011-blue.svg?colorB=262255)](http://ascl.net/1709.011)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.907519.svg)](https://doi.org/10.5281/zenodo.907519)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.906991.svg)](https://doi.org/10.5281/zenodo.906991)
 [![Anaconda-Server Badge](https://anaconda.org/jlenain/flaapluc/badges/version.svg)](https://anaconda.org/jlenain/flaapluc)
 
 # FLaapLUC
@@ -56,4 +56,4 @@ flaapluc-allsources -h
 
 The pipeline uses an allsky file as input, which could easily be created using [`enrico`](http://enrico.readthedocs.org/en/latest/index.html). `FLaapLUC` is actually using `enrico` and can use it to generate an allsky file on the fly for you.
 
-`FLaapLUC` depends on the *Fermi* Science Tools, and it is assumed that you have a local installation of this software on your machine (for more details, see http://fermi.gsfc.nasa.gov/ssc/data/analysis/software/). In more details, the 'automaticLightCurve' class should be able to find the `gt_apps` Python modules provided in the *Fermi* Science Tools (be careful to have your shell variable `$PYTHONPATH` up-to-date, if applicable !).
+`FLaapLUC` depends on the *Fermi* Science Tools. The installation process should take care of this dependency, but see https://github.com/fermi-lat/Fermitools-conda/wiki for more details. More specifically, the `automaticLightCurve` class should be able to find the `gt_apps` Python module provided in the *Fermi* Science Tools.
