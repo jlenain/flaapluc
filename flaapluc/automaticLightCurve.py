@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2022-09-14 17:42:23 jlenain"
+# Time-stamp: "2022-09-21 14:01:00 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -398,7 +398,7 @@ First, retrieving the last photon files...
         header = hdu[0].header
 
         self.filtermoon = self.hasmoon()
-        
+
         if not longTerm:
             self.tstart = header['TSTART']
             self.tstop = header['TSTOP']
@@ -664,10 +664,10 @@ First, retrieving the last photon files...
 
         from flaapluc import make4FGLxml
 
-        mymodel = make4FGLxml.srcList(self.catalogFile, evfile, modelfile, DRversion=2)
+        mymodel = make4FGLxml.srcList(self.catalogFile, evfile, modelfile, DRversion=3)
         logging.info('Running makeModel')
         mymodel.makeModel(GDfile=self.fermiDir + '/refdata/fermi/galdiffuse/gll_iem_v07.fits', GDname='GalDiffuse',
-                          ISOfile=self.fermiDir + '/refdata/fermi/galdiffuse/iso_P8R3_SOURCE_V2.txt',
+                          ISOfile=self.fermiDir + '/refdata/fermi/galdiffuse/iso_P8R3_SOURCE_V3_v1.txt',
                           ISOname='IsotropicDiffuse', extDir=self.templatesDir, makeRegion=False)
 
     def photoLC(self):
@@ -697,7 +697,7 @@ First, retrieving the last photon files...
         try:
             fermi.evtbin.run()
         except:
-            fermi.evtbin['scfile'] = '@'+self.spacecraft   
+            fermi.evtbin['scfile'] = '@'+self.spacecraft
             fermi.evtbin.run()
 
     def exposure(self, gamma=None):
@@ -720,15 +720,12 @@ First, retrieving the last photon files...
             return True
 
         scfile = self.spacecraft
-        irfs = 'P8R3_SOURCE_V2'
+        irfs = 'P8R3_SOURCE_V3'
         rad = str(self.roi)
 
         options = 'infile=' + infile + ' scfile=' + scfile + ' irfs=' + irfs + ' rad=' + rad
         if self.fglName is not None:
             target = self.fglName.replace('4FGLJ', '4FGL J')
-            # Special case for IC component of Crab, which is extended, and which name is replaced by "Crab IC" by make4FGLxml:
-            if self.fglName == '4FGLJ0534.5+2201i':
-                target = 'Crab IC'
             logging.debug('exposure: target=%s', target)
             options += ' srcmdl=' + srcmdl + ' target="' + target + '"'
         else:
@@ -1048,7 +1045,7 @@ First, retrieving the last photon files...
         '''
 
         logging.info('[{src:s}] Creating visibility plot'.format(src=self.src))
-        logging.debug('[createVisibiliytPlot] begin date is {}'.format(begindate))
+        logging.debug('[createVisibiliytPlot] Begin date is {}'.format(begindate))
 
         fig = plt.figure(figsize=(10, 5))
         ax = plt.subplot(1, 1, 1)
@@ -1078,6 +1075,7 @@ First, retrieving the last photon files...
         begindate = begindate.datetime()  # ephem.Date to datetime.datetime
         begindate = t.Time(datetime.datetime(begindate.year, begindate.month, begindate.day, centerhour),
                            scale='utc')
+        logging.debug('[createVisibilityPlot] Begin date for plot is now {date}.'.format(date=begindate))
         dt = np.linspace(-int(hrange), int(hrange),
                          100 * int(hrange)) * u.hour
         times = begindate + dt
@@ -1126,10 +1124,18 @@ First, retrieving the last photon files...
                          color='sienna', zorder=0, label='Moon')
 
         srcObsDark = (darkness) & (~moonup) & (altaz.alt.degree > self.srcMinAlt)
-        logging.debug('[{src}] Observable under dark conditions between {start} and {stop}'.format(src=self.src, start=times[srcObsDark][0], stop=times[srcObsDark][-1]))
+        # If all elements of srcObsDark are False (see https://stackoverflow.com/questions/59898031/numpy-check-all-elements-are-false):
+        if (~srcObsDark).all():
+            self.visibleInDarkness = False
+        else:
+            logging.debug('[{src}] Observable under dark conditions between {start} and {stop}'.format(src=self.src, start=times[srcObsDark][0], stop=times[srcObsDark][-1]))
         if self.visibleUnderMoonlight:
             srcObsMoon = (darkness) & (moonup) & (altaz.alt.degree > self.srcMinAlt)
-            logging.debug('[{src}] Observable under moonlight conditions between {start} and {stop}'.format(src=self.src, start=times[srcObsMoon][0], stop=times[srcObsMoon][-1]))
+            # If all elements of srcObsMoon are False (see https://stackoverflow.com/questions/59898031/numpy-check-all-elements-are-false):
+            if (~srcObsMoon).all():
+                self.visibleUnderMoonlight = False
+            else:
+                logging.debug('[{src}] Observable under moonlight conditions between {start} and {stop}'.format(src=self.src, start=times[srcObsMoon][0], stop=times[srcObsMoon][-1]))
 
         ax.axhline(y=self.srcMinAlt,
                    linestyle='--',
@@ -1624,6 +1630,14 @@ First, retrieving the last photon files...
                     stateinfo="*does not* exceed"
 
             mailtext = """
+     *News* FLaapLUC now fully migrated to python 3 (at last !)
+            It now thus uses fermitools-2.* instead of fermitools-1.*, so don't be surprised if updated results are slightly different from previous runs.
+
+            Go also check the public repositories:
+                https://github.com/jlenain/flaapluc
+                https://anaconda.org/jlenain/flaapluc
+
+
      FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve) report
 
      *** The Fermi/LAT flux (%.0f MeV-%.0f GeV) of %s (%s, %s) %s the trigger threshold of %.2g ph cm^-2 s^-1 ***
@@ -1768,7 +1782,7 @@ First, retrieving the last photon files...
 
         # Search 3FGL name from a 4FGL name
         if '4FGL' in self.fglName:
-            cat4FGLfile = self.catalogFile.replace('/3FGL/','/4FGL-DR2/').replace('gll_psc_v16', 'gll_psc_v27')
+            cat4FGLfile = self.catalogFile.replace('/3FGL/','/4FGL-DR3/').replace('gll_psc_v16', 'gll_psc_v30')
             hdulist = fits.open(cat4FGLfile)
             cat = hdulist[1].data
             logging.debug('[{src:s}] 4FGL name is {fgl}'.format(src=self.src, fgl=self.fglName.replace('_4FGLJ', '4FGL J').replace('4FGLJ', '4FGL J')))
@@ -1798,7 +1812,7 @@ First, retrieving the last photon files...
         if "4FGL" in self.fglName:
             return self.fglName.replace('4FGLJ', '4FGL J')
 
-        cat4FGLfile = self.catalogFile.replace('gll_psc_v16', 'gll_psc_v27')
+        cat4FGLfile = self.catalogFile.replace('gll_psc_v16', 'gll_psc_v30')
         hdulist = fits.open(cat4FGLfile)
         cat = hdulist[1].data
         logging.debug('[{src:s}] 3FGL name is {fgl}'.format(src=self.src, fgl=self.fglName.replace('3FGLJ', '3FGL J')))
@@ -1833,10 +1847,10 @@ First, retrieving the last photon files...
                 return self.fglName.replace('_2FHLJ', '2FHL J').replace('2FHLJ', '2FHL J')
 
             cat2FHLfile = self.catalogFile.replace('/3FGL/',
-                                                   '/2FHL/').replace('/4FGL-DR2',
+                                                   '/2FHL/').replace('/4FGL-DR3',
                                                                      '/2FHL/').replace('psc_v08',
                                                                                        'psch_v08').replace('psc_v16',
-                                                                                                           'psch_v08').replace('psc_v27',
+                                                                                                           'psch_v08').replace('psc_v30',
                                                                                                                                'psch_v08')
             try:
                 hdulist = fits.open(cat2FHLfile)
