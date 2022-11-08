@@ -163,35 +163,19 @@ def processSrc(mysrc=None, useThresh=False, daily=False, mail=True, longTerm=Fal
         startyear = startyearmonth[:-2]
         startmonth = startyearmonth[-2:]
 
-        # First make sure that all the month-by-month long-term data have been processed
-        #
-        # Loop on month from 2008/08 to this month
-        for year in range(int(startyear), int(thisyear) + 1):
-            for month in range(1, 12 + 1):
-                # To retrieve the correct results directories, 'month' should be made of 2 digits
-                month = '%02d' % month
-                tmpyearmonth = str(year) + str(month)
-                if (year == int(startyear) and int(month) < int(startmonth)) or (
-                        year == int(thisyear) and int(month) > int(thismonth)):
-                    continue
+        if update:
+            tmpworkdir = auto.baseOutDir + "/longTerm/merged"
+            if not auto.daily:
+                for file in glob.glob(tmpworkdir + '/' + auto.src + '*'):
+                    os.remove(file)
+            if auto.daily:
+                for file in glob.glob(tmpworkdir + '/' + auto.src + '*daily*'):
+                    os.remove(file)
 
-                # If year=thisyear and month=thismonth, we should remove all data for this source and reprocess everything again with fresh, brand new data !
-                # BUT only if update=True
-                if year == int(thisyear) and int(month) == int(thismonth) and update is True:
-                    tmpworkdir = auto.baseOutDir + "/longTerm/" + str(year) + str(month)
-                    if not auto.daily:
-                        for file in glob.glob(tmpworkdir + '/' + auto.src + '*'):
-                            os.remove(file)
-                    if auto.daily:
-                        for file in glob.glob(tmpworkdir + '/' + auto.src + '*daily*'):
-                            os.remove(file)
+        processSrc(mysrc=auto.src, useThresh=useThresh, daily=auto.daily, mail=False, longTerm=True, test=False,
+                   mergelongterm=False, update=update, configfile=configfile,
+                   stopmonth=stopmonth, forcealert=forcealert, too=auto.too)
 
-                processSrc(mysrc=auto.src, useThresh=useThresh, daily=auto.daily, mail=False, longTerm=True, test=False,
-                           yearmonth=tmpyearmonth, mergelongterm=False, update=update, configfile=configfile,
-                           stopmonth=stopmonth, forcealert=forcealert, too=auto.too)
-
-        # Then merge the GTI files together, and run createXML, photoLC, exposure, createDAT, createLCfig, createEnergyTimeFig. No mail is sent here.
-        auto.mergeGTIfiles()
         if auto.fglName is not None:
             auto.createXML()
             mygamma = None
@@ -329,10 +313,7 @@ class automaticLightCurve:
         # Setting file names and directories
         if longTerm:
             self.allsky = self.allskyFile
-            if not mergelongterm:
-                self.workDir = self.baseOutDir + "/longTerm/" + yearmonth
-            else:
-                self.workDir = self.baseOutDir + "/longTerm/merged"
+            self.workDir = self.baseOutDir + "/longTerm/merged"
         else:
             self.allsky = self.lastAllskyFile
             self.workDir = self.baseOutDir + "/" + today
@@ -417,42 +398,8 @@ First, retrieving the last photon files...
             missionStart = header['TSTART']  # in MET
             missionStop = header['TSTOP']  # in MET
 
-            if not mergelongterm:
-                # Need to convert 'yearmonth' in MET
-                # self.tstart is the first day of yearmonth at 00:00:00, or missionStart
-                # self.tstop  is the first day of next month at 00:00:00, or missionStop
-                year = yearmonth[:-2]
-                month = yearmonth[-2:]
-
-                # Get date of first day of yearmonth at 00:00:00, in UNIX time (timetuple transform a datetime object in time object ???)
-                #                                                        year         month   day   hour   minute  second  microsecond
-                yearmonthStart = time.mktime(datetime.datetime(int(year), int(month), 1, 0, 0, 0, 0).timetuple())
-                if int(month) < 12:
-                    yearmonthStop = time.mktime(datetime.datetime(int(year), int(month) + 1, 1, 0, 0, 0, 0).timetuple())
-                else:
-                    yearmonthStop = time.mktime(datetime.datetime(int(year) + 1, 1, 1, 0, 0, 0, 0).timetuple())
-
-                # Convert these from UNIX time to MET
-                tmptstart = extras.mjd2met(extras.unixtime2mjd(yearmonthStart))
-                tmptstop = extras.mjd2met(extras.unixtime2mjd(yearmonthStop))
-
-                logging.debug('INIT yearmonthStart={}'.format(yearmonthStart))
-                logging.debug('INIT yearmonthStop={}'.format(yearmonthStop))
-
-                # Make sure that start of yearmonth is after the launch of Fermi, and that stop of yearmonth is before the very last data we have from NASA servers !
-                if tmptstart > missionStart:
-                    self.tstart = tmptstart
-                else:
-                    self.tstart = missionStart
-
-                if tmptstop < missionStop:
-                    self.tstop = tmptstop
-                else:
-                    self.tstop = missionStop
-
-            if mergelongterm is True:
-                self.tstart = missionStart
-                self.tstop = missionStop
+            self.tstart = missionStart
+            self.tstop = missionStop
 
     def getConfig(self, configfile='./default.cfg'):
         """Get configuration from a configuration file."""
@@ -1370,6 +1317,7 @@ First, retrieving the last photon files...
             self.visibleUnderMoonlightOnly = True
 
         logging.debug('[is_visible] Is {src} visible at all during the night ? {vis}'.format(src=self.src, vis='Yes' if visibleFlag else 'No'))
+        logging.debug('[is_visible] Is {src} visible under dark conditions ? {vis}'.format(src=self.src, vis='Yes' if self.visibleInDarkness else 'No'))
         logging.debug('[is_visible] Is {src} visible under reasonable Moonlight ? {vis}'.format(src=self.src, vis='Yes' if self.visibleUnderMoonlight else 'No'))
         logging.debug('[is_visible] Is {src} visible only under reasonable Moonlight and never during dark time ? {vis}'.format(src=self.src, vis='Yes' if self.visibleUnderMoonlightOnly else 'No'))
 
@@ -1410,8 +1358,10 @@ First, retrieving the last photon files...
         # Assess whether the source is currently visible at the provided site
         if self.checkVisibility == 'True':
             self.visible = self.is_visible()
+            logging.debug(f'[{self.src}][killTrigger] Visibility being checked, visible={self.visible}')
         else:
             # The source is assumed to be visible in any case, i.e. we don't care about its visibility status at the provided site to send a potential alert
+            logging.debug(f'[{self.src}][killTrigger] Forcing visible to True !')
             self.visible = True
 
         # if the mask has at least one 'True' element, we should send an alert
