@@ -304,6 +304,12 @@ class automaticLightCurve:
         self.testRecipients = getConfigList(self.config.get('MailConfig', 'TestRecipients'))
         self.mailSender = self.config.get('MailConfig', 'MailSender')
 
+        # Kafka configuration
+        try:
+            self.kafka_conf = self.config.get('AlertConfig', 'KafkaConfig')
+        except:
+            pass
+
         today = datetime.date.today().strftime('%Y%m%d')
         self.stopday = stopday
         if self.stopday is not None:
@@ -404,7 +410,7 @@ First, retrieving the last photon files...
     def getConfig(self, configfile='./default.cfg'):
         """Get configuration from a configuration file."""
         self.config = ConfigParser()
-        self.config.readfp(open(configfile))
+        self.config.read_file(open(configfile))
         return self.config
 
     def readSourceList(self, mysrc=None):
@@ -1507,14 +1513,45 @@ First, retrieving the last photon files...
                                                                                                                                                                                                  forcealert=self.forcealert))
         return SENDALERT
 
+    def format_kafka_alert(self):
+        alert = dict()
+        alert['publisher'] = 'FLaapLUC'
+        alert['source_name'] = self.src
+        alert['alert'] = dict()
+        alert['alert']['fermi_counterpart_name'] = self.fglName
+        alert['alert']['time'] = str(extras.mjd2gd(extras.met2mjd(self.lastTime)))
+        alert['alert']['ra'] = self.ra
+        alert['alert']['dec'] = self.dec
+        alert['alert']['emin'] = self.emin
+        alert['alert']['emax'] = self.emax
+        alert['alert']['flux_threshold'] = self.threshold
+        alert['alert']['flux'] = self.lastFlux
+        alert['alert']['fluxerr'] = self.lastFluxErr
+        alert['alert']['time_binning'] = self.tbin/24./3600.  # in days
+        alert['alert']['time_last_photon'] = str(extras.mjd2gd(extras.met2mjd(self.arrivalTimeLastPhotonLongTimeBin)))
+        return alert
+
     def sendAlert(self, nomailall=False, sendmail=False):
         '''
-        Send a mail alert in case a source fulfills the trigger conditions.
+        Send an alert via kafka and mail in case a source fulfills the trigger conditions.
 
         @param nomailall Boolean, should the mail be sent to a restricted list of recipients ?
         @return True
         @rtype bool
         '''
+
+        fhlName = self.search2FHLcounterpart()
+        fglName = self.search4FGLcounterpart()
+
+        # Kafka alert
+        if self.kafka_conf:
+            import kafkaAlert
+
+            a = kafkaAlert.AlertProducer(conf_path=self.kafka_conf)
+            alert = self.format_kafka_alert()
+            a.sendAlert(alert)
+
+        # Mail alert
 
         # Import modules
         try:
@@ -1539,13 +1576,11 @@ First, retrieving the last photon files...
             msg = MIMEMultipart()
             sender = self.mailSender
 
-            fhlName = self.search2FHLcounterpart()
             if fhlName is not None:
                 fhlmessage = "2FHL counterpart is %s" % fhlName
             else:
                 fhlmessage = "No 2FHL counterpart found"
 
-            fglName = self.search4FGLcounterpart()
             if fglName is not None:
                 fglmessage = "4FGL counterpart is %s" % fglName
             else:
