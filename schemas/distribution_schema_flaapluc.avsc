@@ -1,0 +1,63 @@
+{
+  "type": "record",
+  "name": "topLevelRecord",
+  "fields": [
+    {
+      "name": "schemavsn",
+      "type": ["string", "null"]
+    },
+    {
+      "name": "publisher",
+      "type": ["string", "null"]
+    },
+    {"name": "source_name",
+      "type": ["string", "null"]
+    },
+    {
+      "name": "alert",
+      "type":{
+        "type": "record",
+        "name": "alert",
+        "namespace": "topLevelRecord",
+        "fields": [
+          {"name": "fermi_counterpart_name",
+            "type": ["string", "null"]
+          },
+          {"name": "time",
+            "type": ["string", "null"]
+          },
+          {"name": "ra",
+            "type": ["double", "null"]
+          },
+          {"name": "dec",
+            "type": ["double", "null"]
+          },
+          {"name": "emin",
+            "type": ["double", "null"]
+          },
+          {"name": "emax",
+            "type": ["double", "null"]
+          },
+          {"name": "flux_threshold",
+            "type": ["double", "null"]
+          },
+          {"name": "flux",
+            "type": ["double", "null"]
+          },
+          {"name": "fluxerr",
+            "type": ["double", "null"]
+          },
+          {"name": "time_binning",
+            "type": ["float", "null"]
+          },
+          {"name": "time_last_photon",
+            "type": ["double", "null"]
+          },
+          {"name": "comment",
+            "type": ["string", "null"]
+          }
+        ]
+      }
+    }
+  ]
+}
