@@ -51,7 +51,7 @@
             "type": ["float", "null"]
           },
           {"name": "time_last_photon",
-            "type": ["double", "null"]
+            "type": ["string", "null"]
           },
           {"name": "comment",
             "type": ["string", "null"]
