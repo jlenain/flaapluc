@@ -23,7 +23,13 @@
           {"name": "fermi_counterpart_name",
             "type": ["string", "null"]
           },
-          {"name": "time",
+          {"name": "catalog",
+            "type": ["string", "null"]
+          },
+          {"name": "time_start",
+            "type": ["string", "null"]
+          },
+          {"name": "time_stop",
             "type": ["string", "null"]
           },
           {"name": "ra",
@@ -47,13 +53,10 @@
           {"name": "fluxerr",
             "type": ["double", "null"]
           },
-          {"name": "time_binning",
-            "type": ["float", "null"]
+          {"name": "exposure",
+            "type": ["double", "null"]
           },
           {"name": "time_last_photon",
-            "type": ["string", "null"]
-          },
-          {"name": "comment",
             "type": ["string", "null"]
           }
         ]

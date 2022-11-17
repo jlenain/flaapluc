@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2022-11-17 11:55:45 jlenain"
+# Time-stamp: "2022-11-17 17:56:15 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1520,7 +1520,9 @@ First, retrieving the last photon files...
             alert['source_name'] = self.src
             alert['alert'] = dict()
             alert['alert']['fermi_counterpart_name'] = self.fglName.replace('4FGLJ', '4FGL J')
-            alert['alert']['time'] = t.Time(extras.met2mjd(self.lastTime), format='mjd', scale='utc').isot
+            alert['alert']['catalog'] = os.path.dirname(self.catalogFile).split('/')[-1]
+            alert['alert']['time_start'] = t.Time(extras.met2mjd(self.lastTime) - 0.5 * self.tbin/24./60./60., format='mjd', scale='utc').isot
+            alert['alert']['time_stop'] = t.Time(extras.met2mjd(self.lastTime) + 0.5 * self.tbin/24./60./60., format='mjd', scale='utc').isot
             alert['alert']['ra'] = self.ra
             alert['alert']['dec'] = self.dec
             alert['alert']['emin'] = self.emin
@@ -1528,7 +1530,7 @@ First, retrieving the last photon files...
             alert['alert']['flux_threshold'] = self.threshold
             alert['alert']['flux'] = self.lastFlux
             alert['alert']['fluxerr'] = self.lastFluxErr
-            alert['alert']['time_binning'] = self.tbin/24./3600.  # in days
+            alert['alert']['exposure'] = self.lastExposure
             alert['alert']['time_last_photon'] = t.Time(extras.met2mjd(self.arrivalTimeLastPhotonLongTimeBin), format='mjd', scale='utc').isot
             logging.debug(f'[{self.src}] Kafka alert formatted:\n{alert}')
             return alert
