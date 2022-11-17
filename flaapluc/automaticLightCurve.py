@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2022-09-21 14:01:00 jlenain"
+# Time-stamp: "2022-11-17 11:55:45 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -300,9 +300,9 @@ class automaticLightCurve:
         self.withhistory = withhistory
 
         # Mail sender and recipients
-        self.usualRecipients = getConfigList(self.config.get('MailConfig', 'UsualRecipients'))
-        self.testRecipients = getConfigList(self.config.get('MailConfig', 'TestRecipients'))
-        self.mailSender = self.config.get('MailConfig', 'MailSender')
+        self.usualRecipients = getConfigList(self.config.get('AlertConfig', 'MailUsualRecipients'))
+        self.testRecipients = getConfigList(self.config.get('AlertConfig', 'MailTestRecipients'))
+        self.mailSender = self.config.get('AlertConfig', 'MailSender')
 
         # Kafka configuration
         try:
@@ -887,7 +887,7 @@ First, retrieving the last photon files...
             # axbat.set_xlabel('MJD')
             axbat.set_ylabel('F (15-50 keV) (count cm^-2 s^-1)', size='x-small')
             try:
-                axbat.set_xlim(xmin=timelc[0] - duration / 2. - 1., xmax=timelc[-1:] + duration / 2. + 1.)
+                axbat.set_xlim(xmin=timelc[0] - duration / 2. - 1., xmax=timelc[-1] + duration / 2. + 1.)
                 axbat.set_ylim(ymin=0.)
             except:
                 pass
@@ -955,7 +955,7 @@ First, retrieving the last photon files...
         ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: '%.0f' % (x - TOFFSET)))
         ax.set_xlabel('MJD-' + str(TOFFSET))
         try:
-            ax.set_xlim(xmin=t[0] - 1., xmax=t[-1:] + 1.)
+            ax.set_xlim(xmin=t[0] - 1., xmax=t[-1] + 1.)
         except:
             pass
 
@@ -1442,20 +1442,20 @@ First, retrieving the last photon files...
             fluxLongTimeBin = dataLongTimeBin['Flux']
             fluxErrLongTimeBin = dataLongTimeBin['FluxError']
             # Catch the last flux point
-            self.lastTimeLongTimeBin = timeLongTimeBin[-1:]
-            self.lastFluxLongTimeBin = fluxLongTimeBin[-1:]
-            self.lastFluxErrLongTimeBin = fluxErrLongTimeBin[-1:]
+            self.lastTimeLongTimeBin = timeLongTimeBin[-1]
+            self.lastFluxLongTimeBin = fluxLongTimeBin[-1]
+            self.lastFluxErrLongTimeBin = fluxErrLongTimeBin[-1]
 
             # Get the arrival time of the last photon analysed
             photonfileLongTimeBin = self.workDir + '/' + str(self.src) + '_gti.fits'
             photonsLongTimeBin = fits.open(photonfileLongTimeBin)
             photonsLongTimeBinTime = photonsLongTimeBin[1].data.field('TIME')
-            self.arrivalTimeLastPhotonLongTimeBin = photonsLongTimeBinTime[-1:]
+            self.arrivalTimeLastPhotonLongTimeBin = photonsLongTimeBinTime[-1]
 
             photonfile = self.workDir + '/' + str(self.src) + '_daily_gti.fits'
             photons = fits.open(photonfile)
             photonsTime = photons[1].data.field('TIME')
-            self.arrivalTimeLastPhoton = photonsTime[-1:]
+            self.arrivalTimeLastPhoton = photonsTime[-1]
         else:
             infile = self.workDir + '/' + str(self.src) + '_lc.dat'
             infilefits = self.workDir + '/' + str(self.src) + '_lc.fits'
@@ -1464,17 +1464,17 @@ First, retrieving the last photon files...
             photonfile = self.workDir + '/' + str(self.src) + '_gti.fits'
             photons = fits.open(photonfile)
             photonsTime = photons[1].data.field('TIME')
-            self.arrivalTimeLastPhoton = photonsTime[-1:]
+            self.arrivalTimeLastPhoton = photonsTime[-1]
         data = ascii.read(infile)
         time = data['MET']
         flux = data['Flux']
         fluxErr = data['FluxError']
-        self.lastExposure = float(fits.open(infilefits)['RATE'].data.field('EXPOSURE')[-1:])
+        self.lastExposure = float(fits.open(infilefits)['RATE'].data.field('EXPOSURE')[-1])
 
         # Catch the last flux point
-        self.lastTime = time[-1:]
-        self.lastFlux = flux[-1:]
-        self.lastFluxErr = fluxErr[-1:]
+        self.lastTime = time[-1]
+        self.lastFlux = flux[-1]
+        self.lastFluxErr = fluxErr[-1]
 
         self.energyTimeFig = self.workDir + '/' + str(self.src) + '_energyTime.png'
 
@@ -1514,22 +1514,26 @@ First, retrieving the last photon files...
         return SENDALERT
 
     def format_kafka_alert(self):
-        alert = dict()
-        alert['publisher'] = 'FLaapLUC'
-        alert['source_name'] = self.src
-        alert['alert'] = dict()
-        alert['alert']['fermi_counterpart_name'] = self.fglName
-        alert['alert']['time'] = str(extras.mjd2gd(extras.met2mjd(self.lastTime)))
-        alert['alert']['ra'] = self.ra
-        alert['alert']['dec'] = self.dec
-        alert['alert']['emin'] = self.emin
-        alert['alert']['emax'] = self.emax
-        alert['alert']['flux_threshold'] = self.threshold
-        alert['alert']['flux'] = self.lastFlux
-        alert['alert']['fluxerr'] = self.lastFluxErr
-        alert['alert']['time_binning'] = self.tbin/24./3600.  # in days
-        alert['alert']['time_last_photon'] = str(extras.mjd2gd(extras.met2mjd(self.arrivalTimeLastPhotonLongTimeBin)))
-        return alert
+        try:
+            alert = dict()
+            alert['publisher'] = 'FLaapLUC'
+            alert['source_name'] = self.src
+            alert['alert'] = dict()
+            alert['alert']['fermi_counterpart_name'] = self.fglName.replace('4FGLJ', '4FGL J')
+            alert['alert']['time'] = t.Time(extras.met2mjd(self.lastTime), format='mjd', scale='utc').isot
+            alert['alert']['ra'] = self.ra
+            alert['alert']['dec'] = self.dec
+            alert['alert']['emin'] = self.emin
+            alert['alert']['emax'] = self.emax
+            alert['alert']['flux_threshold'] = self.threshold
+            alert['alert']['flux'] = self.lastFlux
+            alert['alert']['fluxerr'] = self.lastFluxErr
+            alert['alert']['time_binning'] = self.tbin/24./3600.  # in days
+            alert['alert']['time_last_photon'] = t.Time(extras.met2mjd(self.arrivalTimeLastPhotonLongTimeBin), format='mjd', scale='utc').isot
+            logging.debug(f'[{self.src}] Kafka alert formatted:\n{alert}')
+            return alert
+        except ValueError:
+            return None
 
     def sendAlert(self, nomailall=False, sendmail=False):
         '''
@@ -1543,13 +1547,21 @@ First, retrieving the last photon files...
         fhlName = self.search2FHLcounterpart()
         fglName = self.search4FGLcounterpart()
 
-        # Kafka alert
-        if self.kafka_conf:
-            import kafkaAlert
+        SENDALERT = self.Triggered()
 
-            a = kafkaAlert.AlertProducer(conf_path=self.kafka_conf)
-            alert = self.format_kafka_alert()
-            a.sendAlert(alert)
+        # Kafka alert
+        if SENDALERT and self.kafka_conf and self.daily:
+            try:
+                from flaapluc import kafkaAlert
+
+                a = kafkaAlert.AlertProducer(conf_path=self.kafka_conf)
+                alert = self.format_kafka_alert()
+                logging.debug(f'[{self.src}] Alert formatted and ready to be sent')
+                a.sendAlert(alert)
+                logging.debug(f'[{self.src}] Alert sent to Kafka')
+            except:
+                 logging.debug(f'[{self.src}] Kafka alert failed')
+                 pass
 
         # Mail alert
 
@@ -1567,8 +1579,6 @@ First, retrieving the last photon files...
         except:
             logging.error('sendAlert: Can\'t import mail modules.')
             sys.exit(1)
-
-        SENDALERT = self.Triggered()
 
         # If trigger condition is met, we send a mail
         if SENDALERT and sendmail:
@@ -1640,16 +1650,16 @@ First, retrieving the last photon files...
 
 """ % (self.lastFlux,
        self.lastFluxErr,
-       self.lastTime, extras.met2mjd(self.lastTime), str(extras.mjd2gd(extras.met2mjd(self.lastTime))),
+       self.lastTime, extras.met2mjd(self.lastTime), t.Time(extras.met2mjd(self.lastTime), format='mjd', scale='utc').iso,
        self.arrivalTimeLastPhoton, extras.met2mjd(self.arrivalTimeLastPhoton),
-       str(extras.mjd2gd(extras.met2mjd(self.arrivalTimeLastPhoton))),
+       t.Time(extras.met2mjd(self.arrivalTimeLastPhoton), format='mjd', scale='utc').iso,
        self.longtimebin,
        self.lastFluxLongTimeBin,
        self.lastFluxErrLongTimeBin,
        self.lastTimeLongTimeBin, extras.met2mjd(self.lastTimeLongTimeBin),
-       str(extras.mjd2gd(extras.met2mjd(self.lastTimeLongTimeBin))),
+       t.Time(extras.met2mjd(self.lastTimeLongTimeBin), format='mjd', scale='utc').iso,
        self.arrivalTimeLastPhotonLongTimeBin, extras.met2mjd(self.arrivalTimeLastPhotonLongTimeBin),
-       str(extras.mjd2gd(extras.met2mjd(self.arrivalTimeLastPhotonLongTimeBin))))
+       t.Time(extras.met2mjd(self.arrivalTimeLastPhotonLongTimeBin), format='mjd', scale='utc').iso)
                 mailtext = mailtext + "The most recent lightcurve (%.0f-day binned in red, and %.0f-day binned in blue) is attached." % (
                 self.tbin / 24. / 60. / 60., self.longtimebin)
             else:
@@ -1660,9 +1670,9 @@ First, retrieving the last photon files...
 """ % (self.longtimebin,
        self.lastFlux,
        self.lastFluxErr,
-       self.lastTime, extras.met2mjd(self.lastTime), str(extras.mjd2gd(extras.met2mjd(self.lastTime))),
+       self.lastTime, extras.met2mjd(self.lastTime), t.Time(extras.met2mjd(self.lastTime), format='mjd', scale='utc').iso,
        self.arrivalTimeLastPhoton, extras.met2mjd(self.arrivalTimeLastPhoton),
-       str(extras.mjd2gd(extras.met2mjd(self.arrivalTimeLastPhoton))))
+       t.Time(extras.met2mjd(self.arrivalTimeLastPhoton), format='mjd', scale='utc').iso)
                 mailtext = mailtext + "The most recent lightcurve (%.0f-day binned) is attached." % (
                 self.tbin / 24. / 60. / 60.)
 

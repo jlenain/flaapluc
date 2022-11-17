@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2022-11-16 12:06:23 jlenain"
+# Time-stamp: "2022-11-17 12:13:36 jlenain"
 
 """
 Alert producer for FLaapLUC using the kafka protocol and AVRO alert format
@@ -31,27 +31,9 @@ class AlertProducer:
                           'group.id': self.conf['group']}
         self.schema = f"{os.path.dirname(flaapluc.__file__)}/../schemas/{self.conf['schema']}"
 
-    def sendAlert(self, alerts=None):
+    def sendAlert(self, alert=None):
         p = Producer(self.prod_conf)
-
-        for alert in alerts:
-            print(alert)
-            avro_alert = avroUtils.encode_into_avro(alert, self.schema)
-            p.produce(self.topic, avro_alert)
+        avro_alert = avroUtils.encode_into_avro(alert, self.schema)
+        p.produce(self.topic, avro_alert)
 
         p.flush()
-
-
-# Test AlertProducer
-conf_path = f"{os.path.dirname(flaapluc.__file__)}/../conf/flaapluc-kafka-broker-configuration.yml"
-
-a = AlertProducer(conf_path=conf_path)
-alerts = []
-for i in range(50):
-    alert = dict()
-    alert['alert'] = dict()
-    msg = f'Hi from CC-IN2P3 ! Message number {i}.'
-    alert['alert']['comment'] = msg
-    alerts.append(alert)
-
-a.sendAlert(alerts)
