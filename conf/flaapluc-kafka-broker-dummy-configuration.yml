@@ -1,0 +1,13 @@
+# This is an example configuration file for Kafka alert consumer:
+
+topic:
+  <MY_TOPIC>
+
+group:
+  <MY_GROUP>
+
+server:
+  <IP>:<PORT>
+
+schema:
+  distribution_schema_flaapluc.avsc
