@@ -19,6 +19,8 @@ dependencies:
   - ephem=4
   - urllib3=1
   - conda-forge::uncertainties=3
+  - conda-forge::python-confluent-kafka
+  - conda-forge::fastavro
 #  - pip
 #  - pip:
 #      - git+https://github.com/gammapy/enrico.git  # enrico not installable via PIP: no setup.py
