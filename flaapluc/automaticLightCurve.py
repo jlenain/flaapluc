@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Time-stamp: "2022-11-17 17:56:15 jlenain"
+# Time-stamp: "2023-01-06 09:48:35 jlenain"
 
 """
 FLaapLUC (Fermi/LAT automatic aperture photometry Light C<->Urve)
@@ -1552,18 +1552,22 @@ First, retrieving the last photon files...
         SENDALERT = self.Triggered()
 
         # Kafka alert
-        if SENDALERT and self.kafka_conf and self.daily:
-            try:
-                from flaapluc import kafkaAlert
+        try:
+            if SENDALERT and self.kafka_conf and self.daily:
+                try:
+                    from flaapluc import kafkaAlert
 
-                a = kafkaAlert.AlertProducer(conf_path=self.kafka_conf)
-                alert = self.format_kafka_alert()
-                logging.debug(f'[{self.src}] Alert formatted and ready to be sent')
-                a.sendAlert(alert)
-                logging.debug(f'[{self.src}] Alert sent to Kafka')
-            except:
-                 logging.debug(f'[{self.src}] Kafka alert failed')
-                 pass
+                    a = kafkaAlert.AlertProducer(conf_path=self.kafka_conf)
+                    alert = self.format_kafka_alert()
+                    logging.debug(f'[{self.src}] Alert formatted and ready to be sent')
+                    a.sendAlert(alert)
+                    logging.debug(f'[{self.src}] Alert sent to Kafka')
+                except:
+                     logging.debug(f'[{self.src}] Kafka alert failed')
+                     pass
+        except AttributeError as e:
+            logging.debug(f'[{self.src}] Kafka alert failed, due to: {e}')
+            pass
 
         # Mail alert
 
