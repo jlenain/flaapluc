@@ -1527,6 +1527,8 @@ First, retrieving the last photon files...
             alert['alert']['dec'] = self.dec
             alert['alert']['emin'] = self.emin
             alert['alert']['emax'] = self.emax
+            alert['alert']['flux_long_term_average'] = self.LTfluxAverage
+            alert['alert']['n_sigma'] = self.sigma            
             alert['alert']['flux_threshold'] = self.threshold
             alert['alert']['flux'] = self.lastFlux
             alert['alert']['fluxerr'] = self.lastFluxErr

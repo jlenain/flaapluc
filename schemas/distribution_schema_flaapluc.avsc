@@ -44,6 +44,12 @@
           {"name": "emax",
             "type": ["double", "null"]
           },
+          {"name": "flux_long_term_average",
+            "type": ["double", "null"]
+          },
+          {"name": "n_sigma",
+            "type": ["double", "null"]
+          },
           {"name": "flux_threshold",
             "type": ["double", "null"]
           },
