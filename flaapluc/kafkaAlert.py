@@ -27,8 +27,7 @@ class AlertProducer:
             raise
 
         self.topic = self.conf['topic']
-        self.prod_conf = {'bootstrap.servers': self.conf['server'],
-                          'group.id': self.conf['group']}
+        self.prod_conf = {'bootstrap.servers': self.conf['server']}
         self.schema = f"{os.path.dirname(flaapluc.__file__)}/../schemas/{self.conf['schema']}"
 
     def sendAlert(self, alert=None):
